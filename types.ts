@@ -50,3 +50,14 @@ export interface HandoverRecord {
   toPersonnelName: string;
   assignerName: string;
 }
+
+export interface PackageSalesRecord {
+  date: string; // YYYY-MM-DD
+  personnelId: number;
+  xtremeQty: number;
+  xtremeAmount: number;
+  kiddoQty: number;
+  kiddoAmount: number;
+  vipQty: number;
+  vipAmount: number;
+}

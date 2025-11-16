@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS } from './constants';
-import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord } from './types';
+import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useLocalStorage from './hooks/useLocalStorage';
 import * as imageStore from './imageStore';
@@ -24,9 +24,11 @@ import TicketSalesAssignmentView from './components/TicketSalesAssignmentView';
 import TicketSalesRoster from './components/TicketSalesRoster';
 import TicketSalesExpertiseReport from './components/TicketSalesExpertiseReport';
 import HistoryLog from './components/HistoryLog';
+import DailySalesEntry from './components/DailySalesEntry';
+import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
 const App: React.FC = () => {
@@ -34,7 +36,10 @@ const App: React.FC = () => {
     const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
     const getInitialViewForRole = useCallback((r: Role): View => {
-        if (r === 'sales-officer' || r === 'ticket-sales') {
+        if (r === 'sales-officer') {
+            return 'sales-officer-dashboard';
+        }
+        if (r === 'ticket-sales') {
             return 'ts-roster';
         }
         if (r === 'operator') {
@@ -62,11 +67,19 @@ const App: React.FC = () => {
     const [attendance, setAttendance] = useLocalStorage<AttendanceRecord[]>('attendance', []);
     const [historyLog, setHistoryLog] = useLocalStorage<HistoryRecord[]>('historyLog', []);
     const [handovers, setHandovers] = useLocalStorage<HandoverRecord[]>('handovers', []);
+    const [packageSales, setPackageSales] = useLocalStorage<PackageSalesRecord[]>('packageSales', []);
     
     // UI State
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFloor, setSelectedFloor] = useState('');
     const [selectedDate, setSelectedDate] = useState(today);
+    // Date range state for sales officer dashboard
+    const [startDate, setStartDate] = useState(today);
+    const [endDate, setEndDate] = useState(today);
+    // Date range state for my sales view
+    const [mySalesStartDate, setMySalesStartDate] = useState(today);
+    const [mySalesEndDate, setMySalesEndDate] = useState(today);
+
 
     // This effect ensures that when the role changes (login/logout),
     // the view is reset to the appropriate default for that role.
@@ -269,6 +282,29 @@ const App: React.FC = () => {
 
     }, [currentUser, today, setAttendance, setHistoryLog]);
 
+    const handleSavePackageSales = useCallback((salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
+        if (!currentUser) return;
+        
+        const newRecord: PackageSalesRecord = {
+            ...salesData,
+            date: selectedDate,
+            personnelId: currentUser.id,
+        };
+
+        setPackageSales(prev => {
+            const index = prev.findIndex(r => r.date === selectedDate && r.personnelId === currentUser.id);
+            if (index > -1) {
+                const updated = [...prev];
+                updated[index] = newRecord;
+                return updated;
+            }
+            return [...prev, newRecord];
+        });
+        
+        logAction('PACKAGE_SALES_UPDATE', `${currentUser.name} updated package sales for ${selectedDate}.`);
+        alert('Sales data saved successfully!');
+    }, [currentUser, selectedDate, setPackageSales, logAction]);
+
     const handleNavigate = (view: View) => {
         setCurrentView(view);
         setSearchTerm('');
@@ -304,6 +340,7 @@ const App: React.FC = () => {
                 ticketSalesAssignments: localStorage.getItem('ticketSalesAssignments'),
                 attendance: localStorage.getItem('attendance'),
                 handovers: localStorage.getItem('handovers'),
+                packageSales: localStorage.getItem('packageSales'),
             };
             const jsonString = JSON.stringify(backupData, null, 2);
             const blob = new Blob([jsonString], { type: 'application/json' });
@@ -480,6 +517,27 @@ const App: React.FC = () => {
                 return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
             case 'history':
                 return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
+            case 'my-sales':
+                 return <DailySalesEntry 
+                    currentUser={currentUser!}
+                    selectedDate={selectedDate}
+                    onDateChange={setSelectedDate}
+                    packageSales={packageSales}
+                    onSave={handleSavePackageSales}
+                    mySalesStartDate={mySalesStartDate}
+                    onMySalesStartDateChange={setMySalesStartDate}
+                    mySalesEndDate={mySalesEndDate}
+                    onMySalesEndDateChange={setMySalesEndDate}
+                 />;
+            case 'sales-officer-dashboard':
+                return <SalesOfficerDashboard
+                    ticketSalesPersonnel={ticketSalesPersonnel}
+                    packageSales={packageSales}
+                    startDate={startDate}
+                    endDate={endDate}
+                    onStartDateChange={setStartDate}
+                    onEndDateChange={setEndDate}
+                />;
             case 'counter':
             default:
                 return (

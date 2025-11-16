@@ -3,7 +3,7 @@ import { FLOORS } from '../constants';
 import { Role } from '../hooks/useAuth';
 import { Operator } from '../types';
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard';
 type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
 
 interface HeaderProps {
@@ -45,7 +45,7 @@ const Header: React.FC<HeaderProps> = ({
       }
       if (isSalesManager) {
           links.push(<button key="ts-roster" onClick={() => onNavigate('ts-roster')} className={navLinkClasses}>Sales Roster</button>);
-          links.push(<button key="ts-expertise" onClick={() => onNavigate('ts-expertise')} className={navLinkClasses}>Sales Reports</button>);
+          links.push(<button key="sales-dashboard" onClick={() => onNavigate('sales-officer-dashboard')} className={navLinkClasses}>Sales Dashboard</button>);
       }
       if (isManager || isSalesManager) {
           links.push(<button key="history" onClick={() => onNavigate('history')} className={navLinkClasses}>History Log</button>);
@@ -55,6 +55,7 @@ const Header: React.FC<HeaderProps> = ({
       }
       if (role === 'ticket-sales') {
           links.push(<button key="my-ts-roster" onClick={() => onNavigate('ts-roster')} className={navLinkClasses}>My Roster</button>);
+          links.push(<button key="my-sales" onClick={() => onNavigate('my-sales')} className={navLinkClasses}>My Sales</button>);
       }
       return links;
   }
@@ -69,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({
       }
       if (isSalesManager) {
           links.push(<button key="m-ts-roster" onClick={() => closeMenu('ts-roster')} className={`${navLinkClasses} w-full text-left block`}>Sales Roster</button>);
-          links.push(<button key="m-ts-expertise" onClick={() => closeMenu('ts-expertise')} className={`${navLinkClasses} w-full text-left block`}>Sales Reports</button>);
+          links.push(<button key="m-sales-dashboard" onClick={() => closeMenu('sales-officer-dashboard')} className={`${navLinkClasses} w-full text-left block`}>Sales Dashboard</button>);
       }
       if (isManager || isSalesManager) {
         links.push(<button key="m-history" onClick={() => closeMenu('history')} className={`${navLinkClasses} w-full text-left block`}>History Log</button>);
@@ -79,6 +80,7 @@ const Header: React.FC<HeaderProps> = ({
       }
       if (role === 'ticket-sales') {
           links.push(<button key="m-my-ts-roster" onClick={() => closeMenu('ts-roster')} className={`${navLinkClasses} w-full text-left block`}>My Roster</button>);
+          links.push(<button key="m-my-sales" onClick={() => closeMenu('my-sales')} className={`${navLinkClasses} w-full text-left block`}>My Sales</button>);
       }
       return links;
   }
