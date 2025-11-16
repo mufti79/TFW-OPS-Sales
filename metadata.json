@@ -1,0 +1,5 @@
+{
+  "name": "Toggi Fun World - Feel The Thrill",
+  "description": "An application for Toggi Fun World operators to track the daily number of guests for each game and ride. Counts are saved locally on the device.",
+  "requestFramePermissions": []
+}

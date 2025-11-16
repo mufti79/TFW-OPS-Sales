@@ -1,0 +1,16 @@
+{
+  "name": "Toggi Fun World - Feel The Thrill",
+  "short_name": "Toggi Fun",
+  "description": "An application for Toggi Fun World operators to track the daily number of guests for each game and ride. Counts are saved locally on the device.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
