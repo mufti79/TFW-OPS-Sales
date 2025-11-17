@@ -1,9 +1,9 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord } from './types';
 import { useAuth, Role } from './hooks/useAuth';
-import useLocalStorage from './hooks/useLocalStorage';
-import * as imageStore from './imageStore';
+import useFirebaseSync from './hooks/useFirebaseSync';
 
 import Login from './components/Login';
 import Header from './components/Header';
@@ -49,26 +49,32 @@ const App: React.FC = () => {
     }, []);
 
     // App State
-    const [isLoading, setIsLoading] = useState(true);
     const [isFullScreen, setIsFullScreen] = useState(false);
     const [currentView, setCurrentView] = useState<View>(() => getInitialViewForRole(role));
     const [modal, setModal] = useState<Modal>(null);
     const [selectedRideForModal, setSelectedRideForModal] = useState<Ride | null>(null);
 
-    // Local Storage State
-    const [dailyCounts, setDailyCounts] = useLocalStorage<Record<string, Record<string, number>>>('dailyCounts', {});
-    const [ticketSalesData, setTicketSalesData] = useLocalStorage<Record<string, Record<string, number>>>('ticketSalesData', {});
-    const [rides, setRides] = useLocalStorage<Ride[]>('rides', RIDES);
-    const [operators, setOperators] = useLocalStorage<Operator[]>('operators', OPERATORS);
-    const [ticketSalesPersonnel, setTicketSalesPersonnel] = useLocalStorage<Operator[]>('ticketSalesPersonnel', TICKET_SALES_PERSONNEL);
-    const [counters] = useLocalStorage<Counter[]>('counters', COUNTERS);
-    const [dailyAssignments, setDailyAssignments] = useLocalStorage<Record<string, Record<string, number>>>('operatorAssignments', {});
-    const [ticketSalesAssignments, setTicketSalesAssignments] = useLocalStorage<Record<string, Record<string, number>>>('ticketSalesAssignments', {});
-    const [attendance, setAttendance] = useLocalStorage<AttendanceRecord[]>('attendance', []);
-    const [historyLog, setHistoryLog] = useLocalStorage<HistoryRecord[]>('historyLog', []);
-    const [handovers, setHandovers] = useLocalStorage<HandoverRecord[]>('handovers', []);
-    const [packageSales, setPackageSales] = useLocalStorage<PackageSalesRecord[]>('packageSales', []);
+    // Refs for detecting data updates
+    // FIX: Provided an explicit initial value of `undefined` to the `useRef` hooks to resolve the "Expected 1 arguments, but got 0" error.
+    const prevOperatorsRef = useRef<Operator[] | undefined>(undefined);
+    const prevTicketSalesPersonnelRef = useRef<Operator[] | undefined>(undefined);
+
+    // Firebase Synced State
+    const [dailyCounts, setDailyCounts, l1] = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
+    const [ticketSalesData, setTicketSalesData, l2] = useFirebaseSync<Record<string, Record<string, number>>>('data/ticketSalesData', {});
+    const [rides, setRides, l3] = useFirebaseSync<Ride[]>('config/rides', RIDES);
+    const [operators, setOperators, l4] = useFirebaseSync<Operator[]>('config/operators', OPERATORS);
+    const [ticketSalesPersonnel, setTicketSalesPersonnel, l5] = useFirebaseSync<Operator[]>('config/ticketSalesPersonnel', TICKET_SALES_PERSONNEL);
+    const [counters, , l6] = useFirebaseSync<Counter[]>('config/counters', COUNTERS);
+    const [dailyAssignments, setDailyAssignments, l7] = useFirebaseSync<Record<string, Record<string, number>>>('data/operatorAssignments', {});
+    const [ticketSalesAssignments, setTicketSalesAssignments, l8] = useFirebaseSync<Record<string, Record<string, number>>>('data/ticketSalesAssignments', {});
+    const [attendance, setAttendance, l9] = useFirebaseSync<AttendanceRecord[]>('data/attendance', []);
+    const [historyLog, setHistoryLog, l10] = useFirebaseSync<HistoryRecord[]>('data/historyLog', []);
+    const [handovers, setHandovers, l11] = useFirebaseSync<HandoverRecord[]>('data/handovers', []);
+    const [packageSales, setPackageSales, l12] = useFirebaseSync<PackageSalesRecord[]>('data/packageSales', []);
     
+    const isFirebaseLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12;
+
     // UI State
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFloor, setSelectedFloor] = useState('');
@@ -100,30 +106,37 @@ const App: React.FC = () => {
         setHistoryLog(prev => [newRecord, ...prev].slice(0, 1000)); // Keep last 1000 records
     }, [currentUser, setHistoryLog]);
 
-    // Load images from IndexedDB on startup
+    const handleLogout = useCallback(() => {
+        if (currentUser) {
+            logAction('LOGOUT', `${currentUser.name} logged out.`);
+        }
+        logout();
+    }, [currentUser, logAction, logout]);
+
+    // Effect to handle live updates to core data, forcing a re-login.
     useEffect(() => {
-        const loadImages = async () => {
-            setIsLoading(true);
-            try {
-                await imageStore.init();
-                const storedImages = await imageStore.getAllImages();
-                if (storedImages.length > 0) {
-                    const imageUrls = storedImages.map(img => ({ id: img.id, url: URL.createObjectURL(img.blob) }));
-                    setRides(prevRides => {
-                        return prevRides.map(ride => {
-                            const foundImage = imageUrls.find(img => img.id === ride.id);
-                            return foundImage ? { ...ride, imageUrl: foundImage.url } : ride;
-                        });
-                    });
-                }
-            } catch (error) {
-                console.error("Failed to load images from IndexedDB", error);
-            } finally {
-                setIsLoading(false);
+        // The ref will be undefined on the first render.
+        // On subsequent renders, we compare the current data with the previous.
+        if (prevOperatorsRef.current && role) {
+            // Simple but effective deep-ish compare for this data structure.
+            if (JSON.stringify(prevOperatorsRef.current) !== JSON.stringify(operators)) {
+                alert("The list of operators has been updated by an administrator. For security and data consistency, you will be logged out. Please log in again.");
+                handleLogout();
             }
-        };
-        loadImages();
-    }, [setRides]);
+        }
+        // Update the ref with the current data for the next render.
+        prevOperatorsRef.current = operators;
+    }, [operators, role, handleLogout]);
+
+    useEffect(() => {
+        if (prevTicketSalesPersonnelRef.current && role) {
+            if (JSON.stringify(prevTicketSalesPersonnelRef.current) !== JSON.stringify(ticketSalesPersonnel)) {
+                alert("The list of ticket sales personnel has been updated by an administrator. For security and data consistency, you will be logged out. Please log in again.");
+                handleLogout();
+            }
+        }
+        prevTicketSalesPersonnelRef.current = ticketSalesPersonnel;
+    }, [ticketSalesPersonnel, role, handleLogout]);
 
     // Derived State
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
@@ -181,13 +194,6 @@ const App: React.FC = () => {
             setHistoryLog(prev => [record, ...prev]);
         }
         return success;
-    };
-
-    const handleLogout = () => {
-        if (currentUser) {
-            logAction('LOGOUT', `${currentUser.name} logged out.`);
-        }
-        logout();
     };
 
     const handleCountChange = (rideId: number, newCount: number) => {
@@ -248,11 +254,8 @@ const App: React.FC = () => {
     
     const handleSaveImage = useCallback(async (rideId: number, imageBase64: string) => {
         try {
-            const res = await fetch(imageBase64);
-            const blob = await res.blob();
-            await imageStore.saveImage(rideId, blob);
-            const objectUrl = URL.createObjectURL(blob);
-            setRides(prevRides => prevRides.map(r => r.id === rideId ? { ...r, imageUrl: objectUrl } : r));
+            // The imageBase64 is a data URL from the modal, ready to be used as an image source.
+            setRides(prevRides => prevRides.map(r => r.id === rideId ? { ...r, imageUrl: imageBase64 } : r));
             logAction('UPDATE_RIDE_IMAGE', `Updated image for ride: '${rides.find(r => r.id === rideId)?.name}'.`);
             setModal(null);
         } catch (error) {
@@ -327,53 +330,6 @@ const App: React.FC = () => {
             setIsFullScreen(false);
         }
     }, []);
-
-    const handleExport = () => {
-        try {
-            const backupData = {
-                rides: localStorage.getItem('rides'),
-                operators: localStorage.getItem('operators'),
-                ticketSalesPersonnel: localStorage.getItem('ticketSalesPersonnel'),
-                dailyCounts: localStorage.getItem('dailyCounts'),
-                ticketSalesData: localStorage.getItem('ticketSalesData'),
-                operatorAssignments: localStorage.getItem('operatorAssignments'),
-                ticketSalesAssignments: localStorage.getItem('ticketSalesAssignments'),
-                attendance: localStorage.getItem('attendance'),
-                handovers: localStorage.getItem('handovers'),
-                packageSales: localStorage.getItem('packageSales'),
-            };
-            const jsonString = JSON.stringify(backupData, null, 2);
-            const blob = new Blob([jsonString], { type: 'application/json' });
-            const link = document.createElement('a');
-            const date = new Date().toISOString().split('T')[0];
-            link.download = `ToggiFunWorld_Backup_${date}.json`;
-            link.href = window.URL.createObjectURL(blob);
-            link.click();
-            logAction('EXPORT_DATA', 'Exported all application data to a JSON file.');
-        } catch (error) {
-            alert('An error occurred during export.');
-            console.error(error);
-        }
-    };
-    
-    const handleImport = (jsonString: string) => {
-        try {
-            const backupData = JSON.parse(jsonString);
-            Object.keys(backupData).forEach(key => {
-                if (backupData[key] !== null) {
-                    localStorage.setItem(key, backupData[key]);
-                } else {
-                    localStorage.removeItem(key);
-                }
-            });
-            logAction('IMPORT_DATA', 'Imported data from a backup file. Application will reload.');
-            alert("Import successful! The application will now reload.");
-            window.location.reload();
-        } catch (error) {
-            alert('Invalid backup file or an error occurred during import.');
-            console.error(error);
-        }
-    };
 
     const handleSaveOperators = (newOperators: Operator[]) => {
         setOperators(newOperators);
@@ -463,8 +419,8 @@ const App: React.FC = () => {
     };
 
     // Main Render Logic
-    if (isLoading) {
-        return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white text-2xl">Loading Data...</div>;
+    if (isFirebaseLoading) {
+        return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white text-2xl">Syncing Data...</div>;
     }
 
     if (!role || !currentUser) {
@@ -602,9 +558,7 @@ const App: React.FC = () => {
             {modal === 'operators' && (
                 <OperatorManager operators={operators} onClose={() => setModal(null)} onSave={handleSaveOperators} onImport={handleImportOperators} />
             )}
-            {modal === 'backup' && (
-                <BackupManager onClose={() => setModal(null)} onExport={handleExport} onImport={handleImport} />
-            )}
+            {/* The BackupManager is no longer needed with real-time sync */}
         </div>
     );
 };

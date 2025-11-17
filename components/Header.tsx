@@ -107,7 +107,6 @@ const Header: React.FC<HeaderProps> = ({
                 <>
                     <button onClick={() => onShowModal('ai-assistant')} className={navLinkClasses}>AI Assistant</button>
                     <button onClick={() => onShowModal('operators')} className={navLinkClasses}>Manage Operators</button>
-                    <button onClick={() => onShowModal('backup')} className={navLinkClasses}>Backup / Restore</button>
                 </>
             )}
             <button onClick={onLogout} className="bg-pink-600 hover:bg-pink-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Logout</button>
@@ -135,7 +134,6 @@ const Header: React.FC<HeaderProps> = ({
                 <>
                 <button onClick={() => { onShowModal('ai-assistant'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>AI Assistant</button>
                 <button onClick={() => { onShowModal('operators'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>Manage Operators</button>
-                <button onClick={() => { onShowModal('backup'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>Backup / Restore</button>
                 <div className="border-t border-gray-700 my-2" />
                 </>
             )}

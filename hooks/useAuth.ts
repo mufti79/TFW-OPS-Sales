@@ -1,5 +1,7 @@
+
 import useLocalStorage from './useLocalStorage';
 import { Operator } from '../types';
+import { useCallback } from 'react';
 
 export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | null;
 
@@ -12,7 +14,7 @@ export const useAuth = () => {
   const [role, setRole] = useLocalStorage<Role>('authRole', null);
   const [currentUser, setCurrentUser] = useLocalStorage<Operator | null>('authUser', null);
 
-  const login = (
+  const login = useCallback((
     newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer', 
     payload?: string | Operator
   ): boolean => {
@@ -49,12 +51,12 @@ export const useAuth = () => {
       default:
         return false;
     }
-  };
+  }, [setRole, setCurrentUser]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setRole(null);
     setCurrentUser(null);
-  };
+  }, [setRole, setCurrentUser]);
 
   return { role, currentUser, login, logout };
 };

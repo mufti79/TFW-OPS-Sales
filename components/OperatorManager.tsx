@@ -151,18 +151,10 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({ operators, onClose, o
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-100">Changes Saved!</h2>
+                <h2 className="text-2xl font-bold text-gray-100">Changes Synced!</h2>
                 <p className="text-gray-400 mt-2 mb-6">
-                    Your operator list has been updated on this device.
+                    Your operator list has been updated. The changes are now synced and should be visible on all connected devices automatically.
                 </p>
-                <div className="bg-gray-700/50 p-4 rounded-lg text-sm text-gray-300">
-                    <p>
-                        <strong className="font-semibold text-purple-400">Important:</strong> To see these changes on another device (like your phone), you must transfer your data.
-                    </p>
-                    <p className="mt-2">
-                        Close this window, then use the <strong className="font-semibold">"Backup / Restore"</strong> button from the main menu to export your data and import it on your other device.
-                    </p>
-                </div>
                  <div className="bg-gray-700/50 px-6 py-4 -m-8 mt-8 flex justify-center rounded-b-lg">
                     <button onClick={onClose} className="px-8 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 active:scale-95 transition-all">
                         Close
