@@ -1,0 +1,181 @@
+import React, { useMemo } from 'react';
+import { RideWithCount, Operator, AttendanceRecord, HistoryRecord } from '../types';
+
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
+
+interface DashboardProps {
+  ridesWithCounts: RideWithCount[];
+  operators: Operator[];
+  attendance: AttendanceRecord[];
+  historyLog: HistoryRecord[];
+  onNavigate: (view: View) => void;
+  selectedDate: string;
+  onDateChange: (date: string) => void;
+  dailyAssignments: Record<string, Record<string, number>>;
+}
+
+const StatCard: React.FC<{ title: string; value: string | number; icon: React.ReactNode; colorClass: string; }> = ({ title, value, icon, colorClass }) => (
+  <div className={`bg-gray-800 p-5 rounded-lg shadow-lg border-l-4 ${colorClass} transition-transform transform hover:scale-105`}>
+    <div className="flex items-center">
+      <div className="p-3 rounded-full bg-gray-700 mr-4">{icon}</div>
+      <div>
+        <p className="text-sm font-medium text-gray-400">{title}</p>
+        <p className="text-3xl font-bold text-white">{value}</p>
+      </div>
+    </div>
+  </div>
+);
+
+const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, attendance, historyLog, onNavigate, selectedDate, onDateChange, dailyAssignments }) => {
+
+  const dashboardData = useMemo(() => {
+    const totalGuests = ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0);
+    const activeRides = ridesWithCounts.filter(ride => ride.count > 0).length;
+    
+    const attendanceTodayMap = new Map(attendance.filter(a => a.date === selectedDate).map(a => [a.operatorId, a]));
+    const presentOperators = operators.filter(op => attendanceTodayMap.has(op.id)).sort((a,b) => a.name.localeCompare(b.name));
+    const absentOperators = operators.filter(op => !attendanceTodayMap.has(op.id)).sort((a,b) => a.name.localeCompare(b.name));
+    const presentCount = presentOperators.length;
+
+    const topRides = [...ridesWithCounts]
+        .filter(ride => ride.count > 0)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+        
+    const assignmentsToday = dailyAssignments[selectedDate] || {};
+    const assignedRideIds = new Set(Object.keys(assignmentsToday));
+    const unassignedRides = ridesWithCounts
+        .filter(r => !assignedRideIds.has(r.id.toString()))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    const recentHistory = historyLog.slice(0, 5);
+
+    return { totalGuests, activeRides, presentCount, topRides, recentHistory, presentOperators, absentOperators, unassignedRides };
+  }, [ridesWithCounts, operators, attendance, historyLog, selectedDate, dailyAssignments]);
+
+  const [year, month, day] = selectedDate.split('-').map(Number);
+  const displayDate = new Date(year, month - 1, day);
+
+  return (
+    <div className="animate-fade-in-down space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+            Operations Dashboard
+          </h1>
+          <p className="text-gray-400">Showing data for {displayDate.toLocaleDateString()}</p>
+        </div>
+        <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg">
+            <label htmlFor="dashboard-date" className="text-sm font-medium text-gray-300">View Date:</label>
+            <input
+                id="dashboard-date"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => onDateChange(e.target.value)}
+                className="px-2 py-1 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
+            />
+        </div>
+      </div>
+
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard title="Total Guests" value={dashboardData.totalGuests.toLocaleString()} colorClass="border-purple-500" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>} />
+        <StatCard title="Active Rides" value={`${dashboardData.activeRides} / ${ridesWithCounts.length}`} colorClass="border-pink-500" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-pink-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
+        <StatCard title="Operators Present" value={dashboardData.presentCount} colorClass="border-green-500" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-6">
+            {/* Ride Status */}
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+                    <div>
+                        <h2 className="text-xl font-bold mb-4">Top 5 Rides Today</h2>
+                        {dashboardData.topRides.length > 0 ? (
+                            <ul className="space-y-3">
+                            {dashboardData.topRides.map((ride, index) => (
+                                <li key={ride.id} className="flex justify-between items-center text-gray-300">
+                                <span className="truncate">{index + 1}. {ride.name}</span>
+                                <span className="font-bold text-lg text-purple-400 tabular-nums">{ride.count.toLocaleString()}</span>
+                                </li>
+                            ))}
+                            </ul>
+                        ) : (
+                            <p className="text-gray-500 text-center py-8">No ride activity recorded.</p>
+                        )}
+                    </div>
+                    <div className="mt-6 md:mt-0">
+                        <h2 className="text-xl font-bold mb-4 text-pink-400">Unassigned Rides ({dashboardData.unassignedRides.length})</h2>
+                        {dashboardData.unassignedRides.length > 0 ? (
+                            <ul className="space-y-2 text-sm max-h-48 overflow-y-auto pr-2">
+                                {dashboardData.unassignedRides.map(ride => (
+                                    <li key={ride.id} className="text-gray-400 bg-gray-700/50 p-2 rounded-md">{ride.name}</li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-gray-500 text-center py-8">All rides are assigned!</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Recent Activity */}
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
+                {dashboardData.recentHistory.length > 0 ? (
+                    <ul className="space-y-2">
+                    {dashboardData.recentHistory.map(log => (
+                        <li key={log.id} className="text-sm text-gray-400 border-b border-gray-700/50 pb-2 last:border-b-0 last:pb-0">
+                            <span className="font-bold text-gray-300">{log.user}</span> {log.details}
+                            <div className="text-xs text-gray-500">
+                                {new Date(log.timestamp).toLocaleString()} - <span className="font-mono text-purple-400">{log.action}</span>
+                            </div>
+                        </li>
+                    ))}
+                    </ul>
+                ) : (
+                <p className="text-gray-500 text-center py-4">No recent activity.</p>
+                )}
+            </div>
+        </div>
+
+        {/* Right Column */}
+        <div className="lg:col-span-1 space-y-6">
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <h2 className="text-xl font-bold mb-4">Operator Attendance</h2>
+                <div className="space-y-4 max-h-72 overflow-y-auto pr-2">
+                    <div>
+                        <h3 className="font-semibold text-green-400 mb-2">Present ({dashboardData.presentOperators.length})</h3>
+                        {dashboardData.presentOperators.length > 0 ? (
+                            <ul className="space-y-1 text-sm text-gray-300">
+                                {dashboardData.presentOperators.map(op => <li key={op.id}>{op.name}</li>)}
+                            </ul>
+                        ) : <p className="text-xs text-gray-500">No operators present.</p>}
+                    </div>
+                    <div>
+                        <h3 className="font-semibold text-red-500 mb-2">Absent ({dashboardData.absentOperators.length})</h3>
+                        {dashboardData.absentOperators.length > 0 ? (
+                            <ul className="space-y-1 text-sm text-gray-300">
+                                {dashboardData.absentOperators.map(op => <li key={op.id}>{op.name}</li>)}
+                            </ul>
+                        ) : <p className="text-xs text-gray-500">All operators accounted for.</p>}
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <h2 className="text-xl font-bold mb-4">Quick Actions</h2>
+                <div className="space-y-3">
+                    <button onClick={() => onNavigate('assignments')} className="w-full text-left p-3 bg-blue-600/20 text-blue-300 rounded-lg hover:bg-blue-600/40 transition-colors">Manage G&R Assignments</button>
+                    <button onClick={() => onNavigate('reports')} className="w-full text-left p-3 bg-teal-600/20 text-teal-300 rounded-lg hover:bg-teal-600/40 transition-colors">View Reports</button>
+                    <button onClick={() => onNavigate('counter')} className="w-full text-left p-3 bg-pink-600/20 text-pink-300 rounded-lg hover:bg-pink-600/40 transition-colors">View All G&R Counts</button>
+                </div>
+            </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;

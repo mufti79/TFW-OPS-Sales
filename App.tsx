@@ -31,6 +31,7 @@ import HistoryLog from './components/HistoryLog';
 import DailySalesEntry from './components/DailySalesEntry';
 import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
+import Dashboard from './components/Dashboard';
 
 // Notification System Implementation
 interface NotificationState {
@@ -67,7 +68,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 };
 
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 type FirebaseObject<T extends { id: number }> = Record<number, Omit<T, 'id'>>;
 
@@ -88,6 +89,9 @@ const AppContent: React.FC = () => {
     }, [today]);
 
     const getInitialViewForRole = useCallback((r: Role): View => {
+        if (r === 'admin' || r === 'operation-officer') {
+            return 'dashboard';
+        }
         if (r === 'sales-officer') {
             return 'sales-officer-dashboard';
         }
@@ -97,7 +101,7 @@ const AppContent: React.FC = () => {
         if (r === 'operator') {
             return 'roster';
         }
-        return 'counter'; // Default for admin, op officer
+        return 'counter'; // Should not be reached if role is set
     }, []);
 
     // App State
@@ -224,9 +228,9 @@ const AppContent: React.FC = () => {
     }, [attendanceData]);
 
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
-        const countsForToday = dailyCounts[today] || {};
-        return rides.map(ride => ({ ...ride, count: countsForToday[ride.id] || 0 }));
-    }, [rides, dailyCounts, today]);
+        const countsForDate = dailyCounts[selectedDate] || {};
+        return rides.map(ride => ({ ...ride, count: countsForDate[ride.id] || 0 }));
+    }, [rides, dailyCounts, selectedDate]);
 
     const countersWithSales = useMemo<CounterWithSales[]>(() => {
         const salesForToday = ticketSalesData[today] || {};
@@ -546,6 +550,7 @@ const AppContent: React.FC = () => {
     
     const renderContent = () => {
         switch (currentView) {
+            case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={operators} attendance={attendanceArray} historyLog={historyLog} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={setSelectedDate} dailyAssignments={dailyAssignments} />;
             case 'reports': return <Reports dailyCounts={dailyCounts} rides={rides} />;
             case 'assignments': return <AssignmentView rides={rides} operators={operators} dailyAssignments={dailyAssignments} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
             case 'expertise': return <ExpertiseReport operators={operators} dailyAssignments={dailyAssignments} rides={rides} />;

@@ -4,7 +4,7 @@ import { Role } from '../hooks/useAuth';
 import { Operator } from '../types';
 import ConnectionStatus from './ConnectionStatus';
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
 type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
 type Connection = 'connecting' | 'connected' | 'disconnected';
 
@@ -43,6 +43,7 @@ const Header: React.FC<HeaderProps> = ({
   const renderNavLinks = () => {
       const links = [];
       if (isManager) {
+          links.push(<button key="dashboard" onClick={() => onNavigate('dashboard')} className={navLinkClasses}>Dashboard</button>);
           links.push(<button key="counter" onClick={() => onNavigate('counter')} className={navLinkClasses}>G&R</button>);
           links.push(<button key="roster" onClick={() => onNavigate('roster')} className={navLinkClasses}>Ops Roster</button>);
           links.push(<button key="reports" onClick={() => onNavigate('reports')} className={navLinkClasses}>Ops Reports</button>);
@@ -68,6 +69,7 @@ const Header: React.FC<HeaderProps> = ({
       const closeMenu = (view: View) => { onNavigate(view); setMenuOpen(false); };
       
       if (isManager) {
+          links.push(<button key="m-dashboard" onClick={() => closeMenu('dashboard')} className={`${navLinkClasses} w-full text-left block`}>Dashboard</button>);
           links.push(<button key="m-counter" onClick={() => closeMenu('counter')} className={`${navLinkClasses} w-full text-left block`}>G&R</button>);
           links.push(<button key="m-roster" onClick={() => closeMenu('roster')} className={`${navLinkClasses} w-full text-left block`}>Ops Roster</button>);
           links.push(<button key="m-reports" onClick={() => closeMenu('reports')} className={`${navLinkClasses} w-full text-left block`}>Ops Reports</button>);
