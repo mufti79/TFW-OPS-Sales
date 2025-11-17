@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord, AttendanceData } from './types';
@@ -16,7 +17,6 @@ import OperatorManager from './components/OperatorManager';
 import AssignmentView from './components/AssignmentView';
 import ExpertiseReport from './components/ExpertiseReport';
 import DailyRoster from './components/DailyRoster';
-import AttendanceCheckin from './components/AttendanceCheckin';
 import KioskModeWrapper from './components/KioskModeWrapper';
 import BackupManager from './components/BackupManager';
 import TicketSalesView from './components/TicketSalesView';
@@ -55,7 +55,9 @@ const App: React.FC = () => {
     const [selectedRideForModal, setSelectedRideForModal] = useState<Ride | null>(null);
 
     // Refs for detecting data updates
+    // FIX: Provide an explicit `undefined` initial value to `useRef` to resolve the "Expected 1 arguments, but got 0" error.
     const prevOperatorsRef = useRef<Operator[] | undefined>(undefined);
+    // FIX: Provide an explicit `undefined` initial value to `useRef` to resolve the "Expected 1 arguments, but got 0" error.
     const prevTicketSalesPersonnelRef = useRef<Operator[] | undefined>(undefined);
 
     // Firebase Synced State
@@ -288,16 +290,12 @@ const App: React.FC = () => {
             return { ...prev, [today]: newTodayRecords };
         });
         
-        const record: HistoryRecord = {
-            id: Date.now(),
-            timestamp: new Date().toISOString(),
-            user: currentUser.name,
-            action: 'ATTENDANCE_CHECKIN',
-            details: `${currentUser.name} checked in. Briefing: ${attendedBriefing ? 'Yes' : 'No'}.`
-        };
-        setHistoryLog(prev => [record, ...prev]);
+        logAction('ATTENDANCE_CHECKIN', `${currentUser.name} checked in. Briefing: ${attendedBriefing ? 'Yes' : 'No'}.`);
 
-    }, [currentUser, today, setAttendanceData, setHistoryLog]);
+        alert("Thank you for checking in. You will now be logged out to ensure assignments are loaded correctly on your next login.");
+        handleLogout();
+
+    }, [currentUser, today, setAttendanceData, logAction, handleLogout]);
 
     const handleSavePackageSales = useCallback((salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser) return;
@@ -447,10 +445,6 @@ const App: React.FC = () => {
         />;
     }
     
-    if ((role === 'operator' || role === 'ticket-sales') && !hasCheckedInToday) {
-        return <AttendanceCheckin operatorName={currentUser.name} onClockIn={handleClockIn} />;
-    }
-
     const renderContent = () => {
         switch (currentView) {
             case 'reports':
@@ -476,13 +470,29 @@ const App: React.FC = () => {
                     onNavigate={handleNavigate}
                     onCountChange={handleCountChange}
                     onShowModal={handleShowModal}
+                    hasCheckedInToday={hasCheckedInToday}
+                    onClockIn={handleClockIn}
                 />;
             case 'ticket-sales-dashboard':
                 return <TicketSalesView countersWithSales={countersWithSales} onSalesChange={handleSalesChange} />;
             case 'ts-assignments':
                 return <TicketSalesAssignmentView counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} onSave={handleSaveTicketSalesAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
             case 'ts-roster':
-                return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onReassign={handleReassignTicketSales} handovers={handovers} />;
+                return <TicketSalesRoster 
+                    counters={counters} 
+                    ticketSalesPersonnel={ticketSalesPersonnel} 
+                    dailyAssignments={ticketSalesAssignments} 
+                    selectedDate={selectedDate} 
+                    onDateChange={setSelectedDate} 
+                    role={role} 
+                    currentUser={currentUser} 
+                    attendance={attendanceArray} 
+                    onNavigate={handleNavigate} 
+                    onReassign={handleReassignTicketSales} 
+                    handovers={handovers} 
+                    hasCheckedInToday={hasCheckedInToday}
+                    onClockIn={handleClockIn}
+                />;
             case 'ts-expertise':
                 return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
             case 'history':

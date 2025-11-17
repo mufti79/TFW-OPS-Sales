@@ -1,7 +1,9 @@
+
 import React, { useMemo } from 'react';
 import { Ride, Operator, AttendanceRecord, RideWithCount } from '../types';
 import { Role } from '../hooks/useAuth';
 import RideCard from './RideCard';
+import BriefingCheckin from './BriefingCheckin';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
@@ -18,9 +20,11 @@ interface DailyRosterProps {
   onNavigate: (view: View) => void;
   onCountChange: (rideId: number, newCount: number) => void;
   onShowModal: (modal: Modal, ride?: Ride) => void;
+  hasCheckedInToday: boolean;
+  onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
 }
 
-const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal }) => {
+const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal, hasCheckedInToday, onClockIn }) => {
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
       const [hours, minutes] = timeStr.split(':');
@@ -33,7 +37,6 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
   const { assignmentsByOperator, unassignedRides, operatorsWithAttendance, presentCount, absentCount } = useMemo(() => {
     const assignmentsToday: Record<string, number> = dailyAssignments[selectedDate] || {};
-    // FIX: Explicitly type the Map to ensure TypeScript correctly infers the type of `ride` as RideWithCount.
     const rideMap = new Map<string, RideWithCount>(rides.map(r => [r.id.toString(), r]));
     
     const assignmentsByOperator = new Map<number, RideWithCount[]>();
@@ -186,6 +189,10 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const displayDate = new Date(year, month - 1, day);
 
   if (role === 'operator' && currentUser) {
+    if (!hasCheckedInToday) {
+        return <BriefingCheckin operatorName={currentUser.name} onClockIn={onClockIn} />;
+    }
+
     const myAssignedRides = assignmentsByOperator.get(currentUser.id) || [];
     const myAttendance = attendance.find(a => a.operatorId === currentUser.id && a.date === selectedDate);
     

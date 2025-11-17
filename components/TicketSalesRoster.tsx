@@ -1,6 +1,8 @@
+
 import React, { useMemo, useState } from 'react';
 import { Counter, Operator, AttendanceRecord, HandoverRecord } from '../types';
 import { Role } from '../hooks/useAuth';
+import BriefingCheckin from './BriefingCheckin';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster';
 
@@ -105,9 +107,11 @@ interface TicketSalesRosterProps {
   onNavigate: (view: View) => void;
   onReassign: (counterId: number, newPersonnelId: number) => void;
   handovers: HandoverRecord[];
+  hasCheckedInToday: boolean;
+  onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
 }
 
-const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onReassign, handovers }) => {
+const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onReassign, handovers, hasCheckedInToday, onClockIn }) => {
   const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'present' | 'absent'>('all');
   const [reassignModalInfo, setReassignModalInfo] = useState<{ counter: Counter; currentPersonnel: Operator } | null>(null);
   
@@ -243,6 +247,10 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
 
   const [year, month, day] = selectedDate.split('-').map(Number);
   const displayDate = new Date(year, month - 1, day);
+
+  if (role === 'ticket-sales' && currentUser && !hasCheckedInToday) {
+    return <BriefingCheckin operatorName={currentUser.name} onClockIn={onClockIn} />;
+  }
 
   return (
     <div className="flex flex-col">
