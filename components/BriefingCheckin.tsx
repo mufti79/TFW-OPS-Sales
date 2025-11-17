@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 interface BriefingCheckinProps {
   operatorName: string;
@@ -7,16 +6,6 @@ interface BriefingCheckinProps {
 }
 
 const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClockIn }) => {
-  const [attendedBriefing, setAttendedBriefing] = useState(false);
-  const [briefingTime, setBriefingTime] = useState('');
-  
-  // Initialize minTime to the current time when component loads.
-  const [minTime, setMinTime] = useState(() => {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    return `${hours}:${minutes}`;
-  });
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -24,31 +13,18 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
     month: 'long',
     day: 'numeric',
   });
-  
-  // This effect updates the time when the user decides to log their briefing time,
-  // ensuring the minimum time is current.
-  useEffect(() => {
-    if (attendedBriefing) {
-      const now = new Date();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const currentTime = `${hours}:${minutes}`;
-      
-      setMinTime(currentTime);
-      // If the currently set briefing time is in the past, update it to now.
-      if (!briefingTime || briefingTime < currentTime) {
-        setBriefingTime(currentTime);
-      }
-    }
-  }, [attendedBriefing]);
 
-
-  const handleClockInClick = () => {
-    onClockIn(attendedBriefing, attendedBriefing ? briefingTime : null);
+  const handleClockInWithBriefing = () => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${hours}:${minutes}`;
+    onClockIn(true, currentTime);
   };
 
-  const isTimeInvalid = attendedBriefing && briefingTime < minTime;
-  const canClockIn = !attendedBriefing || (attendedBriefing && briefingTime && !isTimeInvalid);
+  const handleClockInWithoutBriefing = () => {
+    onClockIn(false, null);
+  };
 
   return (
     <div className="w-full max-w-lg mx-auto bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 text-center animate-fade-in-up">
@@ -58,46 +34,23 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
       <p className="text-lg text-gray-400 mb-8">{today}</p>
       
       <div className="my-8 space-y-6">
-        <label 
-          htmlFor="briefing-checkbox"
-          className="flex items-center justify-center text-xl text-gray-200 cursor-pointer p-4 rounded-lg hover:bg-gray-700/50 transition-colors"
-        >
-          <input 
-            id="briefing-checkbox"
-            type="checkbox"
-            checked={attendedBriefing}
-            onChange={() => setAttendedBriefing(!attendedBriefing)}
-            className="w-6 h-6 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-offset-gray-800 mr-4"
-          />
-          I attended the briefing.
-        </label>
-        
-        {attendedBriefing && (
-          <div className="animate-fade-in-up">
-              <label htmlFor="briefing-time" className="block text-lg font-medium text-gray-300 mb-2">Briefing Time:</label>
-              <input
-                id="briefing-time"
-                type="time"
-                value={briefingTime}
-                min={minTime}
-                onChange={(e) => setBriefingTime(e.target.value)}
-                className="w-full max-w-xs mx-auto px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-center text-xl"
-                required
-              />
-              {isTimeInvalid && (
-                  <p className="text-red-400 text-sm mt-2">Briefing time cannot be in the past.</p>
-              )}
-          </div>
-        )}
+        <p className="text-xl text-gray-200">Please confirm your briefing attendance to clock in.</p>
+        <div className="flex flex-col space-y-4">
+            <button
+                onClick={handleClockInWithBriefing}
+                className="w-full px-6 py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all text-xl"
+            >
+                YES, I attended the briefing
+            </button>
+            <button
+                onClick={handleClockInWithoutBriefing}
+                className="w-full px-6 py-4 bg-yellow-600 text-gray-900 font-bold rounded-lg hover:bg-yellow-500 active:scale-95 transition-all text-xl"
+            >
+                NO, I did not attend
+            </button>
+        </div>
       </div>
-
-      <button
-        onClick={handleClockInClick}
-        disabled={!canClockIn}
-        className="w-full px-6 py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all text-xl disabled:bg-gray-600 disabled:cursor-not-allowed"
-      >
-        Clock In & Logout
-      </button>
+       <p className="text-sm text-gray-500 mt-8">After selecting an option, you will be automatically logged out.</p>
     </div>
   );
 }

@@ -74,7 +74,18 @@ type FirebaseObject<T extends { id: number }> = Record<number, Omit<T, 'id'>>;
 const AppContent: React.FC = () => {
     const { role, currentUser, login, logout } = useAuth();
     const { showNotification } = useNotification();
-    const today = new Date().toISOString().split('T')[0];
+    const [today, setToday] = useState(() => new Date().toISOString().split('T')[0]);
+
+    // Effect to update the 'today' date string if the app is left open past midnight.
+    useEffect(() => {
+        const intervalId = setInterval(() => {
+            const newToday = new Date().toISOString().split('T')[0];
+            if (newToday !== today) {
+                setToday(newToday);
+            }
+        }, 30000); // Check every 30 seconds
+        return () => clearInterval(intervalId);
+    }, [today]);
 
     const getInitialViewForRole = useCallback((r: Role): View => {
         if (r === 'sales-officer') {
@@ -239,12 +250,11 @@ const AppContent: React.FC = () => {
         return success;
     };
 
-    const handleCountChange = (rideId: number, newCount: number) => {
+    const handleCountChange = useCallback((rideId: number, newCount: number) => {
         const rideName = rides.find(r => r.id === rideId)?.name || 'Unknown Ride';
         const oldCount = dailyCounts[selectedDate]?.[rideId] || 0;
         if (oldCount === newCount) return;
 
-        // Perform a direct, efficient write to Firebase for this specific count.
         database.ref(`data/dailyCounts/${selectedDate}/${rideId}`).set(newCount)
             .then(() => {
                 logAction('GUEST_COUNT_UPDATE', `Set count for '${rideName}' from ${oldCount} to ${newCount}.`);
@@ -253,14 +263,13 @@ const AppContent: React.FC = () => {
                 console.error("Firebase count update failed:", error);
                 showNotification('Failed to save count. Check connection.', 'error');
             });
-    };
+    }, [dailyCounts, rides, selectedDate, logAction, showNotification]);
 
-    const handleSalesChange = (counterId: number, newCount: number) => {
+    const handleSalesChange = useCallback((counterId: number, newCount: number) => {
         const counterName = counters.find(c => c.id === counterId)?.name || 'Unknown Counter';
         const oldSales = ticketSalesData[today]?.[counterId] || 0;
         if (oldSales === newCount) return;
         
-        // Perform a direct, efficient write to Firebase for this specific sales figure.
         database.ref(`data/ticketSalesData/${today}/${counterId}`).set(newCount)
             .then(() => {
                 logAction('SALES_COUNT_UPDATE', `Set sales for '${counterName}' from ${oldSales} to ${newCount}.`);
@@ -269,11 +278,10 @@ const AppContent: React.FC = () => {
                 console.error("Firebase sales update failed:", error);
                 showNotification('Failed to save sales data. Check connection.', 'error');
             });
-    };
+    }, [counters, ticketSalesData, today, logAction, showNotification]);
 
-    const handleResetCounts = () => {
+    const handleResetCounts = useCallback(() => {
         if (window.confirm("Are you sure you want to reset all of today's guest counts to zero? This cannot be undone.")) {
-            // Perform a direct, efficient remove operation in Firebase.
             database.ref(`data/dailyCounts/${today}`).remove()
                 .then(() => {
                     logAction('RESET_GUEST_COUNTS', `Reset all guest counts for ${today}.`);
@@ -283,11 +291,10 @@ const AppContent: React.FC = () => {
                     showNotification('Failed to reset counts. Check connection.', 'error');
                 });
         }
-    };
+    }, [today, logAction, showNotification]);
 
-    const handleResetSales = () => {
+    const handleResetSales = useCallback(() => {
         if (window.confirm("Are you sure you want to reset all of today's ticket sales to zero? This cannot be undone.")) {
-            // Perform a direct, efficient remove operation in Firebase.
             database.ref(`data/ticketSalesData/${today}`).remove()
                 .then(() => {
                      logAction('RESET_SALES_COUNTS', `Reset all ticket sales for ${today}.`);
@@ -297,7 +304,7 @@ const AppContent: React.FC = () => {
                     showNotification('Failed to reset sales. Check connection.', 'error');
                 });
         }
-    };
+    }, [today, logAction, showNotification]);
     
     const handleSaveImage = useCallback(async (rideId: number, imageBase64: string) => {
         setRidesData(prev => ({ ...prev, [rideId]: { ...prev[rideId], imageUrl: imageBase64 } }));
@@ -307,28 +314,34 @@ const AppContent: React.FC = () => {
     
     const handleClockIn = useCallback((attendedBriefing: boolean, briefingTime: string | null) => {
         if (!currentUser) return;
-        
-        // Capture currentUser at the time of clock-in to avoid potential stale closures in async operations.
+
+        const clockInDate = new Date().toISOString().split('T')[0]; // Always use fresh date for this action
         const userAtClockIn = currentUser; 
     
-        database.ref(`data/attendance/${today}/${userAtClockIn.id}`).set({ attendedBriefing, briefingTime })
+        database.ref(`data/attendance/${clockInDate}/${userAtClockIn.id}`).set({ attendedBriefing, briefingTime })
             .then(() => {
-                // Use the captured user object for logging the check-in.
                 logAction('ATTENDANCE_CHECKIN', `${userAtClockIn.name} checked in. Briefing: ${attendedBriefing ? 'Yes' : 'No'}.`);
                 showNotification("Check-in successful! You will now be logged out.", 'success');
                 
-                // Schedule the logout. The `logout` function from `useAuth` is stable.
-                // We log the logout action right before calling it.
+                // Use a robust timeout that manually logs the action and then logs out, preventing stale data issues.
                 setTimeout(() => {
-                    logAction('LOGOUT', `${userAtClockIn.name} logged out.`);
-                    logout();
+                    const newId = Date.now();
+                    const newRecord = {
+                        timestamp: new Date().toISOString(), 
+                        user: userAtClockIn.name,
+                        action: 'LOGOUT', 
+                        details: `${userAtClockIn.name} automatically logged out after check-in.`
+                    };
+                    database.ref(`data/historyLog/${newId}`).set(newRecord).finally(() => {
+                        logout();
+                    });
                 }, 2000);
             })
             .catch(error => {
                 console.error("Firebase check-in failed:", error);
                 showNotification('Check-in failed. Please try again.', 'error');
             });
-    }, [currentUser, today, logAction, logout, showNotification]);
+    }, [currentUser, logAction, logout, showNotification]);
 
     const handleSavePackageSales = useCallback((salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser) return;
@@ -475,10 +488,12 @@ const AppContent: React.FC = () => {
         showNotification('Ticket sales assignments saved!', 'success');
     };
 
-    const handleReassignTicketSales = (counterId: number, newPersonnelId: number) => {
+    const handleReassignTicketSales = useCallback((counterId: number, newPersonnelId: number) => {
+        if (!currentUser) return;
+
         const assignmentsForToday = ticketSalesAssignments[today] || {};
         const oldPersonnelId = assignmentsForToday[counterId];
-        if (oldPersonnelId === newPersonnelId || !currentUser) return;
+        if (oldPersonnelId === newPersonnelId) return;
 
         const counterName = counters.find(c => c.id === counterId)?.name || '...';
         const newPersonnel = ticketSalesPersonnel.find(p => p.id === newPersonnelId);
@@ -495,7 +510,7 @@ const AppContent: React.FC = () => {
         setTicketSalesAssignments(prev => ({ ...prev, [today]: { ...(prev[today] || {}), [counterId]: newPersonnelId } }));
         logAction('REASSIGN_TICKET_SALES', `${currentUser.name} reassigned '${counterName}' from '${oldPersonnel?.name || 'N/A'}' to '${newPersonnel?.name || 'Unknown'}'.`);
         showNotification(`'${counterName}' reassigned to ${newPersonnel?.name || 'Unknown'}`, 'info');
-    };
+    }, [counters, ticketSalesPersonnel, ticketSalesAssignments, today, currentUser, setHandoversData, setTicketSalesAssignments, logAction, showNotification]);
 
     const handleClearHistory = () => {
         if (window.confirm("Are you sure you want to permanently delete all history logs? This action cannot be undone.")) {
