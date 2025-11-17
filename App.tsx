@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS } from './constants';
-import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord } from './types';
+import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord, AttendanceData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
 
@@ -55,7 +55,6 @@ const App: React.FC = () => {
     const [selectedRideForModal, setSelectedRideForModal] = useState<Ride | null>(null);
 
     // Refs for detecting data updates
-    // FIX: Provided an explicit initial value of `undefined` to the `useRef` hooks to resolve the "Expected 1 arguments, but got 0" error.
     const prevOperatorsRef = useRef<Operator[] | undefined>(undefined);
     const prevTicketSalesPersonnelRef = useRef<Operator[] | undefined>(undefined);
 
@@ -68,7 +67,7 @@ const App: React.FC = () => {
     const [counters, , l6] = useFirebaseSync<Counter[]>('config/counters', COUNTERS);
     const [dailyAssignments, setDailyAssignments, l7] = useFirebaseSync<Record<string, Record<string, number>>>('data/operatorAssignments', {});
     const [ticketSalesAssignments, setTicketSalesAssignments, l8] = useFirebaseSync<Record<string, Record<string, number>>>('data/ticketSalesAssignments', {});
-    const [attendance, setAttendance, l9] = useFirebaseSync<AttendanceRecord[]>('data/attendance', []);
+    const [attendanceData, setAttendanceData, l9] = useFirebaseSync<AttendanceData>('data/attendance', {});
     const [historyLog, setHistoryLog, l10] = useFirebaseSync<HistoryRecord[]>('data/historyLog', []);
     const [handovers, setHandovers, l11] = useFirebaseSync<HandoverRecord[]>('data/handovers', []);
     const [packageSales, setPackageSales, l12] = useFirebaseSync<PackageSalesRecord[]>('data/packageSales', []);
@@ -139,6 +138,20 @@ const App: React.FC = () => {
     }, [ticketSalesPersonnel, role, handleLogout]);
 
     // Derived State
+    const attendanceArray = useMemo<AttendanceRecord[]>(() => {
+        const arr: AttendanceRecord[] = [];
+        for (const date in attendanceData) {
+            for (const operatorId in attendanceData[date]) {
+                arr.push({
+                    date,
+                    operatorId: Number(operatorId),
+                    ...attendanceData[date][operatorId]
+                });
+            }
+        }
+        return arr;
+    }, [attendanceData]);
+
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
         const countsForToday = dailyCounts[today] || {};
         return rides.map(ride => ({
@@ -173,8 +186,8 @@ const App: React.FC = () => {
 
     const hasCheckedInToday = useMemo(() => {
         if (!currentUser) return false;
-        return attendance.some(a => a.operatorId === currentUser.id && a.date === today);
-    }, [currentUser, attendance, today]);
+        return !!(attendanceData[today]?.[currentUser.id]);
+    }, [currentUser, attendanceData, today]);
 
     // Handlers
     const handleLogin = (
@@ -266,13 +279,14 @@ const App: React.FC = () => {
     
     const handleClockIn = useCallback((attendedBriefing: boolean, briefingTime: string | null) => {
         if (!currentUser) return;
-        const newRecord: AttendanceRecord = {
-            operatorId: currentUser.id,
-            date: today,
-            attendedBriefing,
-            briefingTime,
-        };
-        setAttendance(prev => [...prev.filter(a => !(a.operatorId === currentUser.id && a.date === today)), newRecord]);
+        
+        const newRecordData = { attendedBriefing, briefingTime };
+
+        setAttendanceData(prev => {
+            const todayRecords = prev[today] || {};
+            const newTodayRecords = { ...todayRecords, [currentUser.id]: newRecordData };
+            return { ...prev, [today]: newTodayRecords };
+        });
         
         const record: HistoryRecord = {
             id: Date.now(),
@@ -283,7 +297,7 @@ const App: React.FC = () => {
         };
         setHistoryLog(prev => [record, ...prev]);
 
-    }, [currentUser, today, setAttendance, setHistoryLog]);
+    }, [currentUser, today, setAttendanceData, setHistoryLog]);
 
     const handleSavePackageSales = useCallback((salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser) return;
@@ -342,7 +356,7 @@ const App: React.FC = () => {
             const newWithIds = newOperators.map((op, index) => ({ ...op, id: index + 1 }));
             setOperators(newWithIds);
             setDailyAssignments({});
-            setAttendance([]);
+            setAttendanceData({});
         } else {
              setOperators(prev => {
                 const existingNames = new Set(prev.map(op => op.name.toLowerCase()));
@@ -442,7 +456,7 @@ const App: React.FC = () => {
             case 'reports':
                 return <Reports dailyCounts={dailyCounts} rides={rides} />;
             case 'assignments':
-                return <AssignmentView rides={rides} operators={operators} dailyAssignments={dailyAssignments} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendance} />;
+                return <AssignmentView rides={rides} operators={operators} dailyAssignments={dailyAssignments} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
             case 'expertise':
                 return <ExpertiseReport operators={operators} dailyAssignments={dailyAssignments} rides={rides} />;
             case 'roster':
@@ -458,7 +472,7 @@ const App: React.FC = () => {
                     onDateChange={setSelectedDate} 
                     role={role} 
                     currentUser={currentUser} 
-                    attendance={attendance} 
+                    attendance={attendanceArray} 
                     onNavigate={handleNavigate}
                     onCountChange={handleCountChange}
                     onShowModal={handleShowModal}
@@ -466,9 +480,9 @@ const App: React.FC = () => {
             case 'ticket-sales-dashboard':
                 return <TicketSalesView countersWithSales={countersWithSales} onSalesChange={handleSalesChange} />;
             case 'ts-assignments':
-                return <TicketSalesAssignmentView counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} onSave={handleSaveTicketSalesAssignments} selectedDate={selectedDate} attendance={attendance} />;
+                return <TicketSalesAssignmentView counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} onSave={handleSaveTicketSalesAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
             case 'ts-roster':
-                return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendance} onNavigate={handleNavigate} onReassign={handleReassignTicketSales} handovers={handovers} />;
+                return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onReassign={handleReassignTicketSales} handovers={handovers} />;
             case 'ts-expertise':
                 return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
             case 'history':

@@ -14,12 +14,33 @@ interface TicketSalesAssignmentViewProps {
 }
 
 const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, onSave, selectedDate, attendance }) => {
-  const [assignments, setAssignments] = useState<Record<string, number>>(dailyAssignments[selectedDate] || {});
+  const [assignments, setAssignments] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     setAssignments(dailyAssignments[selectedDate] || {});
   }, [selectedDate, dailyAssignments]);
+
+  const isDirty = useMemo(() => {
+    const currentRemoteAssignments = dailyAssignments[selectedDate] || {};
+    // Compare keys and values to see if they are different
+    const localKeys = Object.keys(assignments);
+    const remoteKeys = Object.keys(currentRemoteAssignments);
+    if (localKeys.length !== remoteKeys.length) return true;
+    return localKeys.some(key => assignments[key] !== currentRemoteAssignments[key]);
+  }, [assignments, dailyAssignments, selectedDate]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+        event.preventDefault();
+        event.returnValue = ''; // Required for Chrome
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isDirty]);
 
   const attendanceStatusMap = useMemo(() => {
     const statusMap = new Map<number, boolean>();
@@ -31,10 +52,15 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   }, [attendance, selectedDate, ticketSalesPersonnel]);
 
   const handleAssignmentChange = (counterId: number, operatorId: number) => {
-    setAssignments(prev => ({
-      ...prev,
-      [counterId]: operatorId,
-    }));
+    setAssignments(prev => {
+        const newAssignments = {...prev};
+        if (operatorId) {
+            newAssignments[counterId] = operatorId;
+        } else {
+            delete newAssignments[counterId]; // Handle 'Unassigned'
+        }
+        return newAssignments;
+    });
   };
 
   const handleSave = () => {
@@ -133,9 +159,14 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
               </button>
               <button
                   onClick={handleSave}
-                  className="w-full sm:w-auto px-4 py-2 text-sm bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all"
+                  disabled={!isDirty}
+                  className={`w-full sm:w-auto px-6 py-2 text-sm font-bold rounded-lg active:scale-95 transition-all ${
+                    isDirty 
+                    ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400 animate-pulse' 
+                    : 'bg-green-600 text-white opacity-75 cursor-default'
+                }`}
               >
-                  Save
+                  {isDirty ? 'Save Changes' : 'All Saved'}
               </button>
           </div>
       </div>

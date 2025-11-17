@@ -21,6 +21,13 @@ export interface AttendanceRecord {
     briefingTime: string | null; // HH:mm
 }
 
+// New data structure for Firebase
+export type AttendanceData = Record<string, Record<string, {
+    attendedBriefing: boolean;
+    briefingTime: string | null;
+}>>;
+
+
 export interface Counter {
     id: number;
     name: string;
