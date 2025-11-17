@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Ride, Operator, AttendanceRecord } from '../types';
+import { useNotification } from '../imageStore';
 
 // Make sure XLSX is available from the script tag in index.html
 declare var XLSX: any;
@@ -16,6 +17,7 @@ interface AssignmentViewProps {
 const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, dailyAssignments, onSave, selectedDate, attendance }) => {
   const [assignments, setAssignments] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showNotification } = useNotification();
   
   // Sync local state with prop from Firebase
   useEffect(() => {
@@ -67,7 +69,6 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
 
   const handleSave = () => {
     onSave(selectedDate, assignments);
-    alert('Assignments saved successfully!');
   };
   
   const handleClearAll = () => {
@@ -120,16 +121,16 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
 
         setAssignments(newAssignments);
 
-        let reportMessage = `${successCount} assignments imported successfully from the file.`;
         if (errors.length > 0) {
-          reportMessage += `\n\n${errors.length} rows had errors:\n` + errors.slice(0, 10).join('\n'); // Show first 10 errors
-          if (errors.length > 10) reportMessage += `\n...and ${errors.length - 10} more.`;
+          showNotification(`${successCount} assignments imported, but ${errors.length} errors occurred.`, 'warning', 8000);
+          console.warn("Import errors:", errors);
+        } else {
+          showNotification(`${successCount} assignments imported successfully!`, 'success');
         }
-        alert(reportMessage);
 
       } catch (error) {
         console.error("Error parsing Excel file:", error);
-        alert("Failed to parse the file. Please ensure it's a valid Excel (xlsx) or CSV file with 'Ride Name' in the first column and 'Operator Name' in the second.");
+        showNotification("Failed to parse file. Please check format.", 'error');
       } finally {
         if(fileInputRef.current) fileInputRef.current.value = '';
       }

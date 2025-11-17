@@ -2,11 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Operator, PackageSalesRecord } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 
+type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;
+
 interface DailySalesEntryProps {
   currentUser: Operator;
   selectedDate: string;
   onDateChange: (date: string) => void;
-  packageSales: PackageSalesRecord[];
+  packageSales: PackageSalesData;
   onSave: (data: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => void;
   mySalesStartDate: string;
   onMySalesStartDateChange: (date: string) => void;
@@ -70,16 +72,48 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     const [vipQty, setVipQty] = useState(0);
     const [vipAmount, setVipAmount] = useState(0);
 
+    const originalRecord = useMemo(() => {
+        return packageSales[selectedDate]?.[currentUser.id];
+    }, [packageSales, selectedDate, currentUser.id]);
+
+    const isDirty = useMemo(() => {
+        const currentQty = {
+            xtreme: xtremeQty,
+            kiddo: kiddoQty,
+            vip: vipQty,
+        };
+        const savedQty = {
+            xtreme: originalRecord?.xtremeQty || 0,
+            kiddo: originalRecord?.kiddoQty || 0,
+            vip: originalRecord?.vipQty || 0,
+        };
+        return currentQty.xtreme !== savedQty.xtreme || 
+               currentQty.kiddo !== savedQty.kiddo || 
+               currentQty.vip !== savedQty.vip;
+    }, [xtremeQty, kiddoQty, vipQty, originalRecord]);
+    
+    // Effect to warn user before leaving with unsaved changes
+    useEffect(() => {
+        if (!isDirty) return;
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = ''; // Required for Chrome
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [isDirty]);
+
     // Effect to load existing sales data for the selected date
     useEffect(() => {
-        const todaysRecord = packageSales.find(r => r.date === selectedDate && r.personnelId === currentUser.id);
-        if (todaysRecord) {
-            setXtremeQty(todaysRecord.xtremeQty);
-            setXtremeAmount(todaysRecord.xtremeAmount);
-            setKiddoQty(todaysRecord.kiddoQty);
-            setKiddoAmount(todaysRecord.kiddoAmount);
-            setVipQty(todaysRecord.vipQty);
-            setVipAmount(todaysRecord.vipAmount);
+        if (originalRecord) {
+            setXtremeQty(originalRecord.xtremeQty);
+            setXtremeAmount(originalRecord.xtremeAmount);
+            setKiddoQty(originalRecord.kiddoQty);
+            setKiddoAmount(originalRecord.kiddoAmount);
+            setVipQty(originalRecord.vipQty);
+            setVipAmount(originalRecord.vipAmount);
         } else {
             // Reset form when date changes and no record is found.
             setXtremeQty(0);
@@ -89,7 +123,7 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             setKiddoAmount(0);
             setVipAmount(0);
         }
-    }, [selectedDate, packageSales, currentUser.id]);
+    }, [selectedDate, originalRecord]);
     
     // Recalculate amounts if prices change
     useEffect(() => {
@@ -138,28 +172,28 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     };
 
     const salesSummary = useMemo(() => {
+        const summary = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, totalQty: 0, totalAmount: 0 };
         if (new Date(mySalesEndDate) < new Date(mySalesStartDate)) {
-            return { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, totalQty: 0, totalAmount: 0 };
+            return summary;
         }
 
-        const userSalesInRange = packageSales.filter(r => 
-            r.personnelId === currentUser.id &&
-            r.date >= mySalesStartDate &&
-            r.date <= mySalesEndDate
-        );
-
-        return userSalesInRange.reduce((acc, record) => {
-            acc.xtremeQty += record.xtremeQty || 0;
-            acc.xtremeAmount += record.xtremeAmount || 0;
-            acc.kiddoQty += record.kiddoQty || 0;
-            acc.kiddoAmount += record.kiddoAmount || 0;
-            acc.vipQty += record.vipQty || 0;
-            acc.vipAmount += record.vipAmount || 0;
-            acc.totalQty += (record.xtremeQty || 0) + (record.kiddoQty || 0) + (record.vipQty || 0);
-            acc.totalAmount += (record.xtremeAmount || 0) + (record.kiddoAmount || 0) + (record.vipAmount || 0);
-            return acc;
-        }, { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, totalQty: 0, totalAmount: 0 });
-
+        for (const date in packageSales) {
+            if (date >= mySalesStartDate && date <= mySalesEndDate) {
+                const daySales = packageSales[date];
+                const userRecord = daySales[currentUser.id];
+                if (userRecord) {
+                    summary.xtremeQty += userRecord.xtremeQty || 0;
+                    summary.xtremeAmount += userRecord.xtremeAmount || 0;
+                    summary.kiddoQty += userRecord.kiddoQty || 0;
+                    summary.kiddoAmount += userRecord.kiddoAmount || 0;
+                    summary.vipQty += userRecord.vipQty || 0;
+                    summary.vipAmount += userRecord.vipAmount || 0;
+                    summary.totalQty += (userRecord.xtremeQty || 0) + (userRecord.kiddoQty || 0) + (userRecord.vipQty || 0);
+                    summary.totalAmount += (userRecord.xtremeAmount || 0) + (userRecord.kiddoAmount || 0) + (userRecord.vipAmount || 0);
+                }
+            }
+        }
+        return summary;
     }, [packageSales, currentUser.id, mySalesStartDate, mySalesEndDate]);
 
 
@@ -248,9 +282,14 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
              <div className="mt-8 flex justify-end">
                 <button
                     onClick={handleSave}
-                    className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all text-lg"
+                    disabled={!isDirty}
+                    className={`px-8 py-3 font-bold rounded-lg active:scale-95 transition-all text-lg ${
+                        isDirty 
+                        ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400 animate-pulse' 
+                        : 'bg-green-600 text-white opacity-75 cursor-default'
+                    }`}
                 >
-                    Save Sales for {displayDate.toLocaleDateString('en-CA')}
+                    {isDirty ? `Save Sales for ${displayDate.toLocaleDateString('en-CA')}` : 'All Saved'}
                 </button>
             </div>
 

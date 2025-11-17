@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface BriefingCheckinProps {
   operatorName: string;
@@ -9,6 +9,14 @@ interface BriefingCheckinProps {
 const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClockIn }) => {
   const [attendedBriefing, setAttendedBriefing] = useState(false);
   const [briefingTime, setBriefingTime] = useState('');
+  
+  // Initialize minTime to the current time when component loads.
+  const [minTime, setMinTime] = useState(() => {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  });
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -16,12 +24,31 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
     month: 'long',
     day: 'numeric',
   });
+  
+  // This effect updates the time when the user decides to log their briefing time,
+  // ensuring the minimum time is current.
+  useEffect(() => {
+    if (attendedBriefing) {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTime = `${hours}:${minutes}`;
+      
+      setMinTime(currentTime);
+      // If the currently set briefing time is in the past, update it to now.
+      if (!briefingTime || briefingTime < currentTime) {
+        setBriefingTime(currentTime);
+      }
+    }
+  }, [attendedBriefing]);
+
 
   const handleClockInClick = () => {
     onClockIn(attendedBriefing, attendedBriefing ? briefingTime : null);
   };
 
-  const canClockIn = !attendedBriefing || (attendedBriefing && briefingTime);
+  const isTimeInvalid = attendedBriefing && briefingTime < minTime;
+  const canClockIn = !attendedBriefing || (attendedBriefing && briefingTime && !isTimeInvalid);
 
   return (
     <div className="w-full max-w-lg mx-auto bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 text-center animate-fade-in-up">
@@ -52,10 +79,14 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
                 id="briefing-time"
                 type="time"
                 value={briefingTime}
+                min={minTime}
                 onChange={(e) => setBriefingTime(e.target.value)}
                 className="w-full max-w-xs mx-auto px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-center text-xl"
                 required
               />
+              {isTimeInvalid && (
+                  <p className="text-red-400 text-sm mt-2">Briefing time cannot be in the past.</p>
+              )}
           </div>
         )}
       </div>

@@ -60,7 +60,17 @@ const CodeAssistant: React.FC<CodeAssistantProps> = ({ rides, dailyCounts, onClo
           You are an AI assistant for the owner of Toggi Fun World amusement park.
           Your task is to analyze the provided data and answer questions.
           Be concise and helpful.
-          IMPORTANT: You cannot add, edit, or delete operators directly. If a user asks to perform these actions, you must inform them that the 'Manage Operators' feature has been removed for security and data integrity, and any changes must be made by a developer in the application's source code.
+
+          **Application Architecture & Setup:**
+          - This application uses Firebase Realtime Database to store and synchronize all data in real-time across devices.
+          - The Firebase configuration is located in a file named 'firebaseConfig.ts'.
+          - If the configuration is missing or incorrect, the application will display a full-screen error and will not be usable.
+          - **Crucially, you, the AI assistant, cannot set up or configure the database yourself.** If a user asks you to "install Firebase" or "set up the database", you must explain that this is a manual process that a developer needs to perform by editing the 'firebaseConfig.ts' file, following the instructions within it.
+
+          **User Management:**
+          - IMPORTANT: You cannot add, edit, or delete operators directly. If a user asks to perform these actions, you must inform them that any changes must be made by a developer in the application's source code for security and data integrity.
+
+          **Data for Analysis:**
           Current Date: ${today}
 
           Rides Information (ID, Name, Floor):

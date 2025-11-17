@@ -1,6 +1,16 @@
 import { Ride, Operator, Counter } from './types';
 
-export const RIDES: Ride[] = [
+// Utility function to convert array to an object with IDs as keys, which is a Firebase best practice.
+const arrayToObjectById = <T extends { id: number }>(arr: T[]): Record<number, Omit<T, 'id'>> => {
+  return arr.reduce((acc, item) => {
+    const { id, ...rest } = item;
+    acc[id] = rest;
+    return acc;
+  }, {} as Record<number, Omit<T, 'id'>>);
+};
+
+
+export const RIDES_ARRAY: Ride[] = [
   { id: 1, name: 'Paintball', floor: '17th', imageUrl: 'https://picsum.photos/seed/1-Paintball/400/300' },
   { id: 2, name: 'Laser Maze', floor: '16th', imageUrl: 'https://picsum.photos/seed/2-LaserMaze/400/300' },
   { id: 3, name: 'VR Tank', floor: '16th', imageUrl: 'https://picsum.photos/seed/3-VRTank/400/300' },
@@ -114,7 +124,7 @@ export const RIDES: Ride[] = [
   { id: 112, name: 'Candy Car', floor: '1st', imageUrl: 'https://picsum.photos/seed/112-CandyCar/400/300' },
 ];
 
-export const OPERATORS: Operator[] = [
+export const OPERATORS_ARRAY: Operator[] = [
   { id: 21700110, name: 'Anser Uddin' },
   { id: 21700111, name: 'Kayum Hossain' },
   { id: 21700148, name: 'Md.Rustom Ali' },
@@ -188,7 +198,7 @@ export const OPERATORS: Operator[] = [
   { id: 95110967, name: 'Farida Akter' },
 ];
 
-export const TICKET_SALES_PERSONNEL: Operator[] = [
+export const TICKET_SALES_PERSONNEL_ARRAY: Operator[] = [
   { id: 22200425, name: 'Moriom Akter' },
   { id: 22200428, name: 'Md. Shawon Ali Shek' },
   { id: 22201973, name: 'Md. Maruf' },
@@ -212,7 +222,7 @@ export const TICKET_SALES_PERSONNEL: Operator[] = [
   { id: 22200602, name: 'Lima Parvin' },
 ];
 
-export const COUNTERS: Counter[] = [
+export const COUNTERS_ARRAY: Counter[] = [
     { id: 1, name: 'L-1, North (Attrium)', location: 'Level-1, TFW Booth' },
     { id: 2, name: 'L-1, South (Attrium)', location: 'Level-1, TFW Booth' },
     { id: 3, name: 'Tower Part Counter-1', location: 'Tower Part (Beside Aarong)' },
@@ -236,7 +246,12 @@ export const COUNTERS: Counter[] = [
     { id: 21, name: 'Level-17 Counter-1', location: 'Level-17' }
 ];
 
-const uniqueFloors = [...new Set(RIDES.map(ride => ride.floor))];
+export const RIDES = arrayToObjectById(RIDES_ARRAY);
+export const OPERATORS = arrayToObjectById(OPERATORS_ARRAY);
+export const TICKET_SALES_PERSONNEL = arrayToObjectById(TICKET_SALES_PERSONNEL_ARRAY);
+export const COUNTERS = arrayToObjectById(COUNTERS_ARRAY);
+
+const uniqueFloors = [...new Set(RIDES_ARRAY.map(ride => ride.floor))];
 const floorOrder = ['17th', '16th', '15th', '14th', '13th', '12th', '11th', '10th', '9th', '1st'];
 export const FLOORS = uniqueFloors.sort((a, b) => {
     const indexA = floorOrder.indexOf(a);

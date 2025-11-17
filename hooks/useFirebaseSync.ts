@@ -1,7 +1,10 @@
 import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } from 'react';
 import { database } from '../firebaseConfig';
 
-function useFirebaseSync<T>(path: string, initialValue: T): [T, Dispatch<SetStateAction<T>>, boolean] {
+function useFirebaseSync<T>(
+  path: string,
+  initialValue: T
+): { data: T; setData: Dispatch<SetStateAction<T>>; isLoading: boolean } {
   const [storedValue, setStoredValue] = useState<T>(initialValue);
   const [loading, setLoading] = useState(true);
   const initialValueRef = useRef(initialValue);
@@ -62,7 +65,7 @@ function useFirebaseSync<T>(path: string, initialValue: T): [T, Dispatch<SetStat
     }
   }, [path]);
 
-  return [storedValue, setValue, loading];
+  return { data: storedValue, setData: setValue, isLoading: loading };
 }
 
 export default useFirebaseSync;

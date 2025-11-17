@@ -15,14 +15,19 @@
 // WARNING: These rules are for development only and make your database publicly accessible. For a production app, you would need to set up proper security rules.
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyANLnR0N_cfJcJkK-cskrnRyL3yP1AOYAI",
+  authDomain: "database-tfw.firebaseapp.com",
+  databaseURL: "https://database-tfw-default-rtdb.firebaseio.com",
+  projectId: "database-tfw",
+  storageBucket: "database-tfw.appspot.com",
+  messagingSenderId: "157085523272",
+  appId: "1:157085523272:web:54d88130a207861096a77d",
+  measurementId: "G-RN6VW2TT53"
 };
+
+// Check if the configuration has been filled out
+export const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
+
 
 // Initialize Firebase
 if (!firebase.apps.length) {

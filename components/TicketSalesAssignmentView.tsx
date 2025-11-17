@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Counter, Operator, AttendanceRecord } from '../types';
+import { useNotification } from '../imageStore';
 
 // Make sure XLSX is available from the script tag in index.html
 declare var XLSX: any;
@@ -16,6 +17,7 @@ interface TicketSalesAssignmentViewProps {
 const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, onSave, selectedDate, attendance }) => {
   const [assignments, setAssignments] = useState<Record<string, number>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showNotification } = useNotification();
   
   useEffect(() => {
     setAssignments(dailyAssignments[selectedDate] || {});
@@ -65,7 +67,6 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
 
   const handleSave = () => {
     onSave(selectedDate, assignments);
-    alert('Assignments saved successfully!');
   };
   
   const handleClearAll = () => {
@@ -117,16 +118,16 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
 
         setAssignments(newAssignments);
 
-        let reportMessage = `${successCount} assignments imported successfully.`;
         if (errors.length > 0) {
-          reportMessage += `\n\n${errors.length} errors:\n` + errors.slice(0, 10).join('\n');
-          if (errors.length > 10) reportMessage += `\n...and ${errors.length - 10} more.`;
+            showNotification(`${successCount} assignments imported, but ${errors.length} errors occurred.`, 'warning', 8000);
+            console.warn("Import errors:", errors);
+        } else {
+            showNotification(`${successCount} assignments imported successfully!`, 'success');
         }
-        alert(reportMessage);
 
       } catch (error) {
         console.error("Error parsing Excel file:", error);
-        alert("Failed to parse file. Ensure it's a valid Excel/CSV with 'Counter Name' in column 1 and 'Personnel Name' in column 2.");
+        showNotification("Failed to parse file. Check format.", 'error');
       } finally {
         if(fileInputRef.current) fileInputRef.current.value = '';
       }

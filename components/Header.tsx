@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { FLOORS } from '../constants';
 import { Role } from '../hooks/useAuth';
 import { Operator } from '../types';
+import ConnectionStatus from './ConnectionStatus';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard';
 type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
+type Connection = 'connecting' | 'connected' | 'disconnected';
 
 interface HeaderProps {
   onSearch: (term: string) => void;
@@ -16,6 +18,7 @@ interface HeaderProps {
   onNavigate: (view: View) => void;
   onShowModal: (modal: Modal) => void;
   currentView: View;
+  connectionStatus: Connection;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -28,6 +31,7 @@ const Header: React.FC<HeaderProps> = ({
   onNavigate,
   onShowModal,
   currentView,
+  connectionStatus,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const isManager = role === 'admin' || role === 'operation-officer';
@@ -102,11 +106,13 @@ const Header: React.FC<HeaderProps> = ({
             </nav>
           </div>
           <div className="hidden md:flex items-center gap-4">
+            <ConnectionStatus status={connectionStatus} />
             <div className="text-sm text-gray-300">Welcome, <span className="font-bold">{currentUser.name}</span></div>
             {isAdmin && (
                 <>
                     <button onClick={() => onShowModal('ai-assistant')} className={navLinkClasses}>AI Assistant</button>
                     <button onClick={() => onShowModal('operators')} className={navLinkClasses}>Manage Operators</button>
+                    <button onClick={() => onShowModal('backup')} className={navLinkClasses}>Backup</button>
                 </>
             )}
             <button onClick={onLogout} className="bg-pink-600 hover:bg-pink-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Logout</button>
@@ -134,11 +140,13 @@ const Header: React.FC<HeaderProps> = ({
                 <>
                 <button onClick={() => { onShowModal('ai-assistant'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>AI Assistant</button>
                 <button onClick={() => { onShowModal('operators'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>Manage Operators</button>
+                <button onClick={() => { onShowModal('backup'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>Backup</button>
                 <div className="border-t border-gray-700 my-2" />
                 </>
             )}
 
             <div className="px-3 py-2 text-sm font-medium text-gray-400">Welcome, <span className="font-bold">{currentUser.name}</span></div>
+            <div className="px-3 py-2"><ConnectionStatus status={connectionStatus} /></div>
             <button onClick={() => { onLogout(); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block bg-pink-600 text-white`}>Logout</button>
           </div>
         </nav>

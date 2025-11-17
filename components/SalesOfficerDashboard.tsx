@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
 import { Operator, PackageSalesRecord } from '../types';
 
+type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;
+
 interface SalesOfficerDashboardProps {
   ticketSalesPersonnel: Operator[];
-  packageSales: PackageSalesRecord[];
+  packageSales: PackageSalesData;
   startDate: string;
   endDate: string;
   onStartDateChange: (date: string) => void;
@@ -12,46 +14,51 @@ interface SalesOfficerDashboardProps {
 
 const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSalesPersonnel, packageSales, startDate, endDate, onStartDateChange, onEndDateChange }) => {
     
-    const salesForRange = useMemo(() => {
-        if (new Date(endDate) < new Date(startDate)) return [];
-        return packageSales.filter(r => r.date >= startDate && r.date <= endDate);
-    }, [packageSales, startDate, endDate]);
-    
     const aggregatedSalesByPersonnel = useMemo(() => {
         const map = new Map<number, Omit<PackageSalesRecord, 'date' | 'personnelId'>>();
-        
-        salesForRange.forEach(record => {
-            const existing = map.get(record.personnelId) || {
-                xtremeQty: 0, xtremeAmount: 0,
-                kiddoQty: 0, kiddoAmount: 0,
-                vipQty: 0, vipAmount: 0,
-            };
+        if (new Date(endDate) < new Date(startDate)) return map;
 
-            existing.xtremeQty += record.xtremeQty || 0;
-            existing.xtremeAmount += record.xtremeAmount || 0;
-            existing.kiddoQty += record.kiddoQty || 0;
-            existing.kiddoAmount += record.kiddoAmount || 0;
-            existing.vipQty += record.vipQty || 0;
-            existing.vipAmount += record.vipAmount || 0;
-            
-            map.set(record.personnelId, existing);
-        });
+        for (const date in packageSales) {
+            if (date >= startDate && date <= endDate) {
+                const daySales = packageSales[date];
+                for (const personnelIdStr in daySales) {
+                    const personnelId = Number(personnelIdStr);
+                    const record = daySales[personnelIdStr];
+
+                    const existing = map.get(personnelId) || {
+                        xtremeQty: 0, xtremeAmount: 0,
+                        kiddoQty: 0, kiddoAmount: 0,
+                        vipQty: 0, vipAmount: 0,
+                    };
+
+                    existing.xtremeQty += record.xtremeQty || 0;
+                    existing.xtremeAmount += record.xtremeAmount || 0;
+                    existing.kiddoQty += record.kiddoQty || 0;
+                    existing.kiddoAmount += record.kiddoAmount || 0;
+                    existing.vipQty += record.vipQty || 0;
+                    existing.vipAmount += record.vipAmount || 0;
+                    
+                    map.set(personnelId, existing);
+                }
+            }
+        }
         return map;
-    }, [salesForRange]);
+    }, [packageSales, startDate, endDate]);
 
     const rangeTotals = useMemo(() => {
-        return salesForRange.reduce((acc, record) => {
-            acc.xtremeQty += record.xtremeQty || 0;
-            acc.xtremeAmount += record.xtremeAmount || 0;
-            acc.kiddoQty += record.kiddoQty || 0;
-            acc.kiddoAmount += record.kiddoAmount || 0;
-            acc.vipQty += record.vipQty || 0;
-            acc.vipAmount += record.vipAmount || 0;
-            acc.totalQty += (record.xtremeQty || 0) + (record.kiddoQty || 0) + (record.vipQty || 0);
-            acc.totalAmount += (record.xtremeAmount || 0) + (record.kiddoAmount || 0) + (record.vipAmount || 0);
-            return acc;
-        }, { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, totalQty: 0, totalAmount: 0 });
-    }, [salesForRange]);
+        const totals = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, totalQty: 0, totalAmount: 0 };
+        for(const sales of aggregatedSalesByPersonnel.values()) {
+            totals.xtremeQty += sales.xtremeQty;
+            totals.xtremeAmount += sales.xtremeAmount;
+            totals.kiddoQty += sales.kiddoQty;
+            totals.kiddoAmount += sales.kiddoAmount;
+            totals.vipQty += sales.vipQty;
+            totals.vipAmount += sales.vipAmount;
+            totals.totalQty += sales.xtremeQty + sales.kiddoQty + sales.vipQty;
+            totals.totalAmount += sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount;
+        }
+        return totals;
+    }, [aggregatedSalesByPersonnel]);
     
     const formatDisplayDate = (dateStr: string) => {
         const [year, month, day] = dateStr.split('-').map(Number);

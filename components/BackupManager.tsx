@@ -11,9 +11,7 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileImportClick = () => {
-    if (window.confirm("WARNING:\n\nImporting a backup file will completely overwrite all current data in the application (operators, counts, assignments, images, etc.).\n\nThis action cannot be undone. Are you sure you want to proceed?")) {
-        fileInputRef.current?.click();
-    }
+    fileInputRef.current?.click();
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,18 +51,21 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
           </div>
           
           <div>
-            <h3 className="text-xl font-bold text-gray-100 mb-2">Full Backup (File)</h3>
-            <p className="text-sm text-gray-400 mb-6">Save or load all application data, including custom images and history. Use this for complete backups or migrating to a new device.</p>
+            <h3 className="text-xl font-bold text-gray-100 mb-2">Full Application Backup</h3>
+            <p className="text-sm text-gray-400 mb-6">Save or load all application data, including custom images, history, and all records. Use this for complete backups or migrating to a new device.</p>
             <div className="space-y-4">
                 <button onClick={onExport} className="w-full px-5 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 active:scale-95 transition-all flex items-center justify-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    Export All Data
+                    Export All Data to File
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
-                <button onClick={handleFileImportClick} disabled={isImporting} className="w-full px-5 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all disabled:bg-gray-600 disabled:cursor-wait flex items-center justify-center gap-2">
+                <button onClick={handleFileImportClick} disabled={isImporting} className="w-full px-5 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 active:scale-95 transition-all disabled:bg-gray-600 disabled:cursor-wait flex items-center justify-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                    {isImporting ? 'Importing...' : 'Import from Backup File'}
+                    {isImporting ? 'Importing...' : 'Restore from Backup File'}
                 </button>
+            </div>
+            <div className="mt-4 p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm rounded-lg">
+                <strong>Warning:</strong> Restoring from a backup is a destructive action. It will permanently overwrite all current data in the application.
             </div>
           </div>
         </div>

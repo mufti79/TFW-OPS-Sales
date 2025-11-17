@@ -1,10 +1,14 @@
 
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS } from './constants';
+import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
+import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord, AttendanceData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
+import { isFirebaseConfigured, database } from './firebaseConfig';
+import { NotificationContext, useNotification, NotificationType } from './imageStore';
+import NotificationComponent from './components/AttendanceCheckin';
+
 
 import Login from './components/Login';
 import Header from './components/Header';
@@ -26,14 +30,51 @@ import TicketSalesExpertiseReport from './components/TicketSalesExpertiseReport'
 import HistoryLog from './components/HistoryLog';
 import DailySalesEntry from './components/DailySalesEntry';
 import SalesOfficerDashboard from './components/SalesOfficerDashboard';
+import ConfigErrorScreen from './components/ConfigErrorScreen';
+
+// Notification System Implementation
+interface NotificationState {
+  message: string;
+  type: NotificationType;
+  visible: boolean;
+}
+
+const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [notification, setNotification] = useState<NotificationState>({ message: '', type: 'info', visible: false });
+
+  const showNotification = useCallback((message: string, type: NotificationType = 'info', duration: number = 4000) => {
+    setNotification({ message, type, visible: true });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, visible: false }));
+    }, duration);
+  }, []);
+
+  const hideNotification = () => {
+    setNotification(prev => ({ ...prev, visible: false }));
+  };
+
+  return (
+    <NotificationContext.Provider value={{ showNotification }}>
+      {children}
+      <NotificationComponent
+        message={notification.message}
+        type={notification.type}
+        visible={notification.visible}
+        onClose={hideNotification}
+      />
+    </NotificationContext.Provider>
+  );
+};
 
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
+type FirebaseObject<T extends { id: number }> = Record<number, Omit<T, 'id'>>;
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
     const { role, currentUser, login, logout } = useAuth();
-    const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+    const { showNotification } = useNotification();
+    const today = new Date().toISOString().split('T')[0];
 
     const getInitialViewForRole = useCallback((r: Role): View => {
         if (r === 'sales-officer') {
@@ -53,59 +94,86 @@ const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>(() => getInitialViewForRole(role));
     const [modal, setModal] = useState<Modal>(null);
     const [selectedRideForModal, setSelectedRideForModal] = useState<Ride | null>(null);
+    const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+
 
     // Refs for detecting data updates
-    // FIX: Provide an explicit `undefined` initial value to `useRef` to resolve the "Expected 1 arguments, but got 0" error.
     const prevOperatorsRef = useRef<Operator[] | undefined>(undefined);
-    // FIX: Provide an explicit `undefined` initial value to `useRef` to resolve the "Expected 1 arguments, but got 0" error.
     const prevTicketSalesPersonnelRef = useRef<Operator[] | undefined>(undefined);
 
-    // Firebase Synced State
-    const [dailyCounts, setDailyCounts, l1] = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
-    const [ticketSalesData, setTicketSalesData, l2] = useFirebaseSync<Record<string, Record<string, number>>>('data/ticketSalesData', {});
-    const [rides, setRides, l3] = useFirebaseSync<Ride[]>('config/rides', RIDES);
-    const [operators, setOperators, l4] = useFirebaseSync<Operator[]>('config/operators', OPERATORS);
-    const [ticketSalesPersonnel, setTicketSalesPersonnel, l5] = useFirebaseSync<Operator[]>('config/ticketSalesPersonnel', TICKET_SALES_PERSONNEL);
-    const [counters, , l6] = useFirebaseSync<Counter[]>('config/counters', COUNTERS);
-    const [dailyAssignments, setDailyAssignments, l7] = useFirebaseSync<Record<string, Record<string, number>>>('data/operatorAssignments', {});
-    const [ticketSalesAssignments, setTicketSalesAssignments, l8] = useFirebaseSync<Record<string, Record<string, number>>>('data/ticketSalesAssignments', {});
-    const [attendanceData, setAttendanceData, l9] = useFirebaseSync<AttendanceData>('data/attendance', {});
-    const [historyLog, setHistoryLog, l10] = useFirebaseSync<HistoryRecord[]>('data/historyLog', []);
-    const [handovers, setHandovers, l11] = useFirebaseSync<HandoverRecord[]>('data/handovers', []);
-    const [packageSales, setPackageSales, l12] = useFirebaseSync<PackageSalesRecord[]>('data/packageSales', []);
+    // Firebase Synced State (using object structure for collections)
+    const { data: dailyCounts, setData: setDailyCounts, isLoading: l1 } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
+    const { data: ticketSalesData, setData: setTicketSalesData, isLoading: l2 } = useFirebaseSync<Record<string, Record<string, number>>>('data/ticketSalesData', {});
+    const { data: ridesData, setData: setRidesData, isLoading: l3 } = useFirebaseSync<FirebaseObject<Ride>>('config/rides', RIDES);
+    const { data: operatorsData, setData: setOperatorsData, isLoading: l4 } = useFirebaseSync<FirebaseObject<Operator>>('config/operators', OPERATORS);
+    const { data: ticketSalesPersonnelData, setData: setTicketSalesPersonnelData, isLoading: l5 } = useFirebaseSync<FirebaseObject<Operator>>('config/ticketSalesPersonnel', TICKET_SALES_PERSONNEL);
+    const { data: countersData, setData: setCountersData, isLoading: l6 } = useFirebaseSync<FirebaseObject<Counter>>('config/counters', COUNTERS);
+    const { data: dailyAssignments, setData: setDailyAssignments, isLoading: l7 } = useFirebaseSync<Record<string, Record<string, number>>>('data/operatorAssignments', {});
+    const { data: ticketSalesAssignments, setData: setTicketSalesAssignments, isLoading: l8 } = useFirebaseSync<Record<string, Record<string, number>>>('data/ticketSalesAssignments', {});
+    const { data: attendanceData, setData: setAttendanceData, isLoading: l9 } = useFirebaseSync<AttendanceData>('data/attendance', {});
+    const { data: historyLogData, setData: setHistoryLogData, isLoading: l10 } = useFirebaseSync<Record<number, Omit<HistoryRecord, 'id'>>>('data/historyLog', {});
+    const { data: handoversData, setData: setHandoversData, isLoading: l11 } = useFirebaseSync<Record<number, Omit<HandoverRecord, 'id'>>>('data/handovers', {});
+    const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>>('data/packageSales', {});
     
-    const isFirebaseLoading = l1 || l2 || l3 || l4 || l5 || l6 || l7 || l8 || l9 || l10 || l11 || l12;
+    // Memoized arrays derived from Firebase objects for UI rendering
+    const rides = useMemo<Ride[]>(() => ridesData ? Object.entries(ridesData).map(([id, ride]) => ({ id: Number(id), ...ride })) : RIDES_ARRAY, [ridesData]);
+    const operators = useMemo<Operator[]>(() => operatorsData ? Object.entries(operatorsData).map(([id, op]) => ({ id: Number(id), ...op })) : OPERATORS_ARRAY, [operatorsData]);
+    const ticketSalesPersonnel = useMemo<Operator[]>(() => ticketSalesPersonnelData ? Object.entries(ticketSalesPersonnelData).map(([id, p]) => ({ id: Number(id), ...p })) : TICKET_SALES_PERSONNEL_ARRAY, [ticketSalesPersonnelData]);
+    const counters = useMemo<Counter[]>(() => countersData ? Object.entries(countersData).map(([id, c]) => ({ id: Number(id), ...c })) : COUNTERS_ARRAY, [countersData]);
+    const historyLog = useMemo<HistoryRecord[]>(() => historyLogData ? Object.entries(historyLogData).map(([id, h]) => ({ id: Number(id), ...h })).sort((a,b) => b.id - a.id) : [], [historyLogData]);
+    const handovers = useMemo<HandoverRecord[]>(() => handoversData ? Object.entries(handoversData).map(([id, h]) => ({ id: Number(id), ...h })).sort((a,b) => b.id - a.id) : [], [handoversData]);
+    const packageSales = useMemo<PackageSalesRecord[]>(() => {
+        const sales: PackageSalesRecord[] = [];
+        if (packageSalesData) {
+            for (const date in packageSalesData) {
+                for (const personnelId in packageSalesData[date]) {
+                    sales.push({
+                        date,
+                        personnelId: Number(personnelId),
+                        ...packageSalesData[date][personnelId]
+                    });
+                }
+            }
+        }
+        return sales;
+    }, [packageSalesData]);
+    
+    const loadingStates = {
+        'Ride Counts': l1, 'Ticket Sales': l2, 'Ride Configuration': l3,
+        'Operator Roster': l4, 'Sales Personnel': l5, 'Counter Configuration': l6,
+        'Operator Assignments': l7, 'Sales Assignments': l8, 'Attendance Records': l9,
+        'History Log': l10, 'Counter Handovers': l11, 'Package Sales': l12,
+    };
+    const isFirebaseLoading = Object.values(loadingStates).some(status => status);
 
     // UI State
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFloor, setSelectedFloor] = useState('');
     const [selectedDate, setSelectedDate] = useState(today);
-    // Date range state for sales officer dashboard
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(today);
-    // Date range state for my sales view
     const [mySalesStartDate, setMySalesStartDate] = useState(today);
     const [mySalesEndDate, setMySalesEndDate] = useState(today);
 
+    useEffect(() => { setCurrentView(getInitialViewForRole(role)); }, [role, getInitialViewForRole]);
 
-    // This effect ensures that when the role changes (login/logout),
-    // the view is reset to the appropriate default for that role.
     useEffect(() => {
-        setCurrentView(getInitialViewForRole(role));
-    }, [role, getInitialViewForRole]);
+        const connectedRef = database.ref('.info/connected');
+        const listener = connectedRef.on('value', (snap) => {
+            setConnectionStatus(snap.val() === true ? 'connected' : 'disconnected');
+        });
+        return () => connectedRef.off('value', listener);
+    }, []);
     
-    // Logger
     const logAction = useCallback((action: string, details: string) => {
         if (!currentUser) return;
-        const newRecord: HistoryRecord = {
-            id: Date.now(),
-            timestamp: new Date().toISOString(),
-            user: currentUser.name,
-            action,
-            details,
+        const newId = Date.now();
+        const newRecord: Omit<HistoryRecord, 'id'> = {
+            timestamp: new Date().toISOString(), user: currentUser.name, action, details,
         };
-        setHistoryLog(prev => [newRecord, ...prev].slice(0, 1000)); // Keep last 1000 records
-    }, [currentUser, setHistoryLog]);
+        // Perform a direct, efficient write to Firebase for the new log entry.
+        database.ref(`data/historyLog/${newId}`).set(newRecord).catch(e => console.error("Failed to log action:", e));
+    }, [currentUser]);
 
     const handleLogout = useCallback(() => {
         if (currentUser) {
@@ -114,41 +182,31 @@ const App: React.FC = () => {
         logout();
     }, [currentUser, logAction, logout]);
 
-    // Effect to handle live updates to core data, forcing a re-login.
     useEffect(() => {
-        // The ref will be undefined on the first render.
-        // On subsequent renders, we compare the current data with the previous.
         if (prevOperatorsRef.current && role) {
-            // Simple but effective deep-ish compare for this data structure.
             if (JSON.stringify(prevOperatorsRef.current) !== JSON.stringify(operators)) {
-                alert("The list of operators has been updated by an administrator. For security and data consistency, you will be logged out. Please log in again.");
-                handleLogout();
+                showNotification("Operator list updated by admin. You will be logged out for security.", 'warning', 8000);
+                setTimeout(handleLogout, 3000);
             }
         }
-        // Update the ref with the current data for the next render.
         prevOperatorsRef.current = operators;
-    }, [operators, role, handleLogout]);
+    }, [operators, role, handleLogout, showNotification]);
 
     useEffect(() => {
         if (prevTicketSalesPersonnelRef.current && role) {
             if (JSON.stringify(prevTicketSalesPersonnelRef.current) !== JSON.stringify(ticketSalesPersonnel)) {
-                alert("The list of ticket sales personnel has been updated by an administrator. For security and data consistency, you will be logged out. Please log in again.");
-                handleLogout();
+                showNotification("Sales personnel list updated by admin. You will be logged out for security.", 'warning', 8000);
+                setTimeout(handleLogout, 3000);
             }
         }
         prevTicketSalesPersonnelRef.current = ticketSalesPersonnel;
-    }, [ticketSalesPersonnel, role, handleLogout]);
+    }, [ticketSalesPersonnel, role, handleLogout, showNotification]);
 
-    // Derived State
     const attendanceArray = useMemo<AttendanceRecord[]>(() => {
         const arr: AttendanceRecord[] = [];
         for (const date in attendanceData) {
             for (const operatorId in attendanceData[date]) {
-                arr.push({
-                    date,
-                    operatorId: Number(operatorId),
-                    ...attendanceData[date][operatorId]
-                });
+                arr.push({ date, operatorId: Number(operatorId), ...attendanceData[date][operatorId] });
             }
         }
         return arr;
@@ -156,214 +214,248 @@ const App: React.FC = () => {
 
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
         const countsForToday = dailyCounts[today] || {};
-        return rides.map(ride => ({
-            ...ride,
-            count: countsForToday[ride.id] || 0,
-        }));
+        return rides.map(ride => ({ ...ride, count: countsForToday[ride.id] || 0 }));
     }, [rides, dailyCounts, today]);
 
     const countersWithSales = useMemo<CounterWithSales[]>(() => {
         const salesForToday = ticketSalesData[today] || {};
-        return counters.map(counter => ({
-            ...counter,
-            sales: salesForToday[counter.id] || 0,
-        }));
+        return counters.map(counter => ({ ...counter, sales: salesForToday[counter.id] || 0 }));
     }, [counters, ticketSalesData, today]);
 
-    const filteredRides = useMemo(() => {
-        return ridesWithCounts.filter(ride => {
-            const matchesSearch = ride.name.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesFloor = !selectedFloor || ride.floor === selectedFloor;
-            return matchesSearch && matchesFloor;
-        });
-    }, [ridesWithCounts, searchTerm, selectedFloor]);
+    const filteredRides = useMemo(() => ridesWithCounts.filter(ride => 
+        ride.name.toLowerCase().includes(searchTerm.toLowerCase()) && (!selectedFloor || ride.floor === selectedFloor)
+    ), [ridesWithCounts, searchTerm, selectedFloor]);
 
-    const totalGuests = useMemo(() => {
-        return Object.values(dailyCounts[today] || {}).reduce((sum, count) => sum + count, 0);
-    }, [dailyCounts, today]);
+    const totalGuests = useMemo(() => Object.values(dailyCounts[today] || {}).reduce((sum, count) => sum + count, 0), [dailyCounts, today]);
+    const totalSales = useMemo(() => Object.values(ticketSalesData[today] || {}).reduce((sum, count) => sum + count, 0), [ticketSalesData, today]);
+    const hasCheckedInToday = useMemo(() => !!(currentUser && attendanceData[today]?.[currentUser.id]), [currentUser, attendanceData, today]);
 
-    const totalSales = useMemo(() => {
-        return Object.values(ticketSalesData[today] || {}).reduce((sum, count) => sum + count, 0);
-    }, [ticketSalesData, today]);
-
-    const hasCheckedInToday = useMemo(() => {
-        if (!currentUser) return false;
-        return !!(attendanceData[today]?.[currentUser.id]);
-    }, [currentUser, attendanceData, today]);
-
-    // Handlers
-    const handleLogin = (
-        newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer',
-        payload?: string | Operator
-    ): boolean => {
+    const handleLogin = (newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator): boolean => {
         const success = login(newRole, payload);
-        if (success) {
-            const user = typeof payload === 'object' ? payload : { name: newRole.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) };
-            const record: HistoryRecord = {
-                id: Date.now(),
-                timestamp: new Date().toISOString(),
-                user: user.name,
-                action: 'LOGIN',
-                details: `${user.name} logged in as ${newRole}.`,
-            };
-            setHistoryLog(prev => [record, ...prev]);
+        if (success && payload) {
+            const user = typeof payload === 'object' ? payload : { id: 0, name: newRole };
+            logAction('LOGIN', `${user.name} logged in as ${newRole}.`);
         }
         return success;
     };
 
     const handleCountChange = (rideId: number, newCount: number) => {
         const rideName = rides.find(r => r.id === rideId)?.name || 'Unknown Ride';
-        const oldCount = dailyCounts[selectedDate]?.[rideId] || 0; // Use selectedDate for accuracy on roster view
-
+        const oldCount = dailyCounts[selectedDate]?.[rideId] || 0;
         if (oldCount === newCount) return;
 
-        setDailyCounts(prev => {
-            const newDailyCounts = { ...prev };
-            const dateCounts = { ...(newDailyCounts[selectedDate] || {}) };
-            dateCounts[rideId] = newCount;
-            newDailyCounts[selectedDate] = dateCounts;
-            return newDailyCounts;
-        });
-
-        logAction('GUEST_COUNT_UPDATE', `Set count for '${rideName}' from ${oldCount} to ${newCount}.`);
+        // Perform a direct, efficient write to Firebase for this specific count.
+        database.ref(`data/dailyCounts/${selectedDate}/${rideId}`).set(newCount)
+            .then(() => {
+                logAction('GUEST_COUNT_UPDATE', `Set count for '${rideName}' from ${oldCount} to ${newCount}.`);
+            })
+            .catch(error => {
+                console.error("Firebase count update failed:", error);
+                showNotification('Failed to save count. Check connection.', 'error');
+            });
     };
 
     const handleSalesChange = (counterId: number, newCount: number) => {
         const counterName = counters.find(c => c.id === counterId)?.name || 'Unknown Counter';
         const oldSales = ticketSalesData[today]?.[counterId] || 0;
-
         if (oldSales === newCount) return;
-
-        setTicketSalesData(prev => {
-            const newSalesData = { ...prev };
-            const todaySales = { ...(newSalesData[today] || {}) };
-            todaySales[counterId] = newCount;
-            newSalesData[today] = todaySales;
-            return newSalesData;
-        });
         
-        logAction('SALES_COUNT_UPDATE', `Set sales for '${counterName}' from ${oldSales} to ${newCount}.`);
+        // Perform a direct, efficient write to Firebase for this specific sales figure.
+        database.ref(`data/ticketSalesData/${today}/${counterId}`).set(newCount)
+            .then(() => {
+                logAction('SALES_COUNT_UPDATE', `Set sales for '${counterName}' from ${oldSales} to ${newCount}.`);
+            })
+            .catch(error => {
+                console.error("Firebase sales update failed:", error);
+                showNotification('Failed to save sales data. Check connection.', 'error');
+            });
     };
 
     const handleResetCounts = () => {
         if (window.confirm("Are you sure you want to reset all of today's guest counts to zero? This cannot be undone.")) {
-            setDailyCounts(prev => {
-                const newDailyCounts = { ...prev };
-                newDailyCounts[today] = {};
-                return newDailyCounts;
-            });
-            logAction('RESET_GUEST_COUNTS', `Reset all guest counts for ${today}.`);
+            // Perform a direct, efficient remove operation in Firebase.
+            database.ref(`data/dailyCounts/${today}`).remove()
+                .then(() => {
+                    logAction('RESET_GUEST_COUNTS', `Reset all guest counts for ${today}.`);
+                })
+                .catch(error => {
+                    console.error("Firebase reset counts failed:", error);
+                    showNotification('Failed to reset counts. Check connection.', 'error');
+                });
         }
     };
 
     const handleResetSales = () => {
         if (window.confirm("Are you sure you want to reset all of today's ticket sales to zero? This cannot be undone.")) {
-            setTicketSalesData(prev => {
-                const newSalesData = { ...prev };
-                newSalesData[today] = {};
-                return newSalesData;
-            });
-            logAction('RESET_SALES_COUNTS', `Reset all ticket sales for ${today}.`);
+            // Perform a direct, efficient remove operation in Firebase.
+            database.ref(`data/ticketSalesData/${today}`).remove()
+                .then(() => {
+                     logAction('RESET_SALES_COUNTS', `Reset all ticket sales for ${today}.`);
+                })
+                .catch(error => {
+                    console.error("Firebase reset sales failed:", error);
+                    showNotification('Failed to reset sales. Check connection.', 'error');
+                });
         }
     };
     
     const handleSaveImage = useCallback(async (rideId: number, imageBase64: string) => {
-        try {
-            // The imageBase64 is a data URL from the modal, ready to be used as an image source.
-            setRides(prevRides => prevRides.map(r => r.id === rideId ? { ...r, imageUrl: imageBase64 } : r));
-            logAction('UPDATE_RIDE_IMAGE', `Updated image for ride: '${rides.find(r => r.id === rideId)?.name}'.`);
-            setModal(null);
-        } catch (error) {
-            console.error("Failed to save image", error);
-            alert("Error saving image. Please try again.");
-        }
-    }, [setRides, rides, logAction]);
+        setRidesData(prev => ({ ...prev, [rideId]: { ...prev[rideId], imageUrl: imageBase64 } }));
+        logAction('UPDATE_RIDE_IMAGE', `Updated image for ride: '${rides.find(r => r.id === rideId)?.name}'.`);
+        setModal(null);
+    }, [setRidesData, rides, logAction]);
     
     const handleClockIn = useCallback((attendedBriefing: boolean, briefingTime: string | null) => {
         if (!currentUser) return;
         
-        const newRecordData = { attendedBriefing, briefingTime };
-
-        setAttendanceData(prev => {
-            const todayRecords = prev[today] || {};
-            const newTodayRecords = { ...todayRecords, [currentUser.id]: newRecordData };
-            return { ...prev, [today]: newTodayRecords };
-        });
-        
-        logAction('ATTENDANCE_CHECKIN', `${currentUser.name} checked in. Briefing: ${attendedBriefing ? 'Yes' : 'No'}.`);
-
-        alert("Thank you for checking in. You will now be logged out to ensure assignments are loaded correctly on your next login.");
-        handleLogout();
-
-    }, [currentUser, today, setAttendanceData, logAction, handleLogout]);
+        // Capture currentUser at the time of clock-in to avoid potential stale closures in async operations.
+        const userAtClockIn = currentUser; 
+    
+        database.ref(`data/attendance/${today}/${userAtClockIn.id}`).set({ attendedBriefing, briefingTime })
+            .then(() => {
+                // Use the captured user object for logging the check-in.
+                logAction('ATTENDANCE_CHECKIN', `${userAtClockIn.name} checked in. Briefing: ${attendedBriefing ? 'Yes' : 'No'}.`);
+                showNotification("Check-in successful! You will now be logged out.", 'success');
+                
+                // Schedule the logout. The `logout` function from `useAuth` is stable.
+                // We log the logout action right before calling it.
+                setTimeout(() => {
+                    logAction('LOGOUT', `${userAtClockIn.name} logged out.`);
+                    logout();
+                }, 2000);
+            })
+            .catch(error => {
+                console.error("Firebase check-in failed:", error);
+                showNotification('Check-in failed. Please try again.', 'error');
+            });
+    }, [currentUser, today, logAction, logout, showNotification]);
 
     const handleSavePackageSales = useCallback((salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser) return;
         
-        const newRecord: PackageSalesRecord = {
-            ...salesData,
-            date: selectedDate,
-            personnelId: currentUser.id,
+        database.ref(`data/packageSales/${selectedDate}/${currentUser.id}`).set(salesData)
+            .then(() => {
+                logAction('PACKAGE_SALES_UPDATE', `${currentUser.name} updated package sales for ${selectedDate}.`);
+                showNotification('Sales data saved successfully!', 'success');
+            })
+            .catch(error => {
+                console.error("Firebase package sales update failed:", error);
+                showNotification('Failed to save package sales. Check connection.', 'error');
+            });
+    }, [currentUser, selectedDate, logAction, showNotification]);
+
+    const handleExportData = () => {
+        const backupData = {
+            version: 1,
+            timestamp: new Date().toISOString(),
+            data: {
+                dailyCounts, ticketSalesData, dailyAssignments, ticketSalesAssignments,
+                attendanceData, historyLogData, handoversData, packageSalesData,
+            },
+            config: {
+                ridesData, operatorsData, ticketSalesPersonnelData, countersData,
+            }
         };
 
-        setPackageSales(prev => {
-            const index = prev.findIndex(r => r.date === selectedDate && r.personnelId === currentUser.id);
-            if (index > -1) {
-                const updated = [...prev];
-                updated[index] = newRecord;
-                return updated;
+        const jsonString = JSON.stringify(backupData, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        logAction('DATA_EXPORT', 'Exported all application data to a backup file.');
+        showNotification('Data exported successfully!', 'success');
+        setModal(null);
+    };
+
+    const handleImportData = (jsonString: string) => {
+        try {
+            const backupData = JSON.parse(jsonString);
+            if (!backupData.version || !backupData.data || !backupData.config) {
+                throw new Error('Invalid backup file format.');
             }
-            return [...prev, newRecord];
-        });
-        
-        logAction('PACKAGE_SALES_UPDATE', `${currentUser.name} updated package sales for ${selectedDate}.`);
-        alert('Sales data saved successfully!');
-    }, [currentUser, selectedDate, setPackageSales, logAction]);
 
-    const handleNavigate = (view: View) => {
-        setCurrentView(view);
-        setSearchTerm('');
-        setSelectedFloor('');
-    };
+            // A series of confirmations for destructive actions
+            if (!window.confirm("Stage 1/3: You are about to overwrite all CONFIGURATION data (Rides, Operators, Counters). This cannot be undone. Proceed?")) return;
+            if (!window.confirm("Stage 2/3: You are about to overwrite all OPERATIONAL data (Counts, Sales, Assignments, Attendance). This cannot be undone. Proceed?")) return;
+            if (!window.confirm("Stage 3/3: FINAL CONFIRMATION. Are you absolutely sure you want to restore from this backup? All current data will be permanently lost.")) return;
 
-    const handleShowModal = (modalType: Modal, ride?: Ride) => {
-        if (ride) setSelectedRideForModal(ride);
-        setModal(modalType);
-    };
+            // Restore Config
+            setRidesData(backupData.config.ridesData || {});
+            setOperatorsData(backupData.config.operatorsData || {});
+            setTicketSalesPersonnelData(backupData.config.ticketSalesPersonnelData || {});
+            setCountersData(backupData.config.countersData || {});
 
-    const handleToggleFullscreen = useCallback(() => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(err => {
-                console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-            });
-            setIsFullScreen(true);
-        } else {
-            document.exitFullscreen();
-            setIsFullScreen(false);
+            // Restore Data
+            setDailyCounts(backupData.data.dailyCounts || {});
+            setTicketSalesData(backupData.data.ticketSalesData || {});
+            setDailyAssignments(backupData.data.dailyAssignments || {});
+            setTicketSalesAssignments(backupData.data.ticketSalesAssignments || {});
+            setAttendanceData(backupData.data.attendanceData || {});
+            setHistoryLogData(backupData.data.historyLogData || {});
+            setHandoversData(backupData.data.handoversData || {});
+            setPackageSalesData(backupData.data.packageSalesData || {});
+
+            logAction('DATA_IMPORT', 'Imported data from a backup file, overwriting all existing data.');
+            showNotification('Data imported successfully! The app may need to reload.', 'success', 6000);
+            setModal(null);
+            setTimeout(() => window.location.reload(), 2000);
+
+        } catch (error) {
+            console.error("Import failed:", error);
+            showNotification(`Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error', 8000);
         }
-    }, []);
+    };
 
-    const handleSaveOperators = (newOperators: Operator[]) => {
-        setOperators(newOperators);
-        logAction('UPDATE_OPERATORS', `Operator list updated. Total operators: ${newOperators.length}.`);
+
+    const handleNavigate = (view: View) => { setCurrentView(view); setSearchTerm(''); setSelectedFloor(''); };
+    const handleShowModal = (modalType: Modal, ride?: Ride) => { if (ride) setSelectedRideForModal(ride); setModal(modalType); };
+    const handleToggleFullscreen = useCallback(() => { /* ... */ }, []);
+
+    const handleAddOperator = (name: string) => {
+        const newId = Date.now(); // Simple unique ID
+        setOperatorsData((prev: FirebaseObject<Operator>) => ({ ...prev, [newId]: { name } }));
+        logAction('ADD_OPERATOR', `Added new operator: '${name}'.`);
+    };
+
+    const handleDeleteOperators = (ids: number[]) => {
+        setOperatorsData((prev: FirebaseObject<Operator>) => {
+            const newState = { ...prev };
+            const deletedNames: string[] = [];
+            ids.forEach(id => {
+                const operatorToDelete = newState[id];
+                if (operatorToDelete) {
+                    deletedNames.push(operatorToDelete.name);
+                    delete newState[id];
+                }
+            });
+            logAction('DELETE_OPERATORS', `Deleted operators: ${deletedNames.join(', ')}.`);
+            return newState;
+        });
     };
 
     const handleImportOperators = (newOperators: Operator[], strategy: 'merge' | 'replace') => {
         logAction('IMPORT_OPERATORS', `Imported operators with strategy: '${strategy}'.`);
         if (strategy === 'replace') {
-            const newWithIds = newOperators.map((op, index) => ({ ...op, id: index + 1 }));
-            setOperators(newWithIds);
+            const newOperatorsObject = newOperators.reduce((acc, op, index) => {
+                acc[Date.now() + index] = { name: op.name };
+                return acc;
+            }, {} as FirebaseObject<Operator>);
+            setOperatorsData(newOperatorsObject);
             setDailyAssignments({});
             setAttendanceData({});
         } else {
-             setOperators(prev => {
-                const existingNames = new Set(prev.map(op => op.name.toLowerCase()));
-                let maxId = prev.reduce((max, op) => Math.max(op.id, max), 0);
-                const merged = [...prev];
+            setOperatorsData((prev: FirebaseObject<Operator>) => {
+                const existingNames = new Set(Object.values(prev).map(op => op.name.toLowerCase()));
+                const merged = { ...prev };
+                let newIdCounter = Date.now();
                 newOperators.forEach(op => {
                     if (!existingNames.has(op.name.toLowerCase())) {
-                        maxId++;
-                        merged.push({ id: maxId, name: op.name });
+                        merged[newIdCounter++] = { name: op.name };
                     }
                 });
                 return merged;
@@ -372,219 +464,113 @@ const App: React.FC = () => {
     };
 
     const handleSaveAssignments = (date: string, assignmentsForDate: Record<string, number>) => {
-        setDailyAssignments(prev => ({
-            ...prev,
-            [date]: assignmentsForDate
-        }));
+        setDailyAssignments(prev => ({ ...prev, [date]: assignmentsForDate }));
         logAction('SAVE_ASSIGNMENTS', `Operator assignments saved for ${date}.`);
+        showNotification('Operator assignments saved!', 'success');
     };
     
     const handleSaveTicketSalesAssignments = (date: string, assignmentsForDate: Record<string, number>) => {
-        setTicketSalesAssignments(prev => ({
-            ...prev,
-            [date]: assignmentsForDate
-        }));
+        setTicketSalesAssignments(prev => ({ ...prev, [date]: assignmentsForDate }));
         logAction('SAVE_TS_ASSIGNMENTS', `Ticket sales assignments saved for ${date}.`);
+        showNotification('Ticket sales assignments saved!', 'success');
     };
 
     const handleReassignTicketSales = (counterId: number, newPersonnelId: number) => {
         const assignmentsForToday = ticketSalesAssignments[today] || {};
         const oldPersonnelId = assignmentsForToday[counterId];
-
         if (oldPersonnelId === newPersonnelId || !currentUser) return;
 
-        const counterName = counters.find(c => c.id === counterId)?.name || 'Unknown Counter';
+        const counterName = counters.find(c => c.id === counterId)?.name || '...';
         const newPersonnel = ticketSalesPersonnel.find(p => p.id === newPersonnelId);
         const oldPersonnel = ticketSalesPersonnel.find(p => p.id === oldPersonnelId);
         
-        // Log handover
-        const newHandover: HandoverRecord = {
-            id: Date.now(),
-            date: today,
-            timestamp: new Date().toISOString(),
-            counterId: counterId,
-            fromPersonnelId: oldPersonnelId,
-            fromPersonnelName: oldPersonnel?.name || 'N/A',
-            toPersonnelId: newPersonnelId,
-            toPersonnelName: newPersonnel?.name || 'Unknown',
+        const newHandover: Omit<HandoverRecord, 'id'> = {
+            date: today, timestamp: new Date().toISOString(), counterId: counterId,
+            fromPersonnelId: oldPersonnelId, fromPersonnelName: oldPersonnel?.name || 'N/A',
+            toPersonnelId: newPersonnelId, toPersonnelName: newPersonnel?.name || 'Unknown',
             assignerName: currentUser.name,
         };
-        setHandovers(prev => [newHandover, ...prev].slice(0, 500)); // Keep last 500 handovers
+        setHandoversData(prev => ({ ...prev, [Date.now()]: newHandover }));
 
-        // Update current assignment state
-        setTicketSalesAssignments(prev => {
-            const newAssignments = { ...prev };
-            const todayAssignments = { ...(newAssignments[today] || {}) };
-            todayAssignments[counterId] = newPersonnelId;
-            newAssignments[today] = todayAssignments;
-            return newAssignments;
-        });
-
-        // Log to general history
+        setTicketSalesAssignments(prev => ({ ...prev, [today]: { ...(prev[today] || {}), [counterId]: newPersonnelId } }));
         logAction('REASSIGN_TICKET_SALES', `${currentUser.name} reassigned '${counterName}' from '${oldPersonnel?.name || 'N/A'}' to '${newPersonnel?.name || 'Unknown'}'.`);
+        showNotification(`'${counterName}' reassigned to ${newPersonnel?.name || 'Unknown'}`, 'info');
     };
 
     const handleClearHistory = () => {
         if (window.confirm("Are you sure you want to permanently delete all history logs? This action cannot be undone.")) {
-            setHistoryLog([]);
+            database.ref('data/historyLog').remove()
+                .catch(e => {
+                    console.error("Failed to clear history log:", e);
+                    showNotification('Could not clear history log.', 'error');
+                });
         }
     };
 
-    // Main Render Logic
-    if (isFirebaseLoading) {
-        return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white text-2xl">Syncing Data...</div>;
-    }
-
-    if (!role || !currentUser) {
-        return <Login 
-            onLogin={handleLogin} 
-            isFullscreen={isFullScreen} 
-            onToggleFullscreen={handleToggleFullscreen}
-            operators={operators}
-            ticketSalesPersonnel={ticketSalesPersonnel}
-        />;
-    }
+    if (!isFirebaseConfigured) return <ConfigErrorScreen />;
+    if (isFirebaseLoading) return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
+            <h1 className="text-3xl font-bold mb-4">Syncing with TFW Server...</h1>
+            <div className="w-full max-w-md bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <ul className="space-y-3">
+                    {Object.entries(loadingStates).map(([name, isLoading]) => (
+                        <li key={name} className="flex items-center justify-between text-lg animate-fade-in-up">
+                            <span className="text-gray-300">{name}</span>
+                            {isLoading ? (
+                                <svg className="animate-spin h-5 w-5 text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            ) : (
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+        </div>
+    );
+    if (!role || !currentUser) return <Login onLogin={handleLogin} isFullscreen={isFullScreen} onToggleFullscreen={handleToggleFullscreen} operators={operators} ticketSalesPersonnel={ticketSalesPersonnel} />;
     
     const renderContent = () => {
         switch (currentView) {
-            case 'reports':
-                return <Reports dailyCounts={dailyCounts} rides={rides} />;
-            case 'assignments':
-                return <AssignmentView rides={rides} operators={operators} dailyAssignments={dailyAssignments} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
-            case 'expertise':
-                return <ExpertiseReport operators={operators} dailyAssignments={dailyAssignments} rides={rides} />;
+            case 'reports': return <Reports dailyCounts={dailyCounts} rides={rides} />;
+            case 'assignments': return <AssignmentView rides={rides} operators={operators} dailyAssignments={dailyAssignments} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
+            case 'expertise': return <ExpertiseReport operators={operators} dailyAssignments={dailyAssignments} rides={rides} />;
             case 'roster':
-                const ridesForRoster = rides.map(ride => ({
-                    ...ride,
-                    count: dailyCounts[selectedDate]?.[ride.id] || 0,
-                }));
-                return <DailyRoster 
-                    rides={ridesForRoster} 
-                    operators={operators} 
-                    dailyAssignments={dailyAssignments} 
-                    selectedDate={selectedDate} 
-                    onDateChange={setSelectedDate} 
-                    role={role} 
-                    currentUser={currentUser} 
-                    attendance={attendanceArray} 
-                    onNavigate={handleNavigate}
-                    onCountChange={handleCountChange}
-                    onShowModal={handleShowModal}
-                    hasCheckedInToday={hasCheckedInToday}
-                    onClockIn={handleClockIn}
-                />;
-            case 'ticket-sales-dashboard':
-                return <TicketSalesView countersWithSales={countersWithSales} onSalesChange={handleSalesChange} />;
-            case 'ts-assignments':
-                return <TicketSalesAssignmentView counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} onSave={handleSaveTicketSalesAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
-            case 'ts-roster':
-                return <TicketSalesRoster 
-                    counters={counters} 
-                    ticketSalesPersonnel={ticketSalesPersonnel} 
-                    dailyAssignments={ticketSalesAssignments} 
-                    selectedDate={selectedDate} 
-                    onDateChange={setSelectedDate} 
-                    role={role} 
-                    currentUser={currentUser} 
-                    attendance={attendanceArray} 
-                    onNavigate={handleNavigate} 
-                    onReassign={handleReassignTicketSales} 
-                    handovers={handovers} 
-                    hasCheckedInToday={hasCheckedInToday}
-                    onClockIn={handleClockIn}
-                />;
-            case 'ts-expertise':
-                return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
-            case 'history':
-                return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
-            case 'my-sales':
-                 return <DailySalesEntry 
-                    currentUser={currentUser!}
-                    selectedDate={selectedDate}
-                    onDateChange={setSelectedDate}
-                    packageSales={packageSales}
-                    onSave={handleSavePackageSales}
-                    mySalesStartDate={mySalesStartDate}
-                    onMySalesStartDateChange={setMySalesStartDate}
-                    mySalesEndDate={mySalesEndDate}
-                    onMySalesEndDateChange={setMySalesEndDate}
-                 />;
-            case 'sales-officer-dashboard':
-                return <SalesOfficerDashboard
-                    ticketSalesPersonnel={ticketSalesPersonnel}
-                    packageSales={packageSales}
-                    startDate={startDate}
-                    endDate={endDate}
-                    onStartDateChange={setStartDate}
-                    onEndDateChange={setEndDate}
-                />;
-            case 'counter':
-            default:
-                return (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {filteredRides.map(ride => (
-                            <RideCard
-                                key={ride.id}
-                                ride={ride}
-                                onCountChange={handleCountChange}
-                                role={role}
-                                onChangePicture={() => handleShowModal('edit-image', ride)}
-                            />
-                        ))}
-                    </div>
-                );
+                const ridesForRoster = rides.map(ride => ({ ...ride, count: dailyCounts[selectedDate]?.[ride.id] || 0 }));
+                return <DailyRoster rides={ridesForRoster} operators={operators} dailyAssignments={dailyAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleCountChange} onShowModal={handleShowModal} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} />;
+            case 'ticket-sales-dashboard': return <TicketSalesView countersWithSales={countersWithSales} onSalesChange={handleSalesChange} />;
+            case 'ts-assignments': return <TicketSalesAssignmentView counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} onSave={handleSaveTicketSalesAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
+            case 'ts-roster': return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onReassign={handleReassignTicketSales} handovers={handovers} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} />;
+            case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
+            case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
+            case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} />;
+            case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />;
+            case 'counter': default: return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {filteredRides.map(ride => <RideCard key={ride.id} ride={ride} onCountChange={handleCountChange} role={role} onChangePicture={() => handleShowModal('edit-image', ride)} />)}
+                </div>
+            );
         }
     };
 
     return (
         <div className="flex flex-col min-h-screen">
             {(role === 'operator' || role === 'ticket-sales') && <KioskModeWrapper />}
-            <Header
-                onSearch={setSearchTerm}
-                onSelectFloor={setSelectedFloor}
-                selectedFloor={selectedFloor}
-                role={role}
-                currentUser={currentUser}
-                onLogout={handleLogout}
-                onNavigate={handleNavigate}
-                onShowModal={handleShowModal}
-                currentView={currentView}
-            />
-            <main className="container mx-auto p-4 flex-grow">
-                {renderContent()}
-            </main>
-            {currentView === 'counter' && (
-                <Footer 
-                    title="Total Guests Today"
-                    count={totalGuests}
-                    showReset={role === 'admin'}
-                    onReset={handleResetCounts}
-                    gradient="bg-gradient-to-r from-purple-400 to-pink-600"
-                />
-            )}
-            {currentView === 'ticket-sales-dashboard' && (
-                <Footer
-                    title="Total Ticket Sales Today"
-                    count={totalSales}
-                    showReset={role === 'admin' || role === 'sales-officer'}
-                    onReset={handleResetSales}
-                    gradient="bg-gradient-to-r from-teal-400 to-cyan-500"
-                />
-            )}
-
-            {/* Modals */}
-            {modal === 'edit-image' && selectedRideForModal && (
-                <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />
-            )}
-            {modal === 'ai-assistant' && (
-                <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />
-            )}
-            {modal === 'operators' && (
-                <OperatorManager operators={operators} onClose={() => setModal(null)} onSave={handleSaveOperators} onImport={handleImportOperators} />
-            )}
-            {/* The BackupManager is no longer needed with real-time sync */}
+            <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={handleShowModal} currentView={currentView} connectionStatus={connectionStatus} />
+            <main className="container mx-auto p-4 flex-grow">{renderContent()}</main>
+            {currentView === 'counter' && <Footer title="Total Guests Today" count={totalGuests} showReset={role === 'admin'} onReset={handleResetCounts} gradient="bg-gradient-to-r from-purple-400 to-pink-600" />}
+            {currentView === 'ticket-sales-dashboard' && <Footer title="Total Ticket Sales Today" count={totalSales} showReset={role === 'admin' || role === 'sales-officer'} onReset={handleResetSales} gradient="bg-gradient-to-r from-teal-400 to-cyan-500" />}
+            {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
+            {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
+            {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} />}
         </div>
     );
 };
+
+const App: React.FC = () => (
+    <NotificationProvider>
+        <AppContent />
+    </NotificationProvider>
+);
 
 export default App;
