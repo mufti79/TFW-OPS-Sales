@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface BriefingCheckinProps {
   operatorName: string;
@@ -6,6 +6,7 @@ interface BriefingCheckinProps {
 }
 
 const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClockIn }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -14,17 +15,21 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
     day: 'numeric',
   });
 
-  const handleClockInWithBriefing = () => {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
-    const currentTime = `${hours}:${minutes}`;
-    onClockIn(true, currentTime);
+  const handleSubmit = (attended: boolean) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    if (attended) {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const currentTime = `${hours}:${minutes}`;
+      onClockIn(true, currentTime);
+    } else {
+      onClockIn(false, null);
+    }
   };
 
-  const handleClockInWithoutBriefing = () => {
-    onClockIn(false, null);
-  };
 
   return (
     <div className="w-full max-w-lg mx-auto bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 text-center animate-fade-in-up">
@@ -37,16 +42,18 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
         <p className="text-xl text-gray-200">Please confirm your briefing attendance to clock in.</p>
         <div className="flex flex-col space-y-4">
             <button
-                onClick={handleClockInWithBriefing}
-                className="w-full px-6 py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all text-xl"
+                onClick={() => handleSubmit(true)}
+                disabled={isSubmitting}
+                className="w-full px-6 py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all text-xl disabled:opacity-50 disabled:cursor-wait"
             >
-                YES, I attended the briefing
+                {isSubmitting ? 'Processing...' : 'YES, I attended the briefing'}
             </button>
             <button
-                onClick={handleClockInWithoutBriefing}
-                className="w-full px-6 py-4 bg-yellow-600 text-gray-900 font-bold rounded-lg hover:bg-yellow-500 active:scale-95 transition-all text-xl"
+                onClick={() => handleSubmit(false)}
+                disabled={isSubmitting}
+                className="w-full px-6 py-4 bg-yellow-600 text-gray-900 font-bold rounded-lg hover:bg-yellow-500 active:scale-95 transition-all text-xl disabled:opacity-50 disabled:cursor-wait"
             >
-                NO, I did not attend
+                {isSubmitting ? 'Processing...' : 'NO, I did not attend'}
             </button>
         </div>
       </div>
