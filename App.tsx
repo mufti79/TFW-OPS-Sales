@@ -173,11 +173,15 @@ const AppContent: React.FC = () => {
     useEffect(() => { setCurrentView(getInitialViewForRole(role)); }, [role, getInitialViewForRole]);
 
     useEffect(() => {
-        const connectedRef = database.ref('.info/connected');
-        const listener = connectedRef.on('value', (snap) => {
-            setConnectionStatus(snap.val() === true ? 'connected' : 'disconnected');
-        });
-        return () => connectedRef.off('value', listener);
+        if (isFirebaseConfigured) {
+            const connectedRef = database.ref('.info/connected');
+            const listener = connectedRef.on('value', (snap) => {
+                setConnectionStatus(snap.val() === true ? 'connected' : 'disconnected');
+            });
+            return () => connectedRef.off('value', listener);
+        } else {
+            setConnectionStatus('disconnected');
+        }
     }, []);
     
     const logAction = useCallback((action: string, details: string) => {
@@ -187,7 +191,9 @@ const AppContent: React.FC = () => {
             timestamp: new Date().toISOString(), user: currentUser.name, action, details,
         };
         // Perform a direct, efficient write to Firebase for the new log entry.
-        database.ref(`data/historyLog/${newId}`).set(newRecord).catch(e => console.error("Failed to log action:", e));
+        if (isFirebaseConfigured) {
+          database.ref(`data/historyLog/${newId}`).set(newRecord).catch(e => console.error("Failed to log action:", e));
+        }
     }, [currentUser]);
 
     const handleLogout = useCallback(() => {
@@ -259,14 +265,16 @@ const AppContent: React.FC = () => {
         const oldCount = dailyCounts[selectedDate]?.[rideId] || 0;
         if (oldCount === newCount) return;
 
-        database.ref(`data/dailyCounts/${selectedDate}/${rideId}`).set(newCount)
-            .then(() => {
-                logAction('GUEST_COUNT_UPDATE', `Set count for '${rideName}' from ${oldCount} to ${newCount}.`);
-            })
-            .catch(error => {
-                console.error("Firebase count update failed:", error);
-                showNotification('Failed to save count. Check connection.', 'error');
-            });
+        if (isFirebaseConfigured) {
+            database.ref(`data/dailyCounts/${selectedDate}/${rideId}`).set(newCount)
+                .then(() => {
+                    logAction('GUEST_COUNT_UPDATE', `Set count for '${rideName}' from ${oldCount} to ${newCount}.`);
+                })
+                .catch(error => {
+                    console.error("Firebase count update failed:", error);
+                    showNotification('Failed to save count. Check connection.', 'error');
+                });
+        }
     }, [dailyCounts, rides, selectedDate, logAction, showNotification]);
 
     const handleSalesChange = useCallback((counterId: number, newCount: number) => {
@@ -274,39 +282,45 @@ const AppContent: React.FC = () => {
         const oldSales = ticketSalesData[today]?.[counterId] || 0;
         if (oldSales === newCount) return;
         
-        database.ref(`data/ticketSalesData/${today}/${counterId}`).set(newCount)
-            .then(() => {
-                logAction('SALES_COUNT_UPDATE', `Set sales for '${counterName}' from ${oldSales} to ${newCount}.`);
-            })
-            .catch(error => {
-                console.error("Firebase sales update failed:", error);
-                showNotification('Failed to save sales data. Check connection.', 'error');
-            });
+        if (isFirebaseConfigured) {
+            database.ref(`data/ticketSalesData/${today}/${counterId}`).set(newCount)
+                .then(() => {
+                    logAction('SALES_COUNT_UPDATE', `Set sales for '${counterName}' from ${oldSales} to ${newCount}.`);
+                })
+                .catch(error => {
+                    console.error("Firebase sales update failed:", error);
+                    showNotification('Failed to save sales data. Check connection.', 'error');
+                });
+        }
     }, [counters, ticketSalesData, today, logAction, showNotification]);
 
     const handleResetCounts = useCallback(() => {
         if (window.confirm("Are you sure you want to reset all of today's guest counts to zero? This cannot be undone.")) {
-            database.ref(`data/dailyCounts/${today}`).remove()
-                .then(() => {
-                    logAction('RESET_GUEST_COUNTS', `Reset all guest counts for ${today}.`);
-                })
-                .catch(error => {
-                    console.error("Firebase reset counts failed:", error);
-                    showNotification('Failed to reset counts. Check connection.', 'error');
-                });
+            if (isFirebaseConfigured) {
+                database.ref(`data/dailyCounts/${today}`).remove()
+                    .then(() => {
+                        logAction('RESET_GUEST_COUNTS', `Reset all guest counts for ${today}.`);
+                    })
+                    .catch(error => {
+                        console.error("Firebase reset counts failed:", error);
+                        showNotification('Failed to reset counts. Check connection.', 'error');
+                    });
+            }
         }
     }, [today, logAction, showNotification]);
 
     const handleResetSales = useCallback(() => {
         if (window.confirm("Are you sure you want to reset all of today's ticket sales to zero? This cannot be undone.")) {
-            database.ref(`data/ticketSalesData/${today}`).remove()
-                .then(() => {
-                     logAction('RESET_SALES_COUNTS', `Reset all ticket sales for ${today}.`);
-                })
-                .catch(error => {
-                    console.error("Firebase reset sales failed:", error);
-                    showNotification('Failed to reset sales. Check connection.', 'error');
-                });
+            if (isFirebaseConfigured) {
+                database.ref(`data/ticketSalesData/${today}`).remove()
+                    .then(() => {
+                         logAction('RESET_SALES_COUNTS', `Reset all ticket sales for ${today}.`);
+                    })
+                    .catch(error => {
+                        console.error("Firebase reset sales failed:", error);
+                        showNotification('Failed to reset sales. Check connection.', 'error');
+                    });
+            }
         }
     }, [today, logAction, showNotification]);
     
@@ -317,7 +331,7 @@ const AppContent: React.FC = () => {
     }, [setRidesData, rides, logAction]);
     
     const handleClockIn = useCallback((attendedBriefing: boolean, briefingTime: string | null) => {
-        if (!currentUser) return;
+        if (!currentUser || !isFirebaseConfigured) return;
 
         const clockInDate = new Date().toISOString().split('T')[0]; // Always use fresh date for this action
         const userAtClockIn = currentUser; 
@@ -348,7 +362,7 @@ const AppContent: React.FC = () => {
     }, [currentUser, logAction, logout, showNotification]);
 
     const handleSavePackageSales = useCallback((salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
-        if (!currentUser) return;
+        if (!currentUser || !isFirebaseConfigured) return;
         
         database.ref(`data/packageSales/${selectedDate}/${currentUser.id}`).set(salesData)
             .then(() => {
@@ -518,11 +532,13 @@ const AppContent: React.FC = () => {
 
     const handleClearHistory = () => {
         if (window.confirm("Are you sure you want to permanently delete all history logs? This action cannot be undone.")) {
-            database.ref('data/historyLog').remove()
-                .catch(e => {
-                    console.error("Failed to clear history log:", e);
-                    showNotification('Could not clear history log.', 'error');
-                });
+            if (isFirebaseConfigured) {
+                database.ref('data/historyLog').remove()
+                    .catch(e => {
+                        console.error("Failed to clear history log:", e);
+                        showNotification('Could not clear history log.', 'error');
+                    });
+            }
         }
     };
 

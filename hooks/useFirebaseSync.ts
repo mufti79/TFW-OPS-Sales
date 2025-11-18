@@ -1,15 +1,19 @@
 import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } from 'react';
-import { database } from '../firebaseConfig';
+import { database, isFirebaseConfigured } from '../firebaseConfig';
 
 function useFirebaseSync<T>(
   path: string,
   initialValue: T
 ): { data: T; setData: Dispatch<SetStateAction<T>>; isLoading: boolean } {
   const [storedValue, setStoredValue] = useState<T>(initialValue);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isFirebaseConfigured);
   const initialValueRef = useRef(initialValue);
 
   useEffect(() => {
+    if (!isFirebaseConfigured) {
+        return;
+    }
+    
     const dbRef = database.ref(path);
 
     const timeoutId = setTimeout(() => {
@@ -42,6 +46,12 @@ function useFirebaseSync<T>(
   }, [path]);
 
   const setValue: Dispatch<SetStateAction<T>> = useCallback((value) => {
+    if (!isFirebaseConfigured) {
+      console.warn(`Firebase is not configured. Data for "${path}" will not be saved.`);
+      setStoredValue(value);
+      return;
+    }
+
     try {
         const dbRef = database.ref(path);
         if (value instanceof Function) {

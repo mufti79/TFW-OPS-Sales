@@ -1,33 +1,45 @@
 // @ts-nocheck
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+// This comment is to suppress TypeScript errors in a file that uses a global `firebase` object.
+
+// IMPORTANT:
+// To get this app working, you need to create your own Firebase project and
+// replace the configuration object below with your project's credentials.
+// 1. Go to https://console.firebase.google.com/ and create a new project.
+// 2. In your project, create a new Web App.
+// 3. Copy the firebaseConfig object provided by Firebase.
+// 4. Paste it here, replacing the placeholder object.
+// 5. In your Firebase project, go to "Realtime Database" and create one.
+//    - Make sure to set the security rules to allow read/write for development:
+//      {
+//        "rules": {
+//          ".read": "true",
+//          ".write": "true"
+//        }
+//      }
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyANLnR0N_cfJcJkK-cskrnRyL3yP1AOYAI",
-  authDomain: "database-tfw.firebaseapp.com",
-  projectId: "database-tfw",
-  storageBucket: "database-tfw.firebasestorage.app",
-  messagingSenderId: "157085523272",
-  appId: "1:157085523272:web:c9995bdfb6fe09b596a77d",
-  measurementId: "G-731QG6C0S1"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  databaseURL: "YOUR_DATABASE_URL",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID",
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// Check if the config has been filled out. This logic is used in App.tsx
+// to show a configuration help screen.
+export const isFirebaseConfigured = firebaseConfig.projectId !== "YOUR_PROJECT_ID" && firebaseConfig.apiKey !== "YOUR_API_KEY";
 
-
-rojectId !== "YOUR_PROJECT_ID";
-
-
-// Initialize Firebase
-if (!firebase.apps.length) {
+// Initialize Firebase only if it's configured and not already initialized.
+// It uses the global `firebase` object from the script tags in index.html.
+if (isFirebaseConfigured && !firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
 
-export const database = firebase.database();
+// Export the database instance.
+// If not configured, this will be null. App.tsx handles this by showing an error screen
+// and preventing the execution of code that would use `database`.
+export const database = isFirebaseConfigured ? firebase.database() : null;
