@@ -649,6 +649,19 @@ const AppContent: React.FC = () => {
             <main className="container mx-auto p-4 flex-grow">{renderContent()}</main>
             {currentView === 'counter' && <Footer title="Total Guests Today" count={totalGuests} showReset={role === 'admin'} onReset={handleResetCounts} gradient="bg-gradient-to-r from-purple-400 to-pink-600" />}
             {currentView === 'ticket-sales-dashboard' && <Footer title="Total Ticket Sales Today" count={totalSales} showReset={role === 'admin' || role === 'sales-officer'} onReset={handleResetSales} gradient="bg-gradient-to-r from-teal-400 to-cyan-500" />}
+            
+            <footer className="text-center py-4 border-t border-gray-700 mt-auto">
+                <p className="text-gray-500 text-sm font-light">
+                    Developed By
+                </p>
+                <p className="text-gray-300 font-semibold text-lg mt-1 tracking-wide">
+                    Mufti Mahmud Mollah
+                </p>
+                <p className="text-gray-500 text-sm">
+                    AGM (Maintenance & SCD, FP,TFW)
+                </p>
+            </footer>
+
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
