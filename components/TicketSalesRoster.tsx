@@ -330,14 +330,31 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
                 <div className={role === 'ticket-sales' ? "max-w-xl mx-auto w-full" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"}>
                 {filteredPersonnel.map(personnel => {
                     const personnelAssignments = assignmentsByPersonnel.get(personnel.id);
+
+                    // If personnel is absent, render a simplified card.
+                    if (!personnel.attendance) {
+                        return (
+                            <div key={personnel.id} className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-4 flex flex-col justify-center">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-xl font-bold text-gray-500">{personnel.name}</h2>
+                                    <div className="flex items-center gap-2 text-sm font-semibold text-red-500">
+                                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                                        <span>Absent</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    // If present, render the full card.
                     return (
                         <div key={personnel.id} className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-4 flex flex-col">
                             <div className="flex justify-between items-start mb-2">
                                 <h2 className="text-xl font-bold text-teal-400">{personnel.name}</h2>
                                 <div className="flex items-center gap-2 text-sm">
-                                    <span className={`w-3 h-3 rounded-full ${personnel.attendance ? 'bg-green-400 animate-pulse' : 'bg-red-500'}`}></span>
-                                    <span className={personnel.attendance ? 'text-green-400' : 'text-red-500'}>
-                                        {personnel.attendance ? 'Checked In' : 'Not Checked In'}
+                                    <span className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></span>
+                                    <span className="text-green-400">
+                                        Checked In
                                     </span>
                                 </div>
                             </div>
