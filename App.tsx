@@ -457,6 +457,45 @@ const AppContent: React.FC = () => {
         }
     };
 
+    const handleResetDay = (dateToReset: string) => {
+        if (!window.confirm(`Stage 1/2: You are about to permanently delete ALL operational data for ${dateToReset}. This includes guest counts, sales, assignments, and attendance records for that day. This action cannot be undone. Proceed?`)) {
+            return;
+        }
+        if (!window.confirm(`Stage 2/2: FINAL CONFIRMATION. Are you absolutely sure you want to reset all data for ${dateToReset}?`)) {
+            return;
+        }
+
+        if (!isFirebaseConfigured) {
+            showNotification("Firebase is not configured. Cannot perform reset.", "error");
+            return;
+        }
+
+        const pathsToDelete = [
+            `data/dailyCounts/${dateToReset}`,
+            `data/ticketSalesData/${dateToReset}`,
+            `data/operatorAssignments/${dateToReset}`,
+            `data/ticketSalesAssignments/${dateToReset}`,
+            `data/attendance/${dateToReset}`,
+            `data/packageSales/${dateToReset}`
+        ];
+
+        const updates: { [key: string]: null } = {};
+        pathsToDelete.forEach(path => {
+            updates[path] = null;
+        });
+
+        database.ref().update(updates)
+            .then(() => {
+                logAction('DAILY_DATA_RESET', `Reset all operational data for date: ${dateToReset}.`);
+                showNotification(`All data for ${dateToReset} has been successfully reset.`, 'success');
+                setModal(null); // Close the modal on success
+            })
+            .catch((error: Error) => {
+                console.error("Firebase daily reset failed:", error);
+                showNotification(`Failed to reset data for ${dateToReset}. Check connection and permissions.`, 'error');
+            });
+    };
+
 
     const handleNavigate = (view: View) => { setCurrentView(view); setSearchTerm(''); setSelectedFloor(''); };
     const handleShowModal = (modalType: Modal, ride?: Ride) => { if (ride) setSelectedRideForModal(ride); setModal(modalType); };
@@ -613,7 +652,7 @@ const AppContent: React.FC = () => {
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
-            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} />}
         </div>
     );
 };

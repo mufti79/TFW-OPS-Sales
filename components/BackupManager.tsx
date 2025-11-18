@@ -4,14 +4,20 @@ interface BackupManagerProps {
   onClose: () => void;
   onExport: () => void;
   onImport: (backupJson: string) => void;
+  onResetDay: (date: string) => void;
 }
 
-const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport }) => {
+const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay }) => {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [resetDate, setResetDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const handleFileImportClick = () => {
     fileInputRef.current?.click();
+  };
+  
+  const handleResetClick = () => {
+    onResetDay(resetDate);
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +74,33 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
                 <strong>Warning:</strong> Restoring from a backup is a destructive action. It will permanently overwrite all current data in the application.
             </div>
           </div>
+
+           <div className="mt-8 border-t border-gray-600 pt-6">
+            <h3 className="text-xl font-bold text-red-400 mb-2">Reset Daily Data</h3>
+            <p className="text-sm text-gray-400 mb-4">This will permanently delete all guest counts, sales, assignments, and attendance records for a specific day. This action cannot be undone.</p>
+            <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                <div className="flex-grow w-full sm:w-auto">
+                    <label htmlFor="reset-date" className="block text-sm font-medium text-gray-300 mb-1">Select Date to Reset</label>
+                    <input
+                        id="reset-date"
+                        type="date"
+                        value={resetDate}
+                        onChange={(e) => setResetDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500 text-sm"
+                    />
+                </div>
+                <button
+                    onClick={handleResetClick}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-red-800 text-white font-bold rounded-lg hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-2 self-end"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    Reset Selected Day's Data
+                </button>
+            </div>
+          </div>
+
         </div>
         <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg mt-auto">
           <button onClick={onClose} className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 active:scale-95 transition-all">
