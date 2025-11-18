@@ -75,15 +75,25 @@ const AppContent: React.FC = () => {
     const { role, currentUser, login, logout } = useAuth();
     const { showNotification } = useNotification();
     const [today, setToday] = useState(() => new Date().toISOString().split('T')[0]);
+    const [isCheckinAllowed, setIsCheckinAllowed] = useState(true);
 
-    // Effect to update the 'today' date string if the app is left open past midnight.
+    // Effect to manage daily and time-based state updates
     useEffect(() => {
-        const intervalId = setInterval(() => {
-            const newToday = new Date().toISOString().split('T')[0];
+        const checkTime = () => {
+            const now = new Date();
+            const hour = now.getHours();
+            const newToday = now.toISOString().split('T')[0];
+            
             if (newToday !== today) {
                 setToday(newToday);
             }
-        }, 30000); // Check every 30 seconds
+            // Check-in is allowed from 12 AM (0) up to 10 PM (before 22:00).
+            setIsCheckinAllowed(hour < 22);
+        };
+
+        checkTime(); // Check immediately on load
+        const intervalId = setInterval(checkTime, 30000); // Check every 30 seconds
+
         return () => clearInterval(intervalId);
     }, [today]);
 
@@ -623,10 +633,10 @@ const AppContent: React.FC = () => {
             case 'expertise': return <ExpertiseReport operators={operators} dailyAssignments={dailyAssignments} rides={rides} />;
             case 'roster':
                 const ridesForRoster = rides.map(ride => ({ ...ride, count: dailyCounts[selectedDate]?.[ride.id] || 0 }));
-                return <DailyRoster rides={ridesForRoster} operators={operators} dailyAssignments={dailyAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleCountChange} onShowModal={handleShowModal} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} />;
+                return <DailyRoster rides={ridesForRoster} operators={operators} dailyAssignments={dailyAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleCountChange} onShowModal={handleShowModal} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
             case 'ticket-sales-dashboard': return <TicketSalesView countersWithSales={countersWithSales} onSalesChange={handleSalesChange} />;
             case 'ts-assignments': return <TicketSalesAssignmentView counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} onSave={handleSaveTicketSalesAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
-            case 'ts-roster': return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onReassign={handleReassignTicketSales} handovers={handovers} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} />;
+            case 'ts-roster': return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onReassign={handleReassignTicketSales} handovers={handovers} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
             case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} />;

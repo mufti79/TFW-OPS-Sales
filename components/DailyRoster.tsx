@@ -22,9 +22,10 @@ interface DailyRosterProps {
   onShowModal: (modal: Modal, ride?: Ride) => void;
   hasCheckedInToday: boolean;
   onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
+  isCheckinAllowed: boolean;
 }
 
-const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal, hasCheckedInToday, onClockIn }) => {
+const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal, hasCheckedInToday, onClockIn, isCheckinAllowed }) => {
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
       const [hours, minutes] = timeStr.split(':');
@@ -192,7 +193,21 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
   if (role === 'operator' && currentUser) {
     if (!hasCheckedInToday) {
-        return <BriefingCheckin operatorName={currentUser.name} onClockIn={onClockIn} />;
+        if (isCheckinAllowed) {
+            return <BriefingCheckin operatorName={currentUser.name} onClockIn={onClockIn} />;
+        } else {
+            return (
+                <div className="w-full max-w-lg mx-auto bg-gray-800 p-8 rounded-lg shadow-lg border border-yellow-500 text-center animate-fade-in-up">
+                    <h1 className="text-3xl font-bold text-yellow-400 mb-4">Check-in Closed for Today</h1>
+                    <p className="text-lg text-gray-300">
+                        The check-in window for today has closed at 10:00 PM.
+                    </p>
+                    <p className="text-lg text-gray-400 mt-2">
+                        Check-in for the next day will be available after 12:00 AM.
+                    </p>
+                </div>
+            );
+        }
     }
 
     const myAssignedRides = assignmentsByOperator.get(currentUser.id) || [];

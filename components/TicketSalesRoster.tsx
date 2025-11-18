@@ -110,9 +110,10 @@ interface TicketSalesRosterProps {
   handovers: HandoverRecord[];
   hasCheckedInToday: boolean;
   onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
+  isCheckinAllowed: boolean;
 }
 
-const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onReassign, handovers, hasCheckedInToday, onClockIn }) => {
+const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onReassign, handovers, hasCheckedInToday, onClockIn, isCheckinAllowed }) => {
   const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'present' | 'absent'>('all');
   const [reassignModalInfo, setReassignModalInfo] = useState<{ counter: Counter; currentPersonnel: Operator } | null>(null);
   
@@ -249,8 +250,24 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
   const [year, month, day] = selectedDate.split('-').map(Number);
   const displayDate = new Date(year, month - 1, day);
 
-  if (role === 'ticket-sales' && currentUser && !hasCheckedInToday) {
-    return <BriefingCheckin operatorName={currentUser.name} onClockIn={onClockIn} />;
+  if (role === 'ticket-sales' && currentUser) {
+      if (!hasCheckedInToday) {
+        if (isCheckinAllowed) {
+            return <BriefingCheckin operatorName={currentUser.name} onClockIn={onClockIn} />;
+        } else {
+            return (
+                <div className="w-full max-w-lg mx-auto bg-gray-800 p-8 rounded-lg shadow-lg border border-yellow-500 text-center animate-fade-in-up">
+                    <h1 className="text-3xl font-bold text-yellow-400 mb-4">Check-in Closed for Today</h1>
+                    <p className="text-lg text-gray-300">
+                        The check-in window for today has closed at 10:00 PM.
+                    </p>
+                    <p className="text-lg text-gray-400 mt-2">
+                        Check-in for the next day will be available after 12:00 AM.
+                    </p>
+                </div>
+            );
+        }
+    }
   }
 
   return (
