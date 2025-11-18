@@ -20,14 +20,14 @@
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  databaseURL: "YOUR_DATABASE_URL",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyAqOf6utAgmO-NXqbPTnBO3BdD7yCUBbW8",
+  authDomain: "toggifunworld-app.firebaseapp.com",
+  projectId: "toggifunworld-app",
+  storageBucket: "toggifunworld-app.firebasestorage.app",
+  messagingSenderId: "718439883778",
+  appId: "1:718439883778:web:6f3ad4977156ab37e7f31b"
 };
+
 
 // Check if the config has been filled out. This logic is used in App.tsx
 // to show a configuration help screen.
