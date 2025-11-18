@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord, AttendanceData } from './types';
@@ -85,17 +86,34 @@ const AppContent: React.FC = () => {
             const newToday = now.toISOString().split('T')[0];
             
             if (newToday !== today) {
+                // A new day has started. Force a session reset.
+                showNotification("A new day has started. Please log in again for your daily check-in.", 'info', 5000);
+                setTimeout(() => {
+                    logout(); // This will clear auth state and redirect to the login screen.
+                }, 3000); // Give the user time to read the message.
+                // Update today state immediately to reflect the change, which will also trigger other date sync effects.
                 setToday(newToday);
+            } else {
+                 // Check-in is allowed from 12 AM (0) up to 10 PM (before 22:00).
+                setIsCheckinAllowed(hour < 22);
             }
-            // Check-in is allowed from 12 AM (0) up to 10 PM (before 22:00).
-            setIsCheckinAllowed(hour < 22);
         };
 
-        checkTime(); // Check immediately on load
-        const intervalId = setInterval(checkTime, 30000); // Check every 30 seconds
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                checkTime();
+            }
+        };
 
-        return () => clearInterval(intervalId);
-    }, [today]);
+        checkTime(); // Initial check
+        const intervalId = setInterval(checkTime, 30000); // Periodic check for long-running tabs
+        document.addEventListener('visibilitychange', handleVisibilityChange); // Check on tab focus for immediate update
+
+        return () => {
+            clearInterval(intervalId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [today, logout, showNotification]);
 
     const getInitialViewForRole = useCallback((r: Role): View => {
         if (r === 'admin' || r === 'operation-officer') {
@@ -177,6 +195,16 @@ const AppContent: React.FC = () => {
     const [endDate, setEndDate] = useState(today);
     const [mySalesStartDate, setMySalesStartDate] = useState(today);
     const [mySalesEndDate, setMySalesEndDate] = useState(today);
+
+    useEffect(() => {
+        // When the app detects a new day has started, reset all date-based views
+        // to default to the new "today". This prevents stale data from being shown.
+        setSelectedDate(today);
+        setStartDate(today);
+        setEndDate(today);
+        setMySalesStartDate(today);
+        setMySalesEndDate(today);
+    }, [today]);
 
     useEffect(() => { setCurrentView(getInitialViewForRole(role)); }, [role, getInitialViewForRole]);
 
