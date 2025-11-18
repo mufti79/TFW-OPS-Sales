@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord, AttendanceData } from './types';
@@ -105,7 +106,6 @@ const AppContent: React.FC = () => {
     }, []);
 
     // App State
-    const [isFullScreen, setIsFullScreen] = useState(false);
     const [currentView, setCurrentView] = useState<View>(() => getInitialViewForRole(role));
     const [modal, setModal] = useState<Modal>(null);
     const [selectedRideForModal, setSelectedRideForModal] = useState<Ride | null>(null);
@@ -499,7 +499,6 @@ const AppContent: React.FC = () => {
 
     const handleNavigate = (view: View) => { setCurrentView(view); setSearchTerm(''); setSelectedFloor(''); };
     const handleShowModal = (modalType: Modal, ride?: Ride) => { if (ride) setSelectedRideForModal(ride); setModal(modalType); };
-    const handleToggleFullscreen = useCallback(() => { /* ... */ }, []);
 
     const handleAddOperator = (name: string) => {
         const newId = Date.now(); // Simple unique ID
@@ -616,7 +615,7 @@ const AppContent: React.FC = () => {
             </div>
         </div>
     );
-    if (!role || !currentUser) return <Login onLogin={handleLogin} isFullscreen={isFullScreen} onToggleFullscreen={handleToggleFullscreen} operators={operators} ticketSalesPersonnel={ticketSalesPersonnel} />;
+    if (!role || !currentUser) return <Login onLogin={handleLogin} operators={operators} ticketSalesPersonnel={ticketSalesPersonnel} />;
     
     const renderContent = () => {
         switch (currentView) {

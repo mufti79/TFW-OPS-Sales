@@ -1,28 +1,15 @@
 
+
 import React, { useState } from 'react';
 import { Operator } from '../types';
 
 interface LoginProps {
   onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator) => boolean;
-  isFullscreen: boolean;
-  onToggleFullscreen: () => void;
   operators: Operator[];
   ticketSalesPersonnel: Operator[];
 }
 
-const FullscreenEnterIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9M20.25 20.25h-4.5m4.5 0v-4.5m0-4.5L15 15" />
-  </svg>
-);
-
-const FullscreenExitIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5M15 15l5.25 5.25" />
-  </svg>
-);
-
-const Login: React.FC<LoginProps> = ({ onLogin, isFullscreen, onToggleFullscreen, operators, ticketSalesPersonnel }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel }) => {
   const [adminPin, setAdminPin] = useState('');
   const [adminError, setAdminError] = useState('');
   const [officerPin, setOfficerPin] = useState('');
@@ -95,14 +82,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, isFullscreen, onToggleFullscreen
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 p-4 relative">
-       <button
-            onClick={onToggleFullscreen}
-            className="absolute top-4 right-4 p-3 bg-gray-700 text-white rounded-full hover:bg-gray-600 active:scale-95 transition-all z-10"
-            aria-label={isFullscreen ? 'Exit full screen' : 'Enter full screen'}
-        >
-            {isFullscreen ? <FullscreenExitIcon /> : <FullscreenEnterIcon />}
-        </button>
-
       <div className="text-center mb-12">
         <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
           Toggi Fun World
