@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Operator, PackageSalesRecord } from '../types';
+import { Role } from '../hooks/useAuth';
 
 type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;
 
@@ -10,9 +11,116 @@ interface SalesOfficerDashboardProps {
   endDate: string;
   onStartDateChange: (date: string) => void;
   onEndDateChange: (date: string) => void;
+  role: Role;
+  onEditSales: (date: string, personnelId: number, data: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => void;
 }
 
-const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSalesPersonnel, packageSales, startDate, endDate, onStartDateChange, onEndDateChange }) => {
+interface EditSalesModalProps {
+    personnel: Operator;
+    onClose: () => void;
+    onSave: (date: string, personnelId: number, data: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => void;
+    startDate: string;
+    endDate: string;
+    existingSalesData: PackageSalesData;
+}
+
+const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onSave, startDate, endDate, existingSalesData }) => {
+    const [correctionDate, setCorrectionDate] = useState(endDate);
+    const [xtremeQty, setXtremeQty] = useState(0);
+    const [kiddoQty, setKiddoQty] = useState(0);
+    const [vipQty, setVipQty] = useState(0);
+    const [otherAmount, setOtherAmount] = useState(0);
+
+    const datesInRange = useMemo(() => {
+        const dates = [];
+        let currentDate = new Date(startDate + 'T00:00:00');
+        const lastDate = new Date(endDate + 'T00:00:00');
+        while (currentDate <= lastDate) {
+            dates.push(currentDate.toISOString().split('T')[0]);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        return dates.reverse();
+    }, [startDate, endDate]);
+
+    useEffect(() => {
+        const record = existingSalesData[correctionDate]?.[personnel.id];
+        setXtremeQty(record?.xtremeQty || 0);
+        setKiddoQty(record?.kiddoQty || 0);
+        setVipQty(record?.vipQty || 0);
+        setOtherAmount(record?.otherAmount || 0);
+    }, [correctionDate, personnel.id, existingSalesData]);
+
+    const handleSaveClick = () => {
+        // These prices should ideally come from a shared config, but are hardcoded for consistency with DailySalesEntry
+        const prices = { xtreme: 1200, kiddo: 800, vip: 2500 };
+        const salesData = {
+            xtremeQty,
+            xtremeAmount: xtremeQty * prices.xtreme,
+            kiddoQty,
+            kiddoAmount: kiddoQty * prices.kiddo,
+            vipQty,
+            vipAmount: vipQty * prices.vip,
+            otherAmount,
+        };
+        onSave(correctionDate, personnel.id, salesData);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog">
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg border border-gray-700 animate-fade-in-up">
+                <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-100">Correct Sales for</h2>
+                            <p className="text-teal-400 font-semibold">{personnel.name}</p>
+                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label htmlFor="correction-date" className="block text-sm font-medium text-gray-300">Date to Correct</label>
+                            <select id="correction-date" value={correctionDate} onChange={e => setCorrectionDate(e.target.value)} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+                                {datesInRange.map(date => <option key={date} value={date}>{new Date(date + 'T00:00:00').toLocaleDateString()}</option>)}
+                            </select>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label htmlFor="xtreme-qty" className="block text-sm font-medium text-gray-400">Xtreme Qty</label>
+                                <input id="xtreme-qty" type="number" value={xtremeQty} onChange={e => setXtremeQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" />
+                            </div>
+                             <div>
+                                <label htmlFor="kiddo-qty" className="block text-sm font-medium text-gray-400">Kiddo Qty</label>
+                                <input id="kiddo-qty" type="number" value={kiddoQty} onChange={e => setKiddoQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" />
+                            </div>
+                             <div>
+                                <label htmlFor="vip-qty" className="block text-sm font-medium text-gray-400">VIP Qty</label>
+                                <input id="vip-qty" type="number" value={vipQty} onChange={e => setVipQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" />
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="other-amount" className="block text-sm font-medium text-gray-400">Other Sales Amount (BDT)</label>
+                            <input id="other-amount" type="number" value={otherAmount} onChange={e => setOtherAmount(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" />
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500">Cancel</button>
+                    <button onClick={handleSaveClick} className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Save Correction</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSalesPersonnel, packageSales, startDate, endDate, onStartDateChange, onEndDateChange, role, onEditSales }) => {
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingPersonnel, setEditingPersonnel] = useState<Operator | null>(null);
+
+    const handleEditClick = (personnel: Operator) => {
+        setEditingPersonnel(personnel);
+        setIsEditModalOpen(true);
+    };
     
     const aggregatedSalesByPersonnel = useMemo(() => {
         const map = new Map<number, Omit<PackageSalesRecord, 'date' | 'personnelId'>>();
@@ -209,6 +317,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                         <th className="p-3 font-semibold text-right">VIP (Qty/Amt)</th>
                         <th className="p-3 font-semibold text-right">Other Amt</th>
                         <th className="p-3 font-semibold text-right">Total (Qty/Amt)</th>
+                        <th className="p-3 font-semibold text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -234,12 +343,22 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                                     <td className="p-3 text-right font-bold text-lg text-teal-400 tabular-nums whitespace-nowrap">
                                         {totalQty.toLocaleString()} / {totalAmount.toLocaleString()}
                                     </td>
+                                    <td className="p-3 text-center">
+                                        {(role === 'admin' || role === 'sales-officer') && (
+                                            <button 
+                                                onClick={() => handleEditClick(personnel)}
+                                                className="px-3 py-1 bg-blue-600 text-white font-semibold rounded-md text-sm hover:bg-blue-700"
+                                            >
+                                                Edit
+                                            </button>
+                                        )}
+                                    </td>
                                 </tr>
                             );
                         })}
                          {ticketSalesPersonnel.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="text-center py-8 text-gray-500">No ticket sales personnel found.</td>
+                                <td colSpan={7} className="text-center py-8 text-gray-500">No ticket sales personnel found.</td>
                             </tr>
                          )}
                     </tbody>
@@ -261,11 +380,22 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                             <td className="p-3 text-right font-bold text-xl text-teal-300 tabular-nums whitespace-nowrap">
                                 {rangeTotals.totalQty.toLocaleString()} / {rangeTotals.totalAmount.toLocaleString()}
                             </td>
+                            <td className="p-3"></td>
                         </tr>
                     </tfoot>
                     </table>
                 </div>
             </div>
+            {isEditModalOpen && editingPersonnel && (
+                <EditSalesModal
+                    personnel={editingPersonnel}
+                    onClose={() => setIsEditModalOpen(false)}
+                    onSave={onEditSales}
+                    startDate={startDate}
+                    endDate={endDate}
+                    existingSalesData={packageSales}
+                />
+            )}
         </div>
     );
 };

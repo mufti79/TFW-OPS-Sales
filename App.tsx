@@ -375,6 +375,21 @@ const AppContent: React.FC = () => {
             });
     }, [currentUser, selectedDate, logAction, showNotification]);
 
+    const handleEditPackageSales = useCallback((date: string, personnelId: number, salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
+        if (!currentUser || !isFirebaseConfigured) return;
+        const personnelName = ticketSalesPersonnel.find(p => p.id === personnelId)?.name || 'Unknown Personnel';
+
+        database.ref(`data/packageSales/${date}/${personnelId}`).set(salesData)
+            .then(() => {
+                logAction('PACKAGE_SALES_CORRECTION', `${currentUser.name} corrected package sales for ${personnelName} on ${date}.`);
+                showNotification('Sales record updated successfully!', 'success');
+            })
+            .catch(error => {
+                console.error("Firebase package sales correction failed:", error);
+                showNotification('Failed to update sales record. Check connection.', 'error');
+            });
+    }, [currentUser, logAction, showNotification, ticketSalesPersonnel]);
+
     const handleExportData = () => {
         const backupData = {
             version: 1,
@@ -579,7 +594,7 @@ const AppContent: React.FC = () => {
             case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} />;
-            case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} />;
+            case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} />;
             case 'counter': default: return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {filteredRides.map(ride => <RideCard key={ride.id} ride={ride} onCountChange={handleCountChange} role={role} onChangePicture={() => handleShowModal('edit-image', ride)} />)}
