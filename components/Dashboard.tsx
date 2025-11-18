@@ -56,6 +56,65 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
   const [year, month, day] = selectedDate.split('-').map(Number);
   const displayDate = new Date(year, month - 1, day);
 
+  const formatTime = (timeStr: string | null): string => {
+      if (!timeStr) return '';
+      const [hours, minutes] = timeStr.split(':');
+      let h = parseInt(hours, 10);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      h = h ? h : 12; // the hour '0' should be '12'
+      return `${h}:${minutes} ${ampm}`;
+  };
+
+  const handleDownloadAttendance = () => {
+      const attendanceTodayMap = new Map<number, AttendanceRecord>();
+      attendance
+        .filter(record => record.date === selectedDate)
+        .forEach(record => attendanceTodayMap.set(record.operatorId, record));
+
+      const operatorsWithAttendance = operators.map(op => ({
+        ...op,
+        attendance: attendanceTodayMap.get(op.id) || null
+      })).sort((a, b) => {
+          if (a.attendance && !b.attendance) return -1;
+          if (!a.attendance && b.attendance) return 1;
+          return a.name.localeCompare(b.name);
+      });
+
+      if (operatorsWithAttendance.length === 0) {
+          alert("No operator data to download.");
+          return;
+      }
+
+      const headers = ['Operator Name', 'Status', 'Check-in Time', 'Briefing Attended'];
+      
+      const rows = operatorsWithAttendance.map(operator => {
+          const status = operator.attendance ? 'Present' : 'Absent';
+          let checkInTime = 'N/A';
+          let attendedBriefing = 'N/A';
+
+          if(operator.attendance) {
+              checkInTime = formatTime(operator.attendance.briefingTime);
+              attendedBriefing = operator.attendance.attendedBriefing ? 'Yes' : 'No';
+          }
+          
+          const operatorName = `"${operator.name.replace(/"/g, '""')}"`;
+          
+          return [operatorName, status, checkInTime, attendedBriefing].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.href = url;
+      link.setAttribute('download', `TFW_Ops_Attendance_${selectedDate}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
+
   return (
     <div className="animate-fade-in-down space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -65,15 +124,23 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
           </h1>
           <p className="text-gray-400">Showing data for {displayDate.toLocaleDateString()}</p>
         </div>
-        <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg">
-            <label htmlFor="dashboard-date" className="text-sm font-medium text-gray-300">View Date:</label>
-            <input
-                id="dashboard-date"
-                type="date"
-                value={selectedDate}
-                onChange={(e) => onDateChange(e.target.value)}
-                className="px-2 py-1 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
-            />
+        <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
+            <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg">
+                <label htmlFor="dashboard-date" className="text-sm font-medium text-gray-300">View Date:</label>
+                <input
+                    id="dashboard-date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => onDateChange(e.target.value)}
+                    className="px-2 py-1 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm"
+                />
+            </div>
+            <button
+                onClick={handleDownloadAttendance}
+                className="px-4 py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all text-sm"
+            >
+                DL Attendance
+            </button>
         </div>
       </div>
 

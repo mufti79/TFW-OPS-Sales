@@ -206,10 +206,9 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                     {myAttendance && (
                        <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
                             <span className="w-3 h-3 rounded-full bg-green-400 animate-pulse"></span>
-                            <span>Checked In</span>
-                            <span>- Briefing: {myAttendance.attendedBriefing 
-                                    ? <span className="font-semibold text-teal-300">{formatTime(myAttendance.briefingTime)}</span>
-                                    : <span className="font-semibold text-yellow-400">Not Attended</span>}
+                            <span>
+                                Checked In: <span className="font-semibold text-gray-200">{formatTime(myAttendance.briefingTime)}</span>
+                                ({myAttendance.attendedBriefing ? <span className="text-teal-300">Briefing</span> : <span className="text-yellow-400">No Briefing</span>})
                             </span>
                        </div>
                     )}
@@ -349,9 +348,9 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
                             <div className="text-sm text-gray-400 mb-4 h-5">
                                {operator.attendance && (
-                                    <p>Briefing: {operator.attendance.attendedBriefing 
-                                        ? <span className="font-semibold text-teal-300">{formatTime(operator.attendance.briefingTime)}</span>
-                                        : <span className="font-semibold text-yellow-400">Not Attended</span>}
+                                    <p>
+                                        Checked In: <span className="font-semibold text-gray-200">{formatTime(operator.attendance.briefingTime)}</span> 
+                                        ({operator.attendance.attendedBriefing ? <span className="text-teal-300">Briefing</span> : <span className="text-yellow-400">No Briefing</span>})
                                     </p>
                                 )}
                             </div>

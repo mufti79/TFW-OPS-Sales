@@ -1,4 +1,5 @@
 
+
 import React, { useMemo, useState } from 'react';
 import { Counter, Operator, AttendanceRecord, HandoverRecord } from '../types';
 import { Role } from '../hooks/useAuth';
@@ -343,9 +344,9 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
 
                             <div className="text-sm text-gray-400 mb-4 h-5">
                                {personnel.attendance && (
-                                    <p>Briefing: {personnel.attendance.attendedBriefing 
-                                        ? <span className="font-semibold text-teal-300">{formatTime(personnel.attendance.briefingTime)}</span>
-                                        : <span className="font-semibold text-yellow-400">Not Attended</span>}
+                                    <p>
+                                        Checked In: <span className="font-semibold text-gray-200">{formatTime(personnel.attendance.briefingTime)}</span> 
+                                        ({personnel.attendance.attendedBriefing ? <span className="text-teal-300">Briefing</span> : <span className="text-yellow-400">No Briefing</span>})
                                     </p>
                                 )}
                             </div>

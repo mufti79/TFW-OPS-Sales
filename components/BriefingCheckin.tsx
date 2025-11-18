@@ -18,16 +18,13 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
   const handleSubmit = (attended: boolean) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+    
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const currentTime = `${hours}:${minutes}`;
 
-    if (attended) {
-      const now = new Date();
-      const hours = String(now.getHours()).padStart(2, '0');
-      const minutes = String(now.getMinutes()).padStart(2, '0');
-      const currentTime = `${hours}:${minutes}`;
-      onClockIn(true, currentTime);
-    } else {
-      onClockIn(false, null);
-    }
+    onClockIn(attended, currentTime);
   };
 
 
