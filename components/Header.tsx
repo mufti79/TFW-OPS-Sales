@@ -23,8 +23,6 @@ interface HeaderProps {
   connectionStatus: Connection;
 }
 
-const logoUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAApgAAAD1CAYAAAC2Dn27AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAACHNSURBVHic7Z15mF1V1cd/z723s2wmy8Iuuqwryo2IAoqgYEXcuO6kUaMxxpjUaIya6rPGNEZNUzUq1qjRoGIwXwRRxY2rG0UEXQZBBhkWWbJs2WWSzZ69t7fn/XHfO3fuuTM3CczknvS855v7c8/5zL333vO+97vf+16cTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCaTyWQymUwmk8lkMplMJpPJZDKZTCa---";
-
 // FIX: The Header component was not returning any JSX, causing a type error. Added a complete JSX structure for a responsive navigation bar, including logo, navigation links, search/filter controls, and user actions. Also added the missing `export default Header;` to resolve the import error in App.tsx.
 const Header: React.FC<HeaderProps> = ({
   onSearch,
@@ -101,8 +99,7 @@ const Header: React.FC<HeaderProps> = ({
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <img className="h-10 w-auto" src={logoUrl} alt="Toggi Fun World Logo" />
-            <span className="text-white font-bold ml-2 hidden md:block text-xl">TFW Ops</span>
+            <span className="text-white font-bold text-xl">TFW Ops</span>
           </div>
 
           <div className="hidden md:flex items-center space-x-2">
