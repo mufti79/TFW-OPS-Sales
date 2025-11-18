@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useState } from 'react';
 import { Operator } from '../types';
 
@@ -220,17 +217,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
             </div>
             </div>
         </div>
-      </div>
-      <div className="absolute bottom-4 left-0 right-0 text-center">
-          <p className="text-gray-500 text-sm font-light">
-              Developed By
-          </p>
-          <p className="text-gray-300 font-semibold text-lg mt-1 tracking-wide">
-              Mufti Mahmud Mollah
-          </p>
-          <p className="text-gray-500 text-sm">
-              AGM (Maintenance & SCD, FP,TFW)
-          </p>
       </div>
     </div>
   );

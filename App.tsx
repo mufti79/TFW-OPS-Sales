@@ -1,7 +1,4 @@
 
-
-
-
 import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord, AttendanceData } from './types';
@@ -654,6 +651,17 @@ const AppContent: React.FC = () => {
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
             {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} />}
+            <footer className="text-center py-4 mt-auto">
+              <p className="text-gray-600 text-xs font-light">
+                  Developed By
+              </p>
+              <p className="text-gray-500 font-semibold text-sm">
+                  Mufti Mahmud Mollah
+              </p>
+              <p className="text-gray-600 text-xs">
+                  AGM (Maintenance & SCD, FP,TFW)
+              </p>
+            </footer>
         </div>
     );
 };
