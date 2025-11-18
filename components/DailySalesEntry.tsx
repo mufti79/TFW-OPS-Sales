@@ -71,26 +71,30 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     const [kiddoAmount, setKiddoAmount] = useState(0);
     const [vipQty, setVipQty] = useState(0);
     const [vipAmount, setVipAmount] = useState(0);
+    const [otherAmount, setOtherAmount] = useState(0);
 
     const originalRecord = useMemo(() => {
         return packageSales[selectedDate]?.[currentUser.id];
     }, [packageSales, selectedDate, currentUser.id]);
 
     const isDirty = useMemo(() => {
-        const currentQty = {
-            xtreme: xtremeQty,
-            kiddo: kiddoQty,
-            vip: vipQty,
+        const currentRecord = {
+            xtremeQty: xtremeQty,
+            kiddoQty: kiddoQty,
+            vipQty: vipQty,
+            otherAmount: otherAmount
         };
-        const savedQty = {
-            xtreme: originalRecord?.xtremeQty || 0,
-            kiddo: originalRecord?.kiddoQty || 0,
-            vip: originalRecord?.vipQty || 0,
+        const savedRecord = {
+            xtremeQty: originalRecord?.xtremeQty || 0,
+            kiddoQty: originalRecord?.kiddoQty || 0,
+            vipQty: originalRecord?.vipQty || 0,
+            otherAmount: originalRecord?.otherAmount || 0
         };
-        return currentQty.xtreme !== savedQty.xtreme || 
-               currentQty.kiddo !== savedQty.kiddo || 
-               currentQty.vip !== savedQty.vip;
-    }, [xtremeQty, kiddoQty, vipQty, originalRecord]);
+        return currentRecord.xtremeQty !== savedRecord.xtremeQty || 
+               currentRecord.kiddoQty !== savedRecord.kiddoQty || 
+               currentRecord.vipQty !== savedRecord.vipQty ||
+               currentRecord.otherAmount !== savedRecord.otherAmount;
+    }, [xtremeQty, kiddoQty, vipQty, otherAmount, originalRecord]);
     
     // Effect to warn user before leaving with unsaved changes
     useEffect(() => {
@@ -114,6 +118,7 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             setKiddoAmount(originalRecord.kiddoAmount);
             setVipQty(originalRecord.vipQty);
             setVipAmount(originalRecord.vipAmount);
+            setOtherAmount(originalRecord.otherAmount || 0);
         } else {
             // Reset form when date changes and no record is found.
             setXtremeQty(0);
@@ -122,6 +127,7 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             setXtremeAmount(0);
             setKiddoAmount(0);
             setVipAmount(0);
+            setOtherAmount(0);
         }
     }, [selectedDate, originalRecord]);
     
@@ -157,7 +163,7 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
         setPackagePrices(newPrices);
     };
 
-    const totalAmount = useMemo(() => xtremeAmount + kiddoAmount + vipAmount, [xtremeAmount, kiddoAmount, vipAmount]);
+    const totalAmount = useMemo(() => xtremeAmount + kiddoAmount + vipAmount + otherAmount, [xtremeAmount, kiddoAmount, vipAmount, otherAmount]);
     const totalQty = useMemo(() => xtremeQty + kiddoQty + vipQty, [xtremeQty, kiddoQty, vipQty]);
 
     const handleSave = () => {
@@ -168,11 +174,12 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             kiddoAmount,
             vipQty,
             vipAmount,
+            otherAmount,
         });
     };
 
     const salesSummary = useMemo(() => {
-        const summary = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, totalQty: 0, totalAmount: 0 };
+        const summary = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherAmount: 0, totalQty: 0, totalAmount: 0 };
         if (new Date(mySalesEndDate) < new Date(mySalesStartDate)) {
             return summary;
         }
@@ -188,8 +195,9 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                     summary.kiddoAmount += userRecord.kiddoAmount || 0;
                     summary.vipQty += userRecord.vipQty || 0;
                     summary.vipAmount += userRecord.vipAmount || 0;
+                    summary.otherAmount += userRecord.otherAmount || 0;
                     summary.totalQty += (userRecord.xtremeQty || 0) + (userRecord.kiddoQty || 0) + (userRecord.vipQty || 0);
-                    summary.totalAmount += (userRecord.xtremeAmount || 0) + (userRecord.kiddoAmount || 0) + (userRecord.vipAmount || 0);
+                    summary.totalAmount += (userRecord.xtremeAmount || 0) + (userRecord.kiddoAmount || 0) + (userRecord.vipAmount || 0) + (userRecord.otherAmount || 0);
                 }
             }
         }
@@ -265,6 +273,20 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                 <SalesInput label="Xtreme" qty={xtremeQty} onQtyChange={(val) => handleQtyChange('xtreme', val)} amount={xtremeAmount} color="border-purple-500" />
                 <SalesInput label="Kiddo" qty={kiddoQty} onQtyChange={(val) => handleQtyChange('kiddo', val)} amount={kiddoAmount} color="border-pink-500" />
                 <SalesInput label="VIP" qty={vipQty} onQtyChange={(val) => handleQtyChange('vip', val)} amount={vipAmount} color="border-yellow-500" />
+                <div className="p-4 rounded-lg border border-gray-500">
+                    <h3 className="text-xl font-bold mb-3">Other Sales</h3>
+                    <div>
+                        <label htmlFor="other-amount" className="block text-sm font-medium text-gray-400">Total Amount (BDT)</label>
+                        <input
+                            id="other-amount"
+                            type="number"
+                            value={otherAmount}
+                            onChange={e => setOtherAmount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            min="0"
+                        />
+                    </div>
+                </div>
             </div>
 
             <div className="mt-8 bg-gray-800/50 rounded-lg border border-gray-700 p-6 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -333,6 +355,10 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                     <div className="flex justify-between items-center pb-2 border-b border-gray-600">
                         <span className="font-semibold text-yellow-400">VIP Package</span>
                         <span className="font-bold text-gray-200 tabular-nums">{salesSummary.vipQty.toLocaleString()} Qty / {salesSummary.vipAmount.toLocaleString()} BDT</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-2 border-b border-gray-600">
+                        <span className="font-semibold text-green-400">Other Sales</span>
+                        <span className="font-bold text-gray-200 tabular-nums">{salesSummary.otherAmount.toLocaleString()} BDT</span>
                     </div>
                     <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t-2 border-teal-500 gap-4">
                         <div className="text-center sm:text-left">

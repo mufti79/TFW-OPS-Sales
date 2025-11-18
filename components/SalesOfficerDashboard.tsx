@@ -29,6 +29,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                         xtremeQty: 0, xtremeAmount: 0,
                         kiddoQty: 0, kiddoAmount: 0,
                         vipQty: 0, vipAmount: 0,
+                        otherAmount: 0,
                     };
 
                     existing.xtremeQty += record.xtremeQty || 0;
@@ -37,6 +38,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     existing.kiddoAmount += record.kiddoAmount || 0;
                     existing.vipQty += record.vipQty || 0;
                     existing.vipAmount += record.vipAmount || 0;
+                    existing.otherAmount += record.otherAmount || 0;
                     
                     map.set(personnelId, existing);
                 }
@@ -46,7 +48,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
     }, [packageSales, startDate, endDate]);
 
     const rangeTotals = useMemo(() => {
-        const totals = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, totalQty: 0, totalAmount: 0 };
+        const totals = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherAmount: 0, totalQty: 0, totalAmount: 0 };
         for(const sales of aggregatedSalesByPersonnel.values()) {
             totals.xtremeQty += sales.xtremeQty;
             totals.xtremeAmount += sales.xtremeAmount;
@@ -54,8 +56,9 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
             totals.kiddoAmount += sales.kiddoAmount;
             totals.vipQty += sales.vipQty;
             totals.vipAmount += sales.vipAmount;
+            totals.otherAmount += sales.otherAmount;
             totals.totalQty += sales.xtremeQty + sales.kiddoQty + sales.vipQty;
-            totals.totalAmount += sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount;
+            totals.totalAmount += sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + sales.otherAmount;
         }
         return totals;
     }, [aggregatedSalesByPersonnel]);
@@ -76,6 +79,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
             "Xtreme Qty", "Xtreme Amount",
             "Kiddo Qty", "Kiddo Amount",
             "VIP Qty", "VIP Amount",
+            "Other Amount",
             "Total Qty",
             "Total Amount (BDT)"
         ];
@@ -85,7 +89,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
             .map(personnel => {
                 const sales = aggregatedSalesByPersonnel.get(personnel.id);
                 const totalQty = sales ? (sales.xtremeQty || 0) + (sales.kiddoQty || 0) + (sales.vipQty || 0) : 0;
-                const totalAmount = sales ? (sales.xtremeAmount || 0) + (sales.kiddoAmount || 0) + (sales.vipAmount || 0) : 0;
+                const totalAmount = sales ? (sales.xtremeAmount || 0) + (sales.kiddoAmount || 0) + (sales.vipAmount || 0) + (sales.otherAmount || 0) : 0;
                 const rowData = [
                     `"${personnel.name.replace(/"/g, '""')}"`,
                     sales?.xtremeQty || 0,
@@ -94,6 +98,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     sales?.kiddoAmount || 0,
                     sales?.vipQty || 0,
                     sales?.vipAmount || 0,
+                    sales?.otherAmount || 0,
                     totalQty,
                     totalAmount
                 ];
@@ -105,6 +110,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
             rangeTotals.xtremeQty, rangeTotals.xtremeAmount,
             rangeTotals.kiddoQty, rangeTotals.kiddoAmount,
             rangeTotals.vipQty, rangeTotals.vipAmount,
+            rangeTotals.otherAmount,
             rangeTotals.totalQty,
             rangeTotals.totalAmount
         ].join(',');
@@ -167,7 +173,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
             {/* Daily Summary */}
             <div className="mb-8 p-6 bg-gray-800 rounded-lg shadow-lg border border-gray-700">
                 <h2 className="text-xl font-bold mb-4">Total Sales {displayDateRange}</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
                     <div>
                         <p className="text-sm text-gray-400">Xtreme</p>
                         <p className="text-lg font-bold">{rangeTotals.xtremeQty} / {rangeTotals.xtremeAmount.toLocaleString()} BDT</p>
@@ -179,6 +185,10 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                      <div>
                         <p className="text-sm text-gray-400">VIP</p>
                         <p className="text-lg font-bold">{rangeTotals.vipQty} / {rangeTotals.vipAmount.toLocaleString()} BDT</p>
+                    </div>
+                     <div>
+                        <p className="text-sm text-gray-400">Other</p>
+                        <p className="text-lg font-bold">{rangeTotals.otherAmount.toLocaleString()} BDT</p>
                     </div>
                     <div className="col-span-2 md:col-span-1 border-t-2 md:border-t-0 md:border-l-2 border-teal-500 pt-4 md:pt-0 md:pl-4">
                         <p className="text-md font-bold text-gray-300">Grand Total</p>
@@ -193,29 +203,33 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     <table className="w-full text-left">
                     <thead className="bg-gray-700/50">
                         <tr>
-                        <th className="p-3 font-semibold whitespace-nowrap">Personnel Name</th>
-                        <th className="p-3 font-semibold text-right whitespace-nowrap">Xtreme (Qty/Amt)</th>
-                        <th className="p-3 font-semibold text-right whitespace-nowrap">Kiddo (Qty/Amt)</th>
-                        <th className="p-3 font-semibold text-right whitespace-nowrap">VIP (Qty/Amt)</th>
-                        <th className="p-3 font-semibold text-right whitespace-nowrap">Total (Qty / Amt BDT)</th>
+                        <th className="p-3 font-semibold">Personnel Name</th>
+                        <th className="p-3 font-semibold text-right">Xtreme (Qty/Amt)</th>
+                        <th className="p-3 font-semibold text-right">Kiddo (Qty/Amt)</th>
+                        <th className="p-3 font-semibold text-right">VIP (Qty/Amt)</th>
+                        <th className="p-3 font-semibold text-right">Other Amt</th>
+                        <th className="p-3 font-semibold text-right">Total (Qty/Amt)</th>
                         </tr>
                     </thead>
                     <tbody>
                         {ticketSalesPersonnel.sort((a,b) => a.name.localeCompare(b.name)).map((personnel, index) => {
                             const sales = aggregatedSalesByPersonnel.get(personnel.id);
                             const totalQty = sales ? (sales.xtremeQty || 0) + (sales.kiddoQty || 0) + (sales.vipQty || 0) : 0;
-                            const totalAmount = sales ? (sales.xtremeAmount || 0) + (sales.kiddoAmount || 0) + (sales.vipAmount || 0) : 0;
+                            const totalAmount = sales ? (sales.xtremeAmount || 0) + (sales.kiddoAmount || 0) + (sales.vipAmount || 0) + (sales.otherAmount || 0) : 0;
                             return (
                                 <tr key={personnel.id} className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-800/50'} border-t border-gray-700`}>
                                     <td className="p-3 font-medium">{personnel.name}</td>
-                                    <td className="p-3 text-right text-gray-300 tabular-nums whitespace-nowrap">
+                                    <td className="p-3 text-right text-gray-300 tabular-nums">
                                         {sales ? `${sales.xtremeQty.toLocaleString()} / ${sales.xtremeAmount.toLocaleString()}` : '0 / 0'}
                                     </td>
-                                    <td className="p-3 text-right text-gray-300 tabular-nums whitespace-nowrap">
+                                    <td className="p-3 text-right text-gray-300 tabular-nums">
                                         {sales ? `${sales.kiddoQty.toLocaleString()} / ${sales.kiddoAmount.toLocaleString()}` : '0 / 0'}
                                     </td>
-                                    <td className="p-3 text-right text-gray-300 tabular-nums whitespace-nowrap">
+                                    <td className="p-3 text-right text-gray-300 tabular-nums">
                                         {sales ? `${sales.vipQty.toLocaleString()} / ${sales.vipAmount.toLocaleString()}` : '0 / 0'}
+                                    </td>
+                                     <td className="p-3 text-right text-gray-300 tabular-nums">
+                                        {sales ? sales.otherAmount.toLocaleString() : '0'}
                                     </td>
                                     <td className="p-3 text-right font-bold text-lg text-teal-400 tabular-nums whitespace-nowrap">
                                         {totalQty.toLocaleString()} / {totalAmount.toLocaleString()}
@@ -225,21 +239,24 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                         })}
                          {ticketSalesPersonnel.length === 0 && (
                             <tr>
-                                <td colSpan={5} className="text-center py-8 text-gray-500">No ticket sales personnel found.</td>
+                                <td colSpan={6} className="text-center py-8 text-gray-500">No ticket sales personnel found.</td>
                             </tr>
                          )}
                     </tbody>
                     <tfoot className="bg-gray-700/50 border-t-2 border-teal-500">
                         <tr>
                             <td className="p-3 font-bold text-lg">TOTAL</td>
-                             <td className="p-3 text-right font-bold tabular-nums whitespace-nowrap">
+                             <td className="p-3 text-right font-bold tabular-nums">
                                 {rangeTotals.xtremeQty.toLocaleString()} / {rangeTotals.xtremeAmount.toLocaleString()}
                             </td>
-                             <td className="p-3 text-right font-bold tabular-nums whitespace-nowrap">
+                             <td className="p-3 text-right font-bold tabular-nums">
                                 {rangeTotals.kiddoQty.toLocaleString()} / {rangeTotals.kiddoAmount.toLocaleString()}
                             </td>
-                             <td className="p-3 text-right font-bold tabular-nums whitespace-nowrap">
+                             <td className="p-3 text-right font-bold tabular-nums">
                                 {rangeTotals.vipQty.toLocaleString()} / {rangeTotals.vipAmount.toLocaleString()}
+                            </td>
+                             <td className="p-3 text-right font-bold tabular-nums">
+                                {rangeTotals.otherAmount.toLocaleString()}
                             </td>
                             <td className="p-3 text-right font-bold text-xl text-teal-300 tabular-nums whitespace-nowrap">
                                 {rangeTotals.totalQty.toLocaleString()} / {rangeTotals.totalAmount.toLocaleString()}

@@ -67,4 +67,5 @@ export interface PackageSalesRecord {
   kiddoAmount: number;
   vipQty: number;
   vipAmount: number;
+  otherAmount: number;
 }
