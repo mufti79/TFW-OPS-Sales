@@ -74,28 +74,34 @@ type FirebaseObject<T extends { id: number }> = Record<number, Omit<T, 'id'>>;
 
 const AppContent: React.FC = () => {
     const { role, currentUser, login, logout } = useAuth();
+    
+    // On app load, check if a session reset is required from a daily rollover.
+    // This is the most reliable way to ensure a clean state after a new day starts.
+    useEffect(() => {
+        if (window.localStorage.getItem('TFW_SESSION_EXPIRED') === 'true') {
+            window.localStorage.removeItem('TFW_SESSION_EXPIRED');
+            logout();
+        }
+    }, [logout]);
+    
     const { showNotification } = useNotification();
     const [today, setToday] = useState(() => new Date().toISOString().split('T')[0]);
     const [isCheckinAllowed, setIsCheckinAllowed] = useState(true);
 
-    // Effect to manage daily and time-based state updates
+    // Effect to detect a new day and trigger a reset
     useEffect(() => {
         const checkTime = () => {
             const now = new Date();
-            const hour = now.getHours();
             const newToday = now.toISOString().split('T')[0];
             
             if (newToday !== today) {
-                // A new day has started. Force a session reset.
-                showNotification("A new day has started. Please log in again for your daily check-in.", 'info', 5000);
-                setTimeout(() => {
-                    logout(); // This will clear auth state and redirect to the login screen.
-                }, 3000); // Give the user time to read the message.
-                // Update today state immediately to reflect the change, which will also trigger other date sync effects.
-                setToday(newToday);
+                // A new day has started. Set a flag and force a reload.
+                // The logic above will handle the logout after the reload.
+                window.localStorage.setItem('TFW_SESSION_EXPIRED', 'true');
+                window.location.reload();
             } else {
-                 // Check-in is allowed from 12 AM (0) up to 10 PM (before 22:00).
-                setIsCheckinAllowed(hour < 22);
+                 // Same day, just update the check-in window status
+                setIsCheckinAllowed(now.getHours() < 22);
             }
         };
 
@@ -113,7 +119,7 @@ const AppContent: React.FC = () => {
             clearInterval(intervalId);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [today, logout, showNotification]);
+    }, [today]);
 
     const getInitialViewForRole = useCallback((r: Role): View => {
         if (r === 'admin' || r === 'operation-officer') {
@@ -369,27 +375,14 @@ const AppContent: React.FC = () => {
     const handleClockIn = useCallback((attendedBriefing: boolean, briefingTime: string | null) => {
         if (!currentUser || !isFirebaseConfigured) return;
 
-        const clockInDate = new Date().toISOString().split('T')[0]; // Always use fresh date for this action
+        const clockInDate = new Date().toISOString().split('T')[0];
         const userAtClockIn = currentUser; 
     
         database.ref(`data/attendance/${clockInDate}/${userAtClockIn.id}`).set({ attendedBriefing, briefingTime })
             .then(() => {
                 logAction('ATTENDANCE_CHECKIN', `${userAtClockIn.name} checked in. Briefing: ${attendedBriefing ? 'Yes' : 'No'}.`);
-                showNotification("Check-in successful! You will now be logged out.", 'success');
-                
-                // Use a robust timeout that manually logs the action and then logs out, preventing stale data issues.
-                setTimeout(() => {
-                    const newId = Date.now();
-                    const newRecord = {
-                        timestamp: new Date().toISOString(), 
-                        user: userAtClockIn.name,
-                        action: 'LOGOUT', 
-                        details: `${userAtClockIn.name} automatically logged out after check-in.`
-                    };
-                    database.ref(`data/historyLog/${newId}`).set(newRecord).finally(() => {
-                        logout();
-                    });
-                }, 2000);
+                showNotification("Check-in successful! Please log in again to view your roster.", 'success', 5000);
+                setTimeout(logout, 1000); // Log out after a short delay to let user see message
             })
             .catch(error => {
                 console.error("Firebase check-in failed:", error);
