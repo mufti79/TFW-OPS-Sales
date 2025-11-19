@@ -127,7 +127,8 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
           operatorNames.forEach(name => {
               const opId = operatorNameMap.get(name);
               if (opId) {
-                  operatorIds.push(opId);
+                  // FIX: Argument of type 'unknown' is not assignable to parameter of type 'number'.
+                  operatorIds.push(opId as number);
               } else {
                   errors.push(`Row ${index + 2}: Operator "${name}" not found.`);
               }

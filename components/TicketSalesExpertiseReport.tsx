@@ -48,8 +48,8 @@ const TicketSalesExpertiseReport: React.FC<TicketSalesExpertiseReportProps> = ({
         let counterDetails: { name: string; count: number }[] = [];
         if (counterCounts) {
             counterDetails = Array.from(counterCounts.entries())
+                // FIX: Explicitly typing the [counterId, count] parameters in the map function ensures `counterId` is a string, fixing the type error.
                 .map(([counterId, count]: [string, number]) => {
-                    // FIX: Explicitly typing the [counterId, count] parameters in the map function ensures `counterId` is a string, fixing the type error.
                     const name: string = counterIdToNameMap.get(counterId) || 'Unknown Counter';
                     return {
                         name,

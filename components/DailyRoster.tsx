@@ -37,18 +37,14 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
   const { assignmentsByOperator, unassignedRides, operatorsWithAttendance, presentCount, absentCount } = useMemo(() => {
     // FIX: Use a more specific type to handle both legacy and current data formats correctly.
-    const assignmentsToday: Record<string, number[] | number> = dailyAssignments[selectedDate] || {};
+    const assignmentsToday = dailyAssignments[selectedDate] || {};
     const rideMap = new Map<string, RideWithCount>(rides.map(r => [r.id.toString(), r]));
     
     const assignmentsByOperator = new Map<number, RideWithCount[]>();
     const assignedRideIds = new Set<string>();
 
     // FIX: Replaced for...in loop with Object.entries to ensure rideId is correctly typed as string.
-    for (const [rideId, operatorIdValue] of Object.entries(assignmentsToday)) {
-        // FIX: Cast to 'any' to robustly handle legacy data that may be a single number instead of an array, preventing downstream type errors.
-        const operatorIdValueCasted = operatorIdValue as any;
-        // This logic correctly handles both old (number) and new (number[]) data formats.
-        const operatorIds = Array.isArray(operatorIdValueCasted) ? operatorIdValueCasted : [operatorIdValueCasted];
+    for (const [rideId, operatorIds] of Object.entries(assignmentsToday)) {
         const ride = rideMap.get(rideId);
         if (ride) {
           operatorIds.forEach((operatorId: number) => {

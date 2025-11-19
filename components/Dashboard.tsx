@@ -116,6 +116,32 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
       link.click();
       document.body.removeChild(link);
   };
+  
+  const handleDownloadAwaitingCount = () => {
+    if (dashboardData.ridesAwaitingCount.length === 0) {
+        alert("No data to download.");
+        return;
+    }
+
+    const headers = ['Ride Name', 'Floor', 'Assigned Operators'];
+    
+    const rows = dashboardData.ridesAwaitingCount.map(ride => {
+        const rideName = `"${ride.name.replace(/"/g, '""')}"`;
+        const floor = `"${ride.floor.replace(/"/g, '""')}"`;
+        const operators = `"${ride.operatorNames.join(', ').replace(/"/g, '""')}"`;
+        return [rideName, floor, operators].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `TFW_Awaiting_Guest_Counts_${selectedDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
 
   return (
@@ -184,7 +210,17 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
             </div>
              {/* G&R Awaiting Guest Count */}
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <h2 className="text-xl font-bold mb-4 text-yellow-400">G&R Awaiting Guest Count ({dashboardData.ridesAwaitingCount.length})</h2>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold text-yellow-400">G&R Awaiting Guest Count ({dashboardData.ridesAwaitingCount.length})</h2>
+                    {dashboardData.ridesAwaitingCount.length > 0 && (
+                        <button
+                            onClick={handleDownloadAwaitingCount}
+                            className="px-3 py-1 bg-green-700 text-white font-semibold rounded-md text-xs hover:bg-green-600"
+                        >
+                            Download List
+                        </button>
+                    )}
+                </div>
                 {dashboardData.ridesAwaitingCount.length > 0 ? (
                     <ul className="space-y-3 max-h-60 overflow-y-auto pr-2">
                         {dashboardData.ridesAwaitingCount.map(ride => (

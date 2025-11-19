@@ -125,7 +125,8 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
           personnelNames.forEach(name => {
               const pId = personnelNameMap.get(name);
               if (pId) {
-                  personnelIds.push(pId);
+                  // FIX: Argument of type 'unknown' is not assignable to parameter of type 'number'.
+                  personnelIds.push(pId as number);
               } else {
                   errors.push(`Row ${index + 2}: Personnel "${name}" not found.`);
               }
