@@ -32,12 +32,28 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
         .slice(0, 5);
         
     const assignmentsToday = dailyAssignments[selectedDate] || {};
+    const operatorMap = new Map(operators.map(op => [op.id, op.name]));
+    
     const assignedRideIds = new Set(Object.keys(assignmentsToday));
     const unassignedRides = ridesWithCounts
         .filter(r => !assignedRideIds.has(r.id.toString()))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-    return { totalGuests, activeRides, presentCount, topRides, presentOperators, absentOperators, unassignedRides };
+    const ridesAwaitingCount = ridesWithCounts
+        .filter(ride => ride.count === 0 && assignmentsToday[ride.id])
+        .map(ride => {
+            const operatorIds = assignmentsToday[ride.id] || [];
+            const operatorNames = operatorIds
+                .map(id => operatorMap.get(id))
+                .filter(Boolean) as string[];
+            return {
+                ...ride,
+                operatorNames,
+            };
+        })
+        .sort((a,b) => a.name.localeCompare(b.name));
+
+    return { totalGuests, activeRides, presentCount, topRides, presentOperators, absentOperators, unassignedRides, ridesAwaitingCount };
   }, [ridesWithCounts, operators, attendance, selectedDate, dailyAssignments]);
 
   const [year, month, day] = selectedDate.split('-').map(Number);
@@ -165,6 +181,24 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
                         )}
                     </div>
                 </div>
+            </div>
+             {/* G&R Awaiting Guest Count */}
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <h2 className="text-xl font-bold mb-4 text-yellow-400">G&R Awaiting Guest Count ({dashboardData.ridesAwaitingCount.length})</h2>
+                {dashboardData.ridesAwaitingCount.length > 0 ? (
+                    <ul className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                        {dashboardData.ridesAwaitingCount.map(ride => (
+                            <li key={ride.id} className="p-3 bg-gray-700/50 rounded-md">
+                                <p className="font-semibold text-gray-200">{ride.name}</p>
+                                <p className="text-xs text-gray-400">
+                                    Assigned: <span className="font-medium text-gray-300">{ride.operatorNames.join(', ')}</span>
+                                </p>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-gray-500 text-center py-8">All active rides are reporting guest counts.</p>
+                )}
             </div>
         </div>
 

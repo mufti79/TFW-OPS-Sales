@@ -134,8 +134,8 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
           if (personnelIds.length > 0) {
             newAssignments[String(counterId)] = [...(newAssignments[String(counterId)] || []), ...personnelIds];
             // Remove duplicates
-            // FIX: Replaced spread syntax with Array.from() for better type stability when creating an array from a Set, resolving an "unknown is not assignable to number" error.
-            newAssignments[String(counterId)] = Array.from(new Set(newAssignments[String(counterId)]));
+            // FIX: Explicitly providing the generic type to `new Set` ensures TypeScript correctly infers the array elements as numbers, resolving a type error.
+            newAssignments[String(counterId)] = Array.from(new Set<number>(newAssignments[String(counterId)]));
             successCount++;
           }
         });

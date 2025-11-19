@@ -43,15 +43,15 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     const assignmentsByOperator = new Map<number, RideWithCount[]>();
     const assignedRideIds = new Set<string>();
 
-    for (const rideId in assignmentsToday) {
-      if (Object.prototype.hasOwnProperty.call(assignmentsToday, rideId)) {
+    // FIX: Replaced for...in loop with Object.entries to ensure rideId is correctly typed as string.
+    for (const [rideId, operatorIdValue] of Object.entries(assignmentsToday)) {
         // FIX: Cast to 'any' to robustly handle legacy data that may be a single number instead of an array, preventing downstream type errors.
-        const operatorIdValue = assignmentsToday[rideId] as any;
+        const operatorIdValueCasted = operatorIdValue as any;
         // This logic correctly handles both old (number) and new (number[]) data formats.
-        const operatorIds = Array.isArray(operatorIdValue) ? operatorIdValue : [operatorIdValue];
+        const operatorIds = Array.isArray(operatorIdValueCasted) ? operatorIdValueCasted : [operatorIdValueCasted];
         const ride = rideMap.get(rideId);
         if (ride) {
-          operatorIds.forEach(operatorId => {
+          operatorIds.forEach((operatorId: number) => {
             const operatorRides = assignmentsByOperator.get(operatorId);
             if (operatorRides) {
               operatorRides.push(ride);
@@ -61,7 +61,6 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
           });
           assignedRideIds.add(rideId);
         }
-      }
     }
     
     for (const rideList of assignmentsByOperator.values()) {
