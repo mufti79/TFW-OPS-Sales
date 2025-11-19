@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Ride, Operator, AttendanceRecord, RideWithCount } from '../types';
 import { Role } from '../hooks/useAuth';
@@ -11,7 +10,7 @@ type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 interface DailyRosterProps {
   rides: RideWithCount[];
   operators: Operator[];
-  dailyAssignments: Record<string, Record<string, number>>;
+  dailyAssignments: Record<string, Record<string, number[]>>;
   selectedDate: string;
   onDateChange: (date: string) => void;
   role: Exclude<Role, null>;
@@ -37,22 +36,31 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   };
 
   const { assignmentsByOperator, unassignedRides, operatorsWithAttendance, presentCount, absentCount } = useMemo(() => {
-    const assignmentsToday: Record<string, number> = dailyAssignments[selectedDate] || {};
+    // FIX: Use a more specific type to handle both legacy and current data formats correctly.
+    const assignmentsToday: Record<string, number[] | number> = dailyAssignments[selectedDate] || {};
     const rideMap = new Map<string, RideWithCount>(rides.map(r => [r.id.toString(), r]));
     
     const assignmentsByOperator = new Map<number, RideWithCount[]>();
     const assignedRideIds = new Set<string>();
 
-    for (const [rideId, operatorId] of Object.entries(assignmentsToday)) {
-      const ride = rideMap.get(rideId);
-      if (ride) {
-        const operatorRides = assignmentsByOperator.get(operatorId);
-        if (operatorRides) {
-          operatorRides.push(ride);
-        } else {
-          assignmentsByOperator.set(operatorId, [ride]);
+    for (const rideId in assignmentsToday) {
+      if (Object.prototype.hasOwnProperty.call(assignmentsToday, rideId)) {
+        // FIX: Cast to 'any' to robustly handle legacy data that may be a single number instead of an array, preventing downstream type errors.
+        const operatorIdValue = assignmentsToday[rideId] as any;
+        // This logic correctly handles both old (number) and new (number[]) data formats.
+        const operatorIds = Array.isArray(operatorIdValue) ? operatorIdValue : [operatorIdValue];
+        const ride = rideMap.get(rideId);
+        if (ride) {
+          operatorIds.forEach(operatorId => {
+            const operatorRides = assignmentsByOperator.get(operatorId);
+            if (operatorRides) {
+              operatorRides.push(ride);
+            } else {
+              assignmentsByOperator.set(operatorId, [ride]);
+            }
+          });
+          assignedRideIds.add(rideId);
         }
-        assignedRideIds.add(rideId);
       }
     }
     
@@ -97,10 +105,11 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     const operatedRidesCount = new Map<string, number>();
 
     for (const dayAssignments of Object.values(dailyAssignments)) {
-        for (const rideId of Object.keys(dayAssignments)) {
-            const operatorId = dayAssignments[rideId];
-            if (operatorId === currentUser.id) {
-                const rideName = rideIdToNameMap.get(rideId) as string | undefined;
+        for (const [rideId, operatorIdValueUntyped] of Object.entries(dayAssignments)) {
+            const operatorIdValue = operatorIdValueUntyped as any;
+            const operatorIds = Array.isArray(operatorIdValue) ? operatorIdValue : [operatorIdValue];
+            if (operatorIds.includes(currentUser.id)) {
+                const rideName = rideIdToNameMap.get(rideId);
                 if (rideName) {
                     operatedRidesCount.set(rideName, (operatedRidesCount.get(rideName) || 0) + 1);
                 }

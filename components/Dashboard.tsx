@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { RideWithCount, Operator, AttendanceRecord, HistoryRecord } from '../types';
 
@@ -12,7 +11,8 @@ interface DashboardProps {
   onNavigate: (view: View) => void;
   selectedDate: string;
   onDateChange: (date: string) => void;
-  dailyAssignments: Record<string, Record<string, number>>;
+  // FIX: Corrected the type to expect an array of numbers for assignments.
+  dailyAssignments: Record<string, Record<string, number[]>>;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, attendance, historyLog, onNavigate, selectedDate, onDateChange, dailyAssignments }) => {

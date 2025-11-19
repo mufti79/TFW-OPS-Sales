@@ -8,14 +8,15 @@ declare var XLSX: any;
 interface TicketSalesAssignmentViewProps {
   counters: Counter[];
   ticketSalesPersonnel: Operator[];
-  dailyAssignments: Record<string, Record<string, number>>;
-  onSave: (date: string, assignments: Record<string, number>) => void;
+  dailyAssignments: Record<string, Record<string, number[]>>;
+  onSave: (date: string, assignments: Record<string, number[]>) => void;
   selectedDate: string;
   attendance: AttendanceRecord[];
 }
 
 const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, onSave, selectedDate, attendance }) => {
-  const [assignments, setAssignments] = useState<Record<string, number>>({});
+  const [assignments, setAssignments] = useState<Record<string, number[]>>({});
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showNotification } = useNotification();
   
@@ -25,11 +26,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
 
   const isDirty = useMemo(() => {
     const currentRemoteAssignments = dailyAssignments[selectedDate] || {};
-    // Compare keys and values to see if they are different
-    const localKeys = Object.keys(assignments);
-    const remoteKeys = Object.keys(currentRemoteAssignments);
-    if (localKeys.length !== remoteKeys.length) return true;
-    return localKeys.some(key => assignments[key] !== currentRemoteAssignments[key]);
+    return JSON.stringify(assignments) !== JSON.stringify(currentRemoteAssignments);
   }, [assignments, dailyAssignments, selectedDate]);
 
   useEffect(() => {
@@ -53,13 +50,25 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
     return statusMap;
   }, [attendance, selectedDate, ticketSalesPersonnel]);
 
-  const handleAssignmentChange = (counterId: number, operatorId: number) => {
+  const handleAssignmentChange = (counterId: number, personnelId: number) => {
     setAssignments(prev => {
         const newAssignments = {...prev};
-        if (operatorId) {
-            newAssignments[counterId] = operatorId;
+        const currentAssignedValue = newAssignments[counterId];
+        const currentAssigned = Array.isArray(currentAssignedValue) ? currentAssignedValue : currentAssignedValue ? [currentAssignedValue] : [];
+        
+        const isAssigned = currentAssigned.includes(personnelId);
+        
+        let updatedAssigned: number[];
+        if (isAssigned) {
+            updatedAssigned = currentAssigned.filter(id => id !== personnelId);
         } else {
-            delete newAssignments[counterId]; // Handle 'Unassigned'
+            updatedAssigned = [...currentAssigned, personnelId];
+        }
+
+        if (updatedAssigned.length > 0) {
+            newAssignments[counterId] = updatedAssigned;
+        } else {
+            delete newAssignments[counterId];
         }
         return newAssignments;
     });
@@ -86,7 +95,6 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        // Expecting [Counter Name, Personnel Name]
         const json: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
         const counterNameMap = new Map(counters.map(c => [c.name.toLowerCase(), c.id]));
@@ -94,35 +102,51 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
 
         let successCount = 0;
         const errors: string[] = [];
-        const newAssignments = { ...assignments };
+        // FIX: Explicitly type `newAssignments` to prevent type-widening issues downstream.
+        const newAssignments: Record<string, number[]> = { ...assignments };
 
         const dataRows = json.slice(1);
 
         dataRows.forEach((row, index) => {
           const counterName = String(row[0] ?? '').trim().toLowerCase();
-          const personnelName = String(row[1] ?? '').trim().toLowerCase();
+          const personnelNamesStr = String(row[1] ?? '').trim();
 
-          if (!counterName || !personnelName) return; 
+          if (!counterName || !personnelNamesStr) return; 
 
           const counterId = counterNameMap.get(counterName);
-          const personnelId = personnelNameMap.get(personnelName);
+          if (!counterId) {
+            errors.push(`Row ${index + 2}: Counter "${String(row[0])}" not found.`);
+            return;
+          }
 
-          if (counterId && personnelId) {
-            newAssignments[String(counterId)] = personnelId;
+          const personnelNames = personnelNamesStr.split(',').map(name => name.trim().toLowerCase());
+          const personnelIds: number[] = [];
+          
+          personnelNames.forEach(name => {
+              const pId = personnelNameMap.get(name);
+              if (pId) {
+                  personnelIds.push(pId);
+              } else {
+                  errors.push(`Row ${index + 2}: Personnel "${name}" not found.`);
+              }
+          });
+          
+          if (personnelIds.length > 0) {
+            newAssignments[String(counterId)] = [...(newAssignments[String(counterId)] || []), ...personnelIds];
+            // Remove duplicates
+            // FIX: Replaced spread syntax with Array.from() for better type stability when creating an array from a Set, resolving an "unknown is not assignable to number" error.
+            newAssignments[String(counterId)] = Array.from(new Set(newAssignments[String(counterId)]));
             successCount++;
-          } else {
-            if (!counterId) errors.push(`Row ${index + 2}: Counter "${String(row[0])}" not found.`);
-            if (!personnelId) errors.push(`Row ${index + 2}: Personnel "${String(row[1])}" not found.`);
           }
         });
 
         setAssignments(newAssignments);
 
         if (errors.length > 0) {
-            showNotification(`${successCount} assignments imported, but ${errors.length} errors occurred.`, 'warning', 8000);
+            showNotification(`${successCount} assignment rows processed, but with errors. Check console.`, 'warning', 8000);
             console.warn("Import errors:", errors);
         } else {
-            showNotification(`${successCount} assignments imported successfully!`, 'success');
+            showNotification(`${successCount} assignment rows processed successfully!`, 'success');
         }
 
       } catch (error) {
@@ -175,32 +199,50 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
         {ticketSalesPersonnel.length > 0 ? (
           <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
             <div className="p-4 bg-gray-700/50 text-gray-300">
-                <p>Assign personnel below, or use the "Import" button to upload an Excel/CSV file.</p>
-                <p className="text-sm text-gray-400">The file should have two columns: Counter Name and Personnel Name.</p>
+                <p>Assign one or more personnel below, or use the "Import" button to upload an Excel/CSV file.</p>
+                <p className="text-sm text-gray-400">In Excel, the file should have two columns: Counter Name and Personnel Name(s). You can list multiple names in the second column separated by a comma.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">
-                {counters.map((counter) => (
-                    <div key={counter.id} className="p-4 bg-gray-800">
-                        <h3 className="font-bold text-lg">{counter.name}</h3>
-                        <p className="text-sm text-gray-400 mb-2">{counter.location}</p>
-                        <select
-                            value={assignments[counter.id] || ''}
-                            onChange={(e) => handleAssignmentChange(counter.id, parseInt(e.target.value, 10))}
-                            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
-                        >
-                            <option value="">Unassigned</option>
-                            {ticketSalesPersonnel.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
-                                const isPresent = attendanceStatusMap.get(op.id);
-                                const statusLabel = isPresent ? '(P)' : '(A)';
-                                return (
-                                    <option key={op.id} value={op.id}>
-                                        {op.name} {statusLabel}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    </div>
-                ))}
+                {counters.map((counter) => {
+                    const rawAssignment = assignments[counter.id];
+                    const assignedPersonnelIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
+                    const personnelIdMap = new Map(ticketSalesPersonnel.map(op => [op.id, op.name]));
+                    const assignedNames = assignedPersonnelIds.map(id => personnelIdMap.get(id)).filter(Boolean).join(', ');
+
+                    return (
+                        <div key={counter.id} className="p-4 bg-gray-800">
+                            <h3 className="font-bold text-lg">{counter.name}</h3>
+                            <p className="text-sm text-gray-400 mb-2">{counter.location}</p>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setOpenDropdownId(openDropdownId === counter.id ? null : counter.id)}
+                                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-left truncate"
+                                >
+                                    {assignedNames || <span className="text-gray-500">Unassigned</span>}
+                                </button>
+                                {openDropdownId === counter.id && (
+                                    <div className="absolute z-10 mt-1 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                        {ticketSalesPersonnel.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
+                                            const isPresent = attendanceStatusMap.get(op.id);
+                                            const statusLabel = isPresent ? '(P)' : '(A)';
+                                            return (
+                                                <label key={op.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={assignedPersonnelIds.includes(op.id)}
+                                                        onChange={() => handleAssignmentChange(counter.id, op.id)}
+                                                        className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-teal-600 focus:ring-teal-500"
+                                                    />
+                                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
           </div>
         ) : (

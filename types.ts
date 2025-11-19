@@ -46,18 +46,6 @@ export interface HistoryRecord {
   details: string;
 }
 
-export interface HandoverRecord {
-  id: number; // timestamp for unique key
-  date: string; // YYYY-MM-DD
-  timestamp: string; // ISO string for precise time
-  counterId: number;
-  fromPersonnelId: number;
-  fromPersonnelName: string;
-  toPersonnelId: number;
-  toPersonnelName: string;
-  assignerName: string;
-}
-
 export interface PackageSalesRecord {
   date: string; // YYYY-MM-DD
   personnelId: number;

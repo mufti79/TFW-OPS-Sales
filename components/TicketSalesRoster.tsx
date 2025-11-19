@@ -1,25 +1,25 @@
 
 
-import React, { useMemo, useState } from 'react';
-import { Counter, Operator, AttendanceRecord, HandoverRecord } from '../types';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Counter, Operator, AttendanceRecord } from '../types';
 import { Role } from '../hooks/useAuth';
 import BriefingCheckin from './BriefingCheckin';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster';
 
-// Re-assignment Modal Component
-interface ReassignModalProps {
+// Manage Assignments Modal Component
+interface ManageAssignmentsModalProps {
     counter: Counter;
-    currentPersonnel: Operator;
     allPersonnel: Operator[];
+    assignedPersonnelIds: number[];
     onClose: () => void;
-    onReassign: (counterId: number, newPersonnelId: number) => void;
+    onSave: (counterId: number, newPersonnelIds: number[]) => void;
     attendance: AttendanceRecord[];
     selectedDate: string;
 }
 
-const ReassignModal: React.FC<ReassignModalProps> = ({ counter, currentPersonnel, allPersonnel, onClose, onReassign, attendance, selectedDate }) => {
-    const [selectedPersonnelId, setSelectedPersonnelId] = useState<string>('');
+const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter, allPersonnel, assignedPersonnelIds, onClose, onSave, attendance, selectedDate }) => {
+    const [selectedIds, setSelectedIds] = useState<number[]>(assignedPersonnelIds);
     
     const attendanceStatusMap = useMemo(() => {
         const statusMap = new Map<number, boolean>();
@@ -29,25 +29,26 @@ const ReassignModal: React.FC<ReassignModalProps> = ({ counter, currentPersonnel
         return statusMap;
     }, [attendance, selectedDate]);
       
-    const availablePersonnel = useMemo(() => {
-        return allPersonnel
-            .filter(p => p.id !== currentPersonnel.id)
-            .sort((a, b) => a.name.localeCompare(b.name));
-    }, [allPersonnel, currentPersonnel.id]);
+    const handleToggle = (personnelId: number) => {
+        setSelectedIds(prev => 
+            prev.includes(personnelId) 
+            ? prev.filter(id => id !== personnelId) 
+            : [...prev, personnelId]
+        );
+    };
 
     const handleConfirm = () => {
-        if (selectedPersonnelId) {
-            onReassign(counter.id, parseInt(selectedPersonnelId, 10));
-        }
+        onSave(counter.id, selectedIds);
+        onClose();
     };
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 animate-fade-in-up">
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 animate-fade-in-up flex flex-col">
                 <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-100">Handover / Re-assign</h2>
+                            <h2 className="text-2xl font-bold text-gray-100">Manage Assignments</h2>
                             <p className="text-teal-400 font-semibold">{counter.name}</p>
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
@@ -55,39 +56,35 @@ const ReassignModal: React.FC<ReassignModalProps> = ({ counter, currentPersonnel
                         </button>
                     </div>
                     
-                    <div className="space-y-4">
-                        <p className="text-gray-400 text-sm">Currently assigned to: <span className="font-bold text-gray-200">{currentPersonnel.name}</span></p>
-                        <div>
-                            <label htmlFor="personnel-select" className="block text-sm font-medium text-gray-300 mb-2">Assign to:</label>
-                            <select
-                                id="personnel-select"
-                                value={selectedPersonnelId}
-                                onChange={(e) => setSelectedPersonnelId(e.target.value)}
-                                className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
-                            >
-                                <option value="">-- Select Personnel --</option>
-                                {availablePersonnel.map(p => {
-                                    const isPresent = attendanceStatusMap.get(p.id);
-                                    const statusLabel = isPresent ? '(P)' : '(A)';
-                                    return (
-                                        <option key={p.id} value={p.id}>{p.name} {statusLabel}</option>
-                                    );
-                                })}
-                            </select>
-                        </div>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Select personnel to assign:</label>
+                        {allPersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => {
+                            const isPresent = attendanceStatusMap.get(p.id);
+                            const statusLabel = isPresent ? '(P)' : '(A)';
+                            return (
+                                <label key={p.id} className="flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        checked={selectedIds.includes(p.id)}
+                                        onChange={() => handleToggle(p.id)}
+                                        className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-teal-600 focus:ring-teal-500"
+                                    />
+                                    <span className="ml-3 text-gray-300">{p.name} {statusLabel}</span>
+                                </label>
+                            );
+                        })}
                     </div>
                 </div>
                 
-                <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg">
+                <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg mt-auto">
                     <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 active:scale-95 transition-all">
                         Cancel
                     </button>
                     <button 
                         onClick={handleConfirm} 
-                        disabled={!selectedPersonnelId}
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all disabled:bg-gray-500 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all"
                     >
-                        Confirm Handover
+                        Save Assignments
                     </button>
                 </div>
             </div>
@@ -99,23 +96,22 @@ const ReassignModal: React.FC<ReassignModalProps> = ({ counter, currentPersonnel
 interface TicketSalesRosterProps {
   counters: Counter[];
   ticketSalesPersonnel: Operator[];
-  dailyAssignments: Record<string, Record<string, number>>;
+  dailyAssignments: Record<string, Record<string, number[]>>;
   selectedDate: string;
   onDateChange: (date: string) => void;
   role: Exclude<Role, null>;
   currentUser: Operator | null;
   attendance: AttendanceRecord[];
   onNavigate: (view: View) => void;
-  onReassign: (counterId: number, newPersonnelId: number) => void;
-  handovers: HandoverRecord[];
+  onSaveAssignments: (date: string, assignments: Record<string, number[]>) => void;
   hasCheckedInToday: boolean;
   onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
   isCheckinAllowed: boolean;
 }
 
-const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onReassign, handovers, hasCheckedInToday, onClockIn, isCheckinAllowed }) => {
+const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onSaveAssignments, hasCheckedInToday, onClockIn, isCheckinAllowed }) => {
   const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'present' | 'absent'>('all');
-  const [reassignModalInfo, setReassignModalInfo] = useState<{ counter: Counter; currentPersonnel: Operator } | null>(null);
+  const [manageModalInfo, setManageModalInfo] = useState<Counter | null>(null);
   
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
@@ -127,24 +123,28 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
       return `${h}:${minutes} ${ampm}`;
   };
 
-  const { assignmentsByPersonnel, unassignedCounters, personnelWithAttendance, presentCount, absentCount } = useMemo(() => {
-    const assignmentsToday: Record<string, number> = dailyAssignments[selectedDate] || {};
+  const { assignmentsByPersonnel, assignmentsByCounter, unassignedCounters, personnelWithAttendance, presentCount, absentCount } = useMemo(() => {
+    const assignmentsToday: Record<string, any> = dailyAssignments[selectedDate] || {};
     const counterMap = new Map(counters.map(c => [c.id.toString(), c]));
     
     const assignmentsByPersonnel = new Map<number, Counter[]>();
+    const assignmentsByCounter = new Map<number, number[]>();
     const assignedCounterIds = new Set<string>();
 
-    for (const [counterId, personnelId] of Object.entries(assignmentsToday)) {
-      const counter = counterMap.get(counterId);
-      if (counter) {
-        const personnelCounters = assignmentsByPersonnel.get(personnelId);
-        if (personnelCounters) {
-          personnelCounters.push(counter as Counter);
-        } else {
-          assignmentsByPersonnel.set(personnelId, [counter as Counter]);
+    for (const [counterIdStr, personnelIdValue] of Object.entries(assignmentsToday)) {
+        const counterId = Number(counterIdStr);
+        // FIX: Handle both old (number) and new (number[]) data formats
+        const personnelIds = Array.isArray(personnelIdValue) ? personnelIdValue : [personnelIdValue];
+        
+        assignmentsByCounter.set(counterId, personnelIds);
+        const counter = counterMap.get(counterIdStr);
+        if (counter) {
+            personnelIds.forEach(personnelId => {
+                const personnelCounters = assignmentsByPersonnel.get(personnelId) || [];
+                assignmentsByPersonnel.set(personnelId, [...personnelCounters, counter as Counter]);
+            });
+            assignedCounterIds.add(counterIdStr);
         }
-        assignedCounterIds.add(counterId);
-      }
     }
     
     for (const counterList of assignmentsByPersonnel.values()) {
@@ -173,22 +173,9 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
     const presentCount = personnelWithAttendance.filter(op => op.attendance).length;
     const absentCount = personnelWithAttendance.length - presentCount;
 
-    return { assignmentsByPersonnel, unassignedCounters, personnelWithAttendance, presentCount, absentCount };
+    return { assignmentsByPersonnel, assignmentsByCounter, unassignedCounters, personnelWithAttendance, presentCount, absentCount };
   }, [dailyAssignments, selectedDate, counters, ticketSalesPersonnel, attendance]);
 
-  const handoversByCounter = useMemo(() => {
-    const map = new Map<number, HandoverRecord[]>();
-    handovers
-        .filter(h => h.date === selectedDate)
-        .forEach(h => {
-            const existing = map.get(h.counterId) || [];
-            map.set(h.counterId, [...existing, h]);
-        });
-    for(const records of map.values()) {
-        records.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    }
-    return map;
-  }, [handovers, selectedDate]);
 
   const filteredPersonnel = useMemo(() => {
     const relevantPersonnel = (role === 'ticket-sales' && currentUser)
@@ -239,9 +226,15 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
     document.body.removeChild(link);
   };
   
-    const handleReassignConfirm = (counterId: number, newPersonnelId: number) => {
-        onReassign(counterId, newPersonnelId);
-        setReassignModalInfo(null);
+    const handleManageAssignmentsSave = (counterId: number, newPersonnelIds: number[]) => {
+        const currentAssignments = dailyAssignments[selectedDate] || {};
+        const updatedAssignments = {...currentAssignments};
+        if (newPersonnelIds.length > 0) {
+            updatedAssignments[counterId] = newPersonnelIds;
+        } else {
+            delete updatedAssignments[counterId];
+        }
+        onSaveAssignments(selectedDate, updatedAssignments);
     };
 
   const isRosterEmpty = personnelWithAttendance.length === 0;
@@ -390,30 +383,21 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
                                 <ul className="space-y-2 text-sm">
                                     {personnelAssignments && personnelAssignments.length > 0 ? (
                                         personnelAssignments.map(counter => {
-                                            const counterHandovers = handoversByCounter.get(counter.id);
-                                            const lastHandover = counterHandovers?.[0];
-                                            const isResultOfHandover = lastHandover && lastHandover.toPersonnelId === personnel.id;
-
                                             return (
                                                 <li key={counter.id} className="text-gray-300 bg-gray-700/50 p-2 rounded-md">
                                                     <div className="flex justify-between items-center">
                                                         <div>
                                                             {counter.name} <span className="text-xs text-gray-500">({counter.location})</span>
                                                         </div>
-                                                        {(isManager || currentUser?.id === personnel.id) && (
+                                                        {(isManager) && (
                                                             <button 
-                                                                onClick={() => setReassignModalInfo({ counter, currentPersonnel: personnel })}
+                                                                onClick={() => setManageModalInfo(counter)}
                                                                 className="px-2 py-1 text-xs bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 active:scale-95 transition-all"
                                                             >
-                                                                {isManager ? 'Re-assign' : 'Handover'}
+                                                                Manage
                                                             </button>
                                                         )}
                                                     </div>
-                                                    {isResultOfHandover && (
-                                                        <div className="text-xs text-gray-400 mt-1 pt-1 border-t border-gray-600/50">
-                                                            Taken over from <span className="font-semibold text-gray-300">{lastHandover.fromPersonnelName}</span> at {new Date(lastHandover.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                    )}
                                                 </li>
                                             );
                                         })
@@ -449,13 +433,13 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
             </>
         )}
 
-        {reassignModalInfo && (
-            <ReassignModal
-                counter={reassignModalInfo.counter}
-                currentPersonnel={reassignModalInfo.currentPersonnel}
+        {manageModalInfo && (
+            <ManageAssignmentsModal
+                counter={manageModalInfo}
                 allPersonnel={ticketSalesPersonnel}
-                onClose={() => setReassignModalInfo(null)}
-                onReassign={handleReassignConfirm}
+                assignedPersonnelIds={assignmentsByCounter.get(manageModalInfo.id) || []}
+                onClose={() => setManageModalInfo(null)}
+                onSave={handleManageAssignmentsSave}
                 attendance={attendance}
                 selectedDate={selectedDate}
             />

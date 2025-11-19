@@ -8,14 +8,15 @@ declare var XLSX: any;
 interface AssignmentViewProps {
   rides: Ride[];
   operators: Operator[];
-  dailyAssignments: Record<string, Record<string, number>>;
-  onSave: (date: string, assignments: Record<string, number>) => void;
+  dailyAssignments: Record<string, Record<string, number[]>>;
+  onSave: (date: string, assignments: Record<string, number[]>) => void;
   selectedDate: string;
   attendance: AttendanceRecord[];
 }
 
 const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, dailyAssignments, onSave, selectedDate, attendance }) => {
-  const [assignments, setAssignments] = useState<Record<string, number>>({});
+  const [assignments, setAssignments] = useState<Record<string, number[]>>({});
+  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showNotification } = useNotification();
   
@@ -26,11 +27,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
 
   const isDirty = useMemo(() => {
     const currentRemoteAssignments = dailyAssignments[selectedDate] || {};
-    // Compare keys and values to see if they are different
-    const localKeys = Object.keys(assignments);
-    const remoteKeys = Object.keys(currentRemoteAssignments);
-    if (localKeys.length !== remoteKeys.length) return true;
-    return localKeys.some(key => assignments[key] !== currentRemoteAssignments[key]);
+    return JSON.stringify(assignments) !== JSON.stringify(currentRemoteAssignments);
   }, [assignments, dailyAssignments, selectedDate]);
 
   // Prevent leaving with unsaved changes
@@ -58,10 +55,22 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   const handleAssignmentChange = (rideId: number, operatorId: number) => {
     setAssignments(prev => {
         const newAssignments = {...prev};
-        if(operatorId) {
-            newAssignments[rideId] = operatorId;
+        const currentAssignedValue = newAssignments[rideId];
+        const currentAssigned = Array.isArray(currentAssignedValue) ? currentAssignedValue : currentAssignedValue ? [currentAssignedValue] : [];
+        
+        const isAssigned = currentAssigned.includes(operatorId);
+        
+        let updatedAssigned: number[];
+        if (isAssigned) {
+            updatedAssigned = currentAssigned.filter(id => id !== operatorId);
         } else {
-            delete newAssignments[rideId]; // Handle 'Unassigned'
+            updatedAssigned = [...currentAssigned, operatorId];
+        }
+
+        if (updatedAssigned.length > 0) {
+            newAssignments[rideId] = updatedAssigned;
+        } else {
+            delete newAssignments[rideId];
         }
         return newAssignments;
     });
@@ -88,7 +97,6 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        // Expecting [Ride Name, Operator Name]
         const json: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
         const rideNameMap = new Map(rides.map(r => [r.name.toLowerCase(), r.id]));
@@ -96,41 +104,56 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
 
         let successCount = 0;
         const errors: string[] = [];
-        const newAssignments = { ...assignments };
+        // FIX: Explicitly type `newAssignments` to prevent type-widening issues downstream.
+        const newAssignments: Record<string, number[]> = { ...assignments };
 
-        // Start from row 1 to skip a potential header
         const dataRows = json.slice(1);
 
         dataRows.forEach((row, index) => {
           const rideName = String(row[0] ?? '').trim().toLowerCase();
-          const operatorName = String(row[1] ?? '').trim().toLowerCase();
-
-          if (!rideName || !operatorName) return; // Skip empty or incomplete rows
+          const operatorNamesStr = String(row[1] ?? '').trim();
+          
+          if (!rideName || !operatorNamesStr) return;
 
           const rideId = rideNameMap.get(rideName);
-          const operatorId = operatorNameMap.get(operatorName);
+          if (!rideId) {
+            errors.push(`Row ${index + 2}: Ride "${String(row[0])}" not found.`);
+            return;
+          }
 
-          if (rideId && operatorId) {
-            newAssignments[String(rideId)] = operatorId;
-            successCount++;
-          } else {
-            if (!rideId) errors.push(`Row ${index + 2}: Ride "${String(row[0])}" not found.`);
-            if (!operatorId) errors.push(`Row ${index + 2}: Operator "${String(row[1])}" not found.`);
+          const operatorNames = operatorNamesStr.split(',').map(name => name.trim().toLowerCase());
+          const operatorIds: number[] = [];
+          
+          operatorNames.forEach(name => {
+              const opId = operatorNameMap.get(name);
+              if (opId) {
+                  operatorIds.push(opId);
+              } else {
+                  errors.push(`Row ${index + 2}: Operator "${name}" not found.`);
+              }
+          });
+
+          if (operatorIds.length > 0) {
+              newAssignments[String(rideId)] = [...(newAssignments[String(rideId)] || []), ...operatorIds];
+              // Remove duplicates
+              // FIX: Replaced spread syntax with Array.from() for better type stability when creating an array from a Set, resolving an "unknown is not assignable to number" error.
+              newAssignments[String(rideId)] = Array.from(new Set(newAssignments[String(rideId)]));
+              successCount++;
           }
         });
 
         setAssignments(newAssignments);
 
         if (errors.length > 0) {
-          showNotification(`${successCount} assignments imported, but ${errors.length} errors occurred.`, 'warning', 8000);
+          showNotification(`${successCount} assignments imported, but with errors. Check console.`, 'warning', 8000);
           console.warn("Import errors:", errors);
         } else {
-          showNotification(`${successCount} assignments imported successfully!`, 'success');
+          showNotification(`${successCount} assignment rows processed successfully!`, 'success');
         }
 
       } catch (error) {
         console.error("Error parsing Excel file:", error);
-        showNotification("Failed to parse file. Please check format.", 'error');
+        showNotification("Failed to parse file. Check format.", 'error');
       } finally {
         if(fileInputRef.current) fileInputRef.current.value = '';
       }
@@ -178,32 +201,50 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         {operators.length > 0 ? (
           <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
             <div className="p-4 bg-gray-700/50 text-gray-300">
-                <p>Assign operators below, or use the "Import" button to upload an Excel/CSV file.</p>
-                <p className="text-sm text-gray-400">The file should have two columns: Ride Name and Operator Name.</p>
+                <p>Assign one or more operators below, or use the "Import" button to upload an Excel/CSV file.</p>
+                <p className="text-sm text-gray-400">In Excel, the file should have two columns: Ride Name and Operator Name(s). You can list multiple operators in the second column separated by a comma.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">
-                {rides.map((ride) => (
-                    <div key={ride.id} className="p-4 bg-gray-800">
-                        <h3 className="font-bold text-lg">{ride.name}</h3>
-                        <p className="text-sm text-gray-400 mb-2">{ride.floor} Floor</p>
-                        <select
-                            value={assignments[ride.id] || ''}
-                            onChange={(e) => handleAssignmentChange(ride.id, parseInt(e.target.value, 10))}
-                            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                        >
-                            <option value="">Unassigned</option>
-                            {operators.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
-                                const isPresent = attendanceStatusMap.get(op.id);
-                                const statusLabel = isPresent ? '(P)' : '(A)';
-                                return (
-                                    <option key={op.id} value={op.id}>
-                                        {op.name} {statusLabel}
-                                    </option>
-                                );
-                            })}
-                        </select>
-                    </div>
-                ))}
+                {rides.map((ride) => {
+                    const rawAssignment = assignments[ride.id];
+                    const assignedOperatorIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
+                    const operatorIdMap = new Map(operators.map(op => [op.id, op.name]));
+                    const assignedNames = assignedOperatorIds.map(id => operatorIdMap.get(id)).filter(Boolean).join(', ');
+
+                    return (
+                        <div key={ride.id} className="p-4 bg-gray-800">
+                            <h3 className="font-bold text-lg">{ride.name}</h3>
+                            <p className="text-sm text-gray-400 mb-2">{ride.floor} Floor</p>
+                            <div className="relative">
+                                <button
+                                    onClick={() => setOpenDropdownId(openDropdownId === ride.id ? null : ride.id)}
+                                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-left truncate"
+                                >
+                                    {assignedNames || <span className="text-gray-500">Unassigned</span>}
+                                </button>
+                                {openDropdownId === ride.id && (
+                                    <div className="absolute z-10 mt-1 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                        {operators.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
+                                            const isPresent = attendanceStatusMap.get(op.id);
+                                            const statusLabel = isPresent ? '(P)' : '(A)';
+                                            return (
+                                                <label key={op.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={assignedOperatorIds.includes(op.id)}
+                                                        onChange={() => handleAssignmentChange(ride.id, op.id)}
+                                                        className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-purple-600 focus:ring-purple-500"
+                                                    />
+                                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
           </div>
         ) : (

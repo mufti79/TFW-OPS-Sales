@@ -3,7 +3,7 @@ import { Operator, Ride } from '../types';
 
 interface ExpertiseReportProps {
   operators: Operator[];
-  dailyAssignments: Record<string, Record<string, number>>;
+  dailyAssignments: Record<string, Record<string, number[]>>;
   rides: Ride[];
 }
 
@@ -23,11 +23,16 @@ const ExpertiseReport: React.FC<ExpertiseReportProps> = ({ operators, dailyAssig
 
     // Populate the map with all unique ride IDs for each operator
     Object.values(dailyAssignments).forEach(dayAssignments => {
-      Object.entries(dayAssignments).forEach(([rideId, operatorId]) => {
-        if (!operatorRideMap.has(operatorId)) {
-          operatorRideMap.set(operatorId, new Set());
-        }
-        operatorRideMap.get(operatorId)!.add(rideId);
+      Object.entries(dayAssignments).forEach(([rideId, operatorIdValue]) => {
+        // FIX: Handle both old (number) and new (number[]) data formats by casting to `any`.
+        const operatorIdValueCasted = operatorIdValue as any;
+        const operatorIds = Array.isArray(operatorIdValueCasted) ? operatorIdValueCasted : [operatorIdValueCasted];
+        operatorIds.forEach((operatorId: number) => {
+            if (!operatorRideMap.has(operatorId)) {
+                operatorRideMap.set(operatorId, new Set());
+            }
+            operatorRideMap.get(operatorId)!.add(rideId);
+        });
       });
     });
 

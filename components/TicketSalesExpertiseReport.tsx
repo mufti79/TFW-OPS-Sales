@@ -1,10 +1,9 @@
-
 import React, { useMemo, useState } from 'react';
 import { Operator, Counter } from '../types';
 
 interface TicketSalesExpertiseReportProps {
   ticketSalesPersonnel: Operator[];
-  dailyAssignments: Record<string, Record<string, number>>;
+  dailyAssignments: Record<string, Record<string, number[]>>;
   counters: Counter[];
 }
 
@@ -25,15 +24,20 @@ const TicketSalesExpertiseReport: React.FC<TicketSalesExpertiseReportProps> = ({
 
     // Populate the map with assignment counts
     Object.values(dailyAssignments).forEach(dayAssignments => {
-      Object.entries(dayAssignments).forEach(([counterId, personnelId]) => {
-        // Ensure the personnel exists in the map
-        if (!personnelCounterMap.has(personnelId)) {
-          personnelCounterMap.set(personnelId, new Map());
-        }
-        const counterCounts = personnelCounterMap.get(personnelId)!;
-        
-        // Increment count for the specific counter
-        counterCounts.set(counterId, (counterCounts.get(counterId) || 0) + 1);
+      Object.entries(dayAssignments).forEach(([counterId, personnelIdValue]) => {
+        // FIX: Handle both old (number) and new (number[]) data formats by casting to `any`.
+        const personnelIdValueCasted = personnelIdValue as any;
+        const personnelIds = Array.isArray(personnelIdValueCasted) ? personnelIdValueCasted : [personnelIdValueCasted];
+        personnelIds.forEach((personnelId: number) => {
+            // Ensure the personnel exists in the map
+            if (!personnelCounterMap.has(personnelId)) {
+                personnelCounterMap.set(personnelId, new Map());
+            }
+            const counterCounts = personnelCounterMap.get(personnelId)!;
+            
+            // Increment count for the specific counter
+            counterCounts.set(counterId, (counterCounts.get(counterId) || 0) + 1);
+        });
       });
     });
 
@@ -44,12 +48,14 @@ const TicketSalesExpertiseReport: React.FC<TicketSalesExpertiseReportProps> = ({
         let counterDetails: { name: string; count: number }[] = [];
         if (counterCounts) {
             counterDetails = Array.from(counterCounts.entries())
-                .map(([counterId, count]) => ({
-                    // FIX: The result of `Map.get` was being inferred as `unknown`. Casting it to `string | undefined`
-                    // ensures TypeScript correctly handles the type, resolving the error.
-                    name: (counterIdToNameMap.get(counterId) as string | undefined) || 'Unknown Counter',
-                    count: count,
-                }))
+                .map(([counterId, count]: [string, number]) => {
+                    // FIX: Explicitly typing the [counterId, count] parameters in the map function ensures `counterId` is a string, fixing the type error.
+                    const name: string = counterIdToNameMap.get(counterId) || 'Unknown Counter';
+                    return {
+                        name,
+                        count: count,
+                    };
+                })
                 .sort((a, b) => b.count - a.count); // Sort by count descending
         }
         

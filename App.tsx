@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
-import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, HandoverRecord, PackageSalesRecord, AttendanceData } from './types';
+import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, PackageSalesRecord, AttendanceData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
@@ -155,11 +155,10 @@ const AppContent: React.FC = () => {
     const { data: operatorsData, setData: setOperatorsData, isLoading: l4 } = useFirebaseSync<FirebaseObject<Operator>>('config/operators', OPERATORS);
     const { data: ticketSalesPersonnelData, setData: setTicketSalesPersonnelData, isLoading: l5 } = useFirebaseSync<FirebaseObject<Operator>>('config/ticketSalesPersonnel', TICKET_SALES_PERSONNEL);
     const { data: countersData, setData: setCountersData, isLoading: l6 } = useFirebaseSync<FirebaseObject<Counter>>('config/counters', COUNTERS);
-    const { data: dailyAssignments, setData: setDailyAssignments, isLoading: l7 } = useFirebaseSync<Record<string, Record<string, number>>>('data/operatorAssignments', {});
-    const { data: ticketSalesAssignments, setData: setTicketSalesAssignments, isLoading: l8 } = useFirebaseSync<Record<string, Record<string, number>>>('data/ticketSalesAssignments', {});
+    const { data: dailyAssignments, setData: setDailyAssignments, isLoading: l7 } = useFirebaseSync<Record<string, Record<string, number[]>>>('data/operatorAssignments', {});
+    const { data: ticketSalesAssignments, setData: setTicketSalesAssignments, isLoading: l8 } = useFirebaseSync<Record<string, Record<string, number[]>>>('data/ticketSalesAssignments', {});
     const { data: attendanceData, setData: setAttendanceData, isLoading: l9 } = useFirebaseSync<AttendanceData>('data/attendance', {});
     const { data: historyLogData, setData: setHistoryLogData, isLoading: l10 } = useFirebaseSync<Record<number, Omit<HistoryRecord, 'id'>>>('data/historyLog', {});
-    const { data: handoversData, setData: setHandoversData, isLoading: l11 } = useFirebaseSync<Record<number, Omit<HandoverRecord, 'id'>>>('data/handovers', {});
     const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>>('data/packageSales', {});
     
     // Memoized arrays derived from Firebase objects for UI rendering
@@ -168,7 +167,6 @@ const AppContent: React.FC = () => {
     const ticketSalesPersonnel = useMemo<Operator[]>(() => ticketSalesPersonnelData ? Object.entries(ticketSalesPersonnelData).map(([id, p]) => ({ id: Number(id), ...p })) : TICKET_SALES_PERSONNEL_ARRAY, [ticketSalesPersonnelData]);
     const counters = useMemo<Counter[]>(() => countersData ? Object.entries(countersData).map(([id, c]) => ({ id: Number(id), ...c })) : COUNTERS_ARRAY, [countersData]);
     const historyLog = useMemo<HistoryRecord[]>(() => historyLogData ? Object.entries(historyLogData).map(([id, h]) => ({ id: Number(id), ...h })).sort((a,b) => b.id - a.id) : [], [historyLogData]);
-    const handovers = useMemo<HandoverRecord[]>(() => handoversData ? Object.entries(handoversData).map(([id, h]) => ({ id: Number(id), ...h })).sort((a,b) => b.id - a.id) : [], [handoversData]);
     const packageSales = useMemo<PackageSalesRecord[]>(() => {
         const sales: PackageSalesRecord[] = [];
         if (packageSalesData) {
@@ -189,7 +187,7 @@ const AppContent: React.FC = () => {
         'Ride Counts': l1, 'Ticket Sales': l2, 'Ride Configuration': l3,
         'Operator Roster': l4, 'Sales Personnel': l5, 'Counter Configuration': l6,
         'Operator Assignments': l7, 'Sales Assignments': l8, 'Attendance Records': l9,
-        'History Log': l10, 'Counter Handovers': l11, 'Package Sales': l12,
+        'History Log': l10, 'Package Sales': l12,
     };
     const isFirebaseLoading = Object.values(loadingStates).some(status => status);
 
@@ -425,7 +423,7 @@ const AppContent: React.FC = () => {
             timestamp: new Date().toISOString(),
             data: {
                 dailyCounts, ticketSalesData, dailyAssignments, ticketSalesAssignments,
-                attendanceData, historyLogData, handoversData, packageSalesData,
+                attendanceData, historyLogData, packageSalesData,
             },
             config: {
                 ridesData, operatorsData, ticketSalesPersonnelData, countersData,
@@ -472,7 +470,6 @@ const AppContent: React.FC = () => {
             setTicketSalesAssignments(backupData.data.ticketSalesAssignments || {});
             setAttendanceData(backupData.data.attendanceData || {});
             setHistoryLogData(backupData.data.historyLogData || {});
-            setHandoversData(backupData.data.handoversData || {});
             setPackageSalesData(backupData.data.packageSalesData || {});
 
             logAction('DATA_IMPORT', 'Imported data from a backup file, overwriting all existing data.');
@@ -576,41 +573,17 @@ const AppContent: React.FC = () => {
         }
     };
 
-    const handleSaveAssignments = (date: string, assignmentsForDate: Record<string, number>) => {
+    const handleSaveAssignments = (date: string, assignmentsForDate: Record<string, number[]>) => {
         setDailyAssignments(prev => ({ ...prev, [date]: assignmentsForDate }));
         logAction('SAVE_ASSIGNMENTS', `Operator assignments saved for ${date}.`);
         showNotification('Operator assignments saved!', 'success');
     };
     
-    const handleSaveTicketSalesAssignments = (date: string, assignmentsForDate: Record<string, number>) => {
+    const handleSaveTicketSalesAssignments = (date: string, assignmentsForDate: Record<string, number[]>) => {
         setTicketSalesAssignments(prev => ({ ...prev, [date]: assignmentsForDate }));
         logAction('SAVE_TS_ASSIGNMENTS', `Ticket sales assignments saved for ${date}.`);
         showNotification('Ticket sales assignments saved!', 'success');
     };
-
-    const handleReassignTicketSales = useCallback((counterId: number, newPersonnelId: number) => {
-        if (!currentUser) return;
-
-        const assignmentsForToday = ticketSalesAssignments[today] || {};
-        const oldPersonnelId = assignmentsForToday[counterId];
-        if (oldPersonnelId === newPersonnelId) return;
-
-        const counterName = counters.find(c => c.id === counterId)?.name || '...';
-        const newPersonnel = ticketSalesPersonnel.find(p => p.id === newPersonnelId);
-        const oldPersonnel = ticketSalesPersonnel.find(p => p.id === oldPersonnelId);
-        
-        const newHandover: Omit<HandoverRecord, 'id'> = {
-            date: today, timestamp: new Date().toISOString(), counterId: counterId,
-            fromPersonnelId: oldPersonnelId, fromPersonnelName: oldPersonnel?.name || 'N/A',
-            toPersonnelId: newPersonnelId, toPersonnelName: newPersonnel?.name || 'Unknown',
-            assignerName: currentUser.name,
-        };
-        setHandoversData(prev => ({ ...prev, [Date.now()]: newHandover }));
-
-        setTicketSalesAssignments(prev => ({ ...prev, [today]: { ...(prev[today] || {}), [counterId]: newPersonnelId } }));
-        logAction('REASSIGN_TICKET_SALES', `${currentUser.name} reassigned '${counterName}' from '${oldPersonnel?.name || 'N/A'}' to '${newPersonnel?.name || 'Unknown'}'.`);
-        showNotification(`'${counterName}' reassigned to ${newPersonnel?.name || 'Unknown'}`, 'info');
-    }, [counters, ticketSalesPersonnel, ticketSalesAssignments, today, currentUser, setHandoversData, setTicketSalesAssignments, logAction, showNotification]);
 
     const handleClearHistory = () => {
         if (window.confirm("Are you sure you want to permanently delete all history logs? This action cannot be undone.")) {
@@ -657,7 +630,7 @@ const AppContent: React.FC = () => {
                 return <DailyRoster rides={ridesForRoster} operators={operators} dailyAssignments={dailyAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleCountChange} onShowModal={handleShowModal} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
             case 'ticket-sales-dashboard': return <TicketSalesView countersWithSales={countersWithSales} onSalesChange={handleSalesChange} />;
             case 'ts-assignments': return <TicketSalesAssignmentView counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} onSave={handleSaveTicketSalesAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
-            case 'ts-roster': return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onReassign={handleReassignTicketSales} handovers={handovers} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
+            case 'ts-roster': return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTicketSalesAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
             case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} />;
