@@ -48,10 +48,8 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
         .filter(r => !assignedRideIds.has(r.id.toString()))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-    const recentHistory = historyLog.slice(0, 5);
-
-    return { totalGuests, activeRides, presentCount, topRides, recentHistory, presentOperators, absentOperators, unassignedRides };
-  }, [ridesWithCounts, operators, attendance, historyLog, selectedDate, dailyAssignments]);
+    return { totalGuests, activeRides, presentCount, topRides, presentOperators, absentOperators, unassignedRides };
+  }, [ridesWithCounts, operators, attendance, selectedDate, dailyAssignments]);
 
   const [year, month, day] = selectedDate.split('-').map(Number);
   const displayDate = new Date(year, month - 1, day);
@@ -185,25 +183,6 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
                         )}
                     </div>
                 </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <h2 className="text-xl font-bold mb-4">Recent Activity</h2>
-                {dashboardData.recentHistory.length > 0 ? (
-                    <ul className="space-y-2">
-                    {dashboardData.recentHistory.map(log => (
-                        <li key={log.id} className="text-sm text-gray-400 border-b border-gray-700/50 pb-2 last:border-b-0 last:pb-0">
-                            <span className="font-bold text-gray-300">{log.user}</span> {log.details}
-                            <div className="text-xs text-gray-500">
-                                {new Date(log.timestamp).toLocaleString()} - <span className="font-mono text-purple-400">{log.action}</span>
-                            </div>
-                        </li>
-                    ))}
-                    </ul>
-                ) : (
-                <p className="text-gray-500 text-center py-4">No recent activity.</p>
-                )}
             </div>
         </div>
 
