@@ -7,6 +7,14 @@ interface ReportsProps {
   rides: Ride[];
 }
 
+// Helper function to get YYYY-MM-DD from a Date object based on local timezone
+const toLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedRange, setSelectedRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
@@ -48,7 +56,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     let current = new Date(selectedRange.start);
     
     while (current <= selectedRange.end) {
-        const dateStr = current.toISOString().split('T')[0];
+        const dateStr = toLocalDateString(current);
         total += monthData.get(dateStr) || 0;
         current.setDate(current.getDate() + 1);
     }
@@ -147,7 +155,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     const reportData = [];
     let current = new Date(selectedRange.start);
     while (current <= selectedRange.end) {
-        const dateStr = current.toISOString().split('T')[0];
+        const dateStr = toLocalDateString(current);
         reportData.push({
             date: dateStr,
             total: monthData.get(dateStr) || 0
@@ -162,7 +170,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `TFW_Range_Report_${selectedRange.start.toISOString().split('T')[0]}_to_${selectedRange.end.toISOString().split('T')[0]}.csv`;
+    link.download = `TFW_Range_Report_${toLocalDateString(selectedRange.start)}_to_${toLocalDateString(selectedRange.end)}.csv`;
     link.click();
   };
 
@@ -195,7 +203,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
                 {calendarDays.map((day, index) => {
                     if (!day) return <div key={`empty-${index}`} className="border-r border-b border-gray-700"></div>;
                     
-                    const dateStr = day.toISOString().split('T')[0];
+                    const dateStr = toLocalDateString(day);
                     const count = monthData.get(dateStr) || 0;
                     
                     const isPending = selectedRange.start && !selectedRange.end && selectedRange.start.getTime() === day.getTime();
