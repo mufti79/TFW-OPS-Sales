@@ -4,7 +4,7 @@ import { Role } from '../hooks/useAuth';
 import { Operator } from '../types';
 import ConnectionStatus from './ConnectionStatus';
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'floor-counts' | 'management-hub';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
 type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
 type Connection = 'connecting' | 'connected' | 'disconnected';
 
@@ -37,7 +37,6 @@ const Header: React.FC<HeaderProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const isManager = role === 'admin' || role === 'operation-officer';
   const isSalesManager = role === 'admin' || role === 'sales-officer';
-  const isManagement = role === 'management';
   const isAdmin = role === 'admin';
 
   const navLinkClasses = "px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors";
@@ -53,10 +52,6 @@ const Header: React.FC<HeaderProps> = ({
       if (isSalesManager) {
           links.push(<button key="ts-roster" onClick={() => onNavigate('ts-roster')} className={navLinkClasses}>Sales Roster</button>);
           links.push(<button key="sales-dashboard" onClick={() => onNavigate('sales-officer-dashboard')} className={navLinkClasses}>Sales Dashboard</button>);
-      }
-      if (isManagement) {
-          links.push(<button key="management-hub" onClick={() => onNavigate('management-hub')} className={navLinkClasses}>Management Hub</button>);
-          links.push(<button key="floor-counts" onClick={() => onNavigate('floor-counts')} className={navLinkClasses}>Floor Counts</button>);
       }
       if (isManager || isSalesManager) {
           links.push(<button key="history" onClick={() => onNavigate('history')} className={navLinkClasses}>History Log</button>);
@@ -83,10 +78,6 @@ const Header: React.FC<HeaderProps> = ({
       if (isSalesManager) {
           links.push(<button key="m-ts-roster" onClick={() => closeMenu('ts-roster')} className={`${navLinkClasses} w-full text-left block`}>Sales Roster</button>);
           links.push(<button key="m-sales-dashboard" onClick={() => closeMenu('sales-officer-dashboard')} className={`${navLinkClasses} w-full text-left block`}>Sales Dashboard</button>);
-      }
-      if (isManagement) {
-        links.push(<button key="m-management-hub" onClick={() => closeMenu('management-hub')} className={`${navLinkClasses} w-full text-left block`}>Management Hub</button>);
-        links.push(<button key="m-floor-counts" onClick={() => closeMenu('floor-counts')} className={`${navLinkClasses} w-full text-left block`}>Floor Counts</button>);
       }
       if (isManager || isSalesManager) {
         links.push(<button key="m-history" onClick={() => closeMenu('history')} className={`${navLinkClasses} w-full text-left block`}>History Log</button>);

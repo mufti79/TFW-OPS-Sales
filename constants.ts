@@ -253,6 +253,8 @@ export const COUNTERS = arrayToObjectById(COUNTERS_ARRAY);
 
 const uniqueFloors = [...new Set(RIDES_ARRAY.map(ride => ride.floor))];
 const floorOrder = ['17th', '16th', '15th', '14th', '13th', '12th', '11th', '10th', '9th', '1st'];
+// FIX: Export SECURITY_FLOORS constant to resolve import errors in SecurityView and ManagementView.
+export const SECURITY_FLOORS = floorOrder;
 export const FLOORS = uniqueFloors.sort((a, b) => {
     const indexA = floorOrder.indexOf(a);
     const indexB = floorOrder.indexOf(b);
@@ -260,7 +262,3 @@ export const FLOORS = uniqueFloors.sort((a, b) => {
     if (indexB === -1) return -1;
     return indexA - indexB;
 });
-
-export const SECURITY_FLOORS = [
-    '17th', '16th', '15th', '14th', '13th', '12th', '11th', '10th', '9th'
-];

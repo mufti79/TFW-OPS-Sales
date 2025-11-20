@@ -30,9 +30,7 @@ import DailySalesEntry from './components/DailySalesEntry';
 import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import Dashboard from './components/Dashboard';
-import SecurityView from './components/SecurityView';
-import ManagementView from './components/ManagementView';
-import ManagementHub from './components/ManagementHub';
+
 
 // Notification System Implementation
 interface NotificationState {
@@ -69,7 +67,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 };
 
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'security' | 'management-hub' | 'floor-counts';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 type FirebaseObject<T extends { id: number }> = Record<number, Omit<T, 'id'>>;
 
@@ -127,8 +125,6 @@ const AppContent: React.FC = () => {
         if (r === 'sales-officer') return 'sales-officer-dashboard';
         if (r === 'ticket-sales') return 'ts-roster';
         if (r === 'operator') return 'roster';
-        if (r === 'security') return 'security';
-        if (r === 'management') return 'management-hub';
         return 'counter'; // Should not be reached if role is set
     }, []);
 
@@ -155,7 +151,6 @@ const AppContent: React.FC = () => {
     const { data: attendanceData, setData: setAttendanceData, isLoading: l9 } = useFirebaseSync<AttendanceData>('data/attendance', {});
     const { data: historyLogData, setData: setHistoryLogData, isLoading: l10 } = useFirebaseSync<Record<number, Omit<HistoryRecord, 'id'>>>('data/historyLog', {});
     const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>>('data/packageSales', {});
-    const { data: floorGuestCounts, setData: setFloorGuestCounts, isLoading: l11 } = useFirebaseSync<Record<string, Record<string, Record<string, number>>>>('data/floorGuestCounts', {});
 
     
     // Memoized arrays derived from Firebase objects for UI rendering
@@ -184,7 +179,7 @@ const AppContent: React.FC = () => {
         'Ride Counts': l1, 'Ticket Sales': l2, 'Ride Configuration': l3,
         'Operator Roster': l4, 'Sales Personnel': l5, 'Counter Configuration': l6,
         'Operator Assignments': l7, 'Sales Assignments': l8, 'Attendance Records': l9,
-        'History Log': l10, 'Floor Counts': l11, 'Package Sales': l12,
+        'History Log': l10, 'Package Sales': l12,
     };
     const isFirebaseLoading = Object.values(loadingStates).some(status => status);
 
@@ -288,7 +283,7 @@ const AppContent: React.FC = () => {
     const totalSales = useMemo(() => Object.values(ticketSalesData[today] || {}).reduce((sum, count) => sum + count, 0), [ticketSalesData, today]);
     const hasCheckedInToday = useMemo(() => !!(currentUser && attendanceData[today]?.[currentUser.id]), [currentUser, attendanceData, today]);
 
-    const handleLogin = (newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'security' | 'management', payload?: string | Operator): boolean => {
+    const handleLogin = (newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator): boolean => {
         const success = login(newRole, payload);
         if (success && payload) {
             const user = typeof payload === 'object' ? payload : { id: 0, name: newRole };
@@ -330,20 +325,6 @@ const AppContent: React.FC = () => {
                 });
         }
     }, [counters, ticketSalesData, today, logAction, showNotification]);
-
-    const handleSaveFloorCounts = useCallback((date: string, floor: string, counts: Record<string, number>) => {
-        if (isFirebaseConfigured && currentUser) {
-          database.ref(`data/floorGuestCounts/${date}/${floor}`).update(counts)
-            .then(() => {
-                logAction('FLOOR_COUNT_UPDATE', `Updated hourly guest counts for Level ${floor.replace('th','')} on ${date}.`);
-                showNotification('Hourly counts saved successfully!', 'success');
-            })
-            .catch(error => {
-              console.error("Firebase floor count update failed:", error);
-              showNotification('Failed to save counts. Check connection.', 'error');
-            });
-        }
-    }, [showNotification, logAction, currentUser]);
 
     const handleResetCounts = useCallback(() => {
         if (window.confirm("Are you sure you want to reset all of today's guest counts to zero? This cannot be undone.")) {
@@ -646,10 +627,6 @@ const AppContent: React.FC = () => {
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} />;
-            case 'security': return <SecurityView selectedDate={today} floorGuestCounts={floorGuestCounts} onSaveFloorCounts={handleSaveFloorCounts} />;
-            case 'management-hub': return <ManagementHub onNavigate={handleNavigate} />;
-            case 'floor-counts':
-                return <ManagementView floorGuestCounts={floorGuestCounts} onNavigate={handleNavigate} />;
             case 'counter': default: return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {filteredRides.map(ride => <RideCard key={ride.id} ride={ride} onCountChange={handleCountChange} role={role} onChangePicture={() => handleShowModal('edit-image', ride)} />)}
@@ -660,7 +637,7 @@ const AppContent: React.FC = () => {
 
     return (
         <div className="flex flex-col min-h-screen">
-            {(role === 'operator' || role === 'ticket-sales' || role === 'security') && <KioskModeWrapper />}
+            {(role === 'operator' || role === 'ticket-sales') && <KioskModeWrapper />}
             <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={handleShowModal} currentView={currentView} connectionStatus={connectionStatus} />
             <main className="container mx-auto p-4 flex-grow">{renderContent()}</main>
             {currentView === 'counter' && <Footer title="Total Guests Today" count={totalGuests} showReset={role === 'admin'} onReset={handleResetCounts} gradient="bg-gradient-to-r from-purple-400 to-pink-600" />}
