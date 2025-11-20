@@ -260,3 +260,7 @@ export const FLOORS = uniqueFloors.sort((a, b) => {
     if (indexB === -1) return -1;
     return indexA - indexB;
 });
+
+export const SECURITY_FLOORS = [
+    '17th', '16th', '15th', '14th', '13th', '12th', '11th', '10th', '9th'
+];

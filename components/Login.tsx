@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Operator } from '../types';
 
 interface LoginProps {
-  onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator) => boolean;
+  onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'security' | 'management', payload?: string | Operator) => boolean;
   operators: Operator[];
   ticketSalesPersonnel: Operator[];
 }
@@ -15,6 +14,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
   const [officerError, setOfficerError] = useState('');
   const [salesOfficerPin, setSalesOfficerPin] = useState('');
   const [salesOfficerError, setSalesOfficerError] = useState('');
+  const [securityPin, setSecurityPin] = useState('');
+  const [securityError, setSecurityError] = useState('');
+  const [managementPin, setManagementPin] = useState('');
+  const [managementError, setManagementError] = useState('');
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
   const [selectedTicketSalesId, setSelectedTicketSalesId] = useState<string>('');
 
@@ -47,6 +50,26 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
       setSalesOfficerPin('');
     }
   };
+
+  const handleSecurityLogin = () => {
+    if (onLogin('security', securityPin)) {
+      setSecurityError('');
+      setSecurityPin('');
+    } else {
+      setSecurityError('Incorrect PIN. Please try again.');
+      setSecurityPin('');
+    }
+  };
+
+  const handleManagementLogin = () => {
+    if (onLogin('management', managementPin)) {
+      setManagementError('');
+      setManagementPin('');
+    } else {
+      setManagementError('Incorrect PIN. Please try again.');
+      setManagementPin('');
+    }
+  };
   
   const handleOperatorLogin = () => {
     if (!selectedOperatorId) return;
@@ -64,19 +87,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
     }
   };
 
-  const handleAdminPinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setAdminError('');
-    setAdminPin(e.target.value);
-  };
-  
-  const handleOfficerPinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setOfficerError('');
-    setOfficerPin(e.target.value);
-  };
-
-  const handleSalesOfficerPinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSalesOfficerError('');
-    setSalesOfficerPin(e.target.value);
+  const handlePinChange = (setter: React.Dispatch<React.SetStateAction<string>>, errorSetter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+    errorSetter('');
+    setter(value);
   };
 
   return (
@@ -141,7 +154,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
         </div>
         
         <div className="w-full max-w-4xl mx-auto space-y-6">
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Operation Officer Login */}
                 <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
                 <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Operation Officer Login</h2>
@@ -150,7 +163,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
                     type="password"
                     placeholder="Enter Officer PIN"
                     value={officerPin}
-                    onChange={handleOfficerPinChange}
+                    onChange={(e) => handlePinChange(setOfficerPin, setOfficerError, e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleOfficerLogin()}
                     className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center text-xl tracking-widest"
                     maxLength={4}
@@ -174,7 +187,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
                             type="password"
                             placeholder="Enter Officer PIN"
                             value={salesOfficerPin}
-                            onChange={handleSalesOfficerPinChange}
+                            onChange={(e) => handlePinChange(setSalesOfficerPin, setSalesOfficerError, e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSalesOfficerLogin()}
                             className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition-all text-center text-xl tracking-widest"
                             maxLength={4}
@@ -191,7 +204,57 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
                     </div>
                 </div>
             </div>
-
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Security Login */}
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Security Login</h2>
+                <div className="space-y-3">
+                    <input
+                    type="password"
+                    placeholder="Enter Security PIN"
+                    value={securityPin}
+                    onChange={(e) => handlePinChange(setSecurityPin, setSecurityError, e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSecurityLogin()}
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center text-xl tracking-widest"
+                    maxLength={4}
+                    aria-label="Security PIN"
+                    autoComplete="off"
+                    />
+                    {securityError && <p className="text-red-400 text-sm text-center">{securityError}</p>}
+                    <button
+                    onClick={handleSecurityLogin}
+                    className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 active:scale-95 transition-all text-lg"
+                    >
+                    Enter as Security
+                    </button>
+                </div>
+                </div>
+                {/* Management Login */}
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                    <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Management Login</h2>
+                    <div className="space-y-3">
+                        <input
+                            type="password"
+                            placeholder="Enter Management PIN"
+                            value={managementPin}
+                            onChange={(e) => handlePinChange(setManagementPin, setManagementError, e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleManagementLogin()}
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500 transition-all text-center text-xl tracking-widest"
+                            maxLength={4}
+                            aria-label="Management PIN"
+                            autoComplete="off"
+                        />
+                        {managementError && <p className="text-red-400 text-sm text-center">{managementError}</p>}
+                        <button
+                            onClick={handleManagementLogin}
+                            className="w-full px-6 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 active:scale-95 transition-all text-lg"
+                        >
+                            Enter as Management
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
             {/* Admin Login */}
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 max-w-sm mx-auto">
             <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Admin Login</h2>
@@ -200,7 +263,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
                 type="password"
                 placeholder="Enter Admin PIN"
                 value={adminPin}
-                onChange={handleAdminPinChange}
+                onChange={(e) => handlePinChange(setAdminPin, setAdminError, e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
                 className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all text-center text-xl tracking-widest"
                 maxLength={4}
