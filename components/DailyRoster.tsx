@@ -43,10 +43,11 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     const assignmentsByOperator = new Map<number, RideWithCount[]>();
     const assignedRideIds = new Set<string>();
 
-    // FIX: Replaced for...in loop with Object.entries to ensure rideId is correctly typed as string.
-    for (const [rideId, operatorIds] of Object.entries(assignmentsToday)) {
+    for (const [rideId, operatorIdValue] of Object.entries(assignmentsToday)) {
         const ride = rideMap.get(rideId);
         if (ride) {
+          // FIX: Property 'forEach' does not exist on type 'unknown'. Handle legacy data format where an assignment might be a single number instead of an array.
+          const operatorIds = Array.isArray(operatorIdValue) ? (operatorIdValue as number[]) : [operatorIdValue as number];
           operatorIds.forEach((operatorId: number) => {
             const operatorRides = assignmentsByOperator.get(operatorId);
             if (operatorRides) {
@@ -96,7 +97,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
         return [];
     }
 
-    const rideIdToNameMap = new Map(rides.map(r => [r.id.toString(), r.name]));
+    // FIX: Argument of type 'unknown' is not assignable to parameter of type 'string'. Explicitly provide generic types to `new Map` to ensure correct type inference.
+    const rideIdToNameMap = new Map<string, string>(rides.map(r => [r.id.toString(), r.name]));
     const operatedRidesCount = new Map<string, number>();
 
     for (const dayAssignments of Object.values(dailyAssignments)) {

@@ -20,7 +20,8 @@ const TicketSalesExpertiseReport: React.FC<TicketSalesExpertiseReportProps> = ({
   const expertiseData = useMemo<ExpertiseData[]>(() => {
     // Map<personnelId, Map<counterId, count>>
     const personnelCounterMap = new Map<number, Map<string, number>>();
-    const counterIdToNameMap = new Map(counters.map(c => [c.id.toString(), c.name]));
+    // FIX: Explicitly providing generic types to `new Map` ensures TypeScript correctly infers `counterIdToNameMap` as `Map<string, string>`.
+    const counterIdToNameMap = new Map<string, string>(counters.map(c => [c.id.toString(), c.name]));
 
     // Populate the map with assignment counts
     Object.values(dailyAssignments).forEach(dayAssignments => {
@@ -48,8 +49,8 @@ const TicketSalesExpertiseReport: React.FC<TicketSalesExpertiseReportProps> = ({
         let counterDetails: { name: string; count: number }[] = [];
         if (counterCounts) {
             counterDetails = Array.from(counterCounts.entries())
-                // FIX: Explicitly typing the [counterId, count] parameters in the map function ensures `counterId` is a string, fixing the type error.
                 .map(([counterId, count]: [string, number]) => {
+                    // FIX: Type 'unknown' is not assignable to type 'string'. With `counterIdToNameMap` correctly typed, `.get()` returns `string | undefined`, which works as intended.
                     const name: string = counterIdToNameMap.get(counterId) || 'Unknown Counter';
                     return {
                         name,
