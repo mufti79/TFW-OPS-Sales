@@ -1,16 +1,64 @@
 import React, { useState, useRef } from 'react';
+import { useNotification } from '../imageStore';
 
 interface BackupManagerProps {
   onClose: () => void;
   onExport: () => void;
   onImport: (backupJson: string) => void;
   onResetDay: (date: string) => void;
+  appLogo: string | null;
+  onLogoChange: (logoBase64: string | null) => void;
 }
 
-const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay }) => {
+const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = event => {
+            if (!event.target?.result) {
+                return reject(new Error("FileReader did not return a result."));
+            }
+            const img = new Image();
+            img.src = event.target.result as string;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return reject(new Error('Could not get canvas context'));
+                
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/png', quality));
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+};
+
+
+const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange }) => {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
   const [resetDate, setResetDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newLogoPreview, setNewLogoPreview] = useState<string | null>(null);
+  const { showNotification } = useNotification();
 
   const handleFileImportClick = () => {
     fileInputRef.current?.click();
@@ -45,10 +93,44 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
     reader.readAsText(file);
   };
 
+  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+          if (file.size > 5 * 1024 * 1024) { // 5MB limit
+              showNotification('File is too large. Please select an image under 5MB.', 'error');
+              return;
+          }
+          try {
+              const resizedBase64 = await resizeImage(file, 256, 256, 0.9);
+              setNewLogoPreview(resizedBase64);
+          } catch (e) {
+              console.error("Image processing failed", e);
+              showNotification("Could not process image. Please try a different one.", "error");
+          }
+      }
+  };
+
+  const handleSaveLogo = () => {
+      if (newLogoPreview) {
+          onLogoChange(newLogoPreview);
+          showNotification('Logo updated successfully!', 'success');
+          setNewLogoPreview(null);
+          if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+      }
+  };
+
+  const handleRemoveLogo = () => {
+      if (window.confirm("Are you sure you want to remove the application logo?")) {
+          onLogoChange(null);
+          showNotification('Logo removed.', 'info');
+          setNewLogoPreview(null);
+      }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg border border-gray-700 animate-fade-in-up flex flex-col">
-        <div className="p-6 relative">
+        <div className="p-6 relative overflow-y-auto max-h-[90vh]">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-gray-100">Backup & Restore</h2>
             <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
@@ -56,7 +138,26 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
             </button>
           </div>
           
-          <div>
+          <div className="mt-8 border-t border-gray-600 pt-6">
+            <h3 className="text-xl font-bold text-gray-100 mb-2">Manage Application Logo</h3>
+            <p className="text-sm text-gray-400 mb-4">Set the logo for the login screen, header, and browser tab.</p>
+            <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                <div className="flex-shrink-0">
+                    <p className="block text-sm font-medium text-gray-300 mb-1 text-center">Preview</p>
+                    <div className="w-24 h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
+                        {newLogoPreview ? <img src={newLogoPreview} alt="New Logo Preview" className="w-full h-full object-contain p-1" /> : appLogo ? <img src={appLogo} alt="Current Logo" className="w-full h-full object-contain p-1" /> : <span className="text-gray-600 text-xs font-bold">No Logo</span>}
+                    </div>
+                </div>
+                <div className="flex-grow w-full">
+                    <input type="file" ref={logoFileInputRef} onChange={handleLogoFileChange} accept="image/png, image/jpeg, image/webp" className="hidden" />
+                    <button onClick={() => logoFileInputRef.current?.click()} className="w-full mb-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg text-sm">Choose Image...</button>
+                    {newLogoPreview && <button onClick={handleSaveLogo} className="w-full mb-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg text-sm">Save New Logo</button>}
+                    {appLogo && <button onClick={handleRemoveLogo} className="w-full px-4 py-2 bg-red-800 text-white font-semibold rounded-lg text-sm">Remove Logo</button>}
+                </div>
+            </div>
+          </div>
+          
+          <div className="mt-8 border-t border-gray-600 pt-6">
             <h3 className="text-xl font-bold text-gray-100 mb-2">Full Application Backup</h3>
             <p className="text-sm text-gray-400 mb-6">Save or load all application data, including custom images, history, and all records. Use this for complete backups or migrating to a new device.</p>
             <div className="space-y-4">

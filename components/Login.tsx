@@ -5,9 +5,10 @@ interface LoginProps {
   onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator) => boolean;
   operators: Operator[];
   ticketSalesPersonnel: Operator[];
+  appLogo: string | null;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel, appLogo }) => {
   const [adminPin, setAdminPin] = useState('');
   const [adminError, setAdminError] = useState('');
   const [officerPin, setOfficerPin] = useState('');
@@ -70,11 +71,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel 
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 p-4 relative">
-      <div className="text-center mb-12">
+      <div className="mb-12 flex flex-col items-center justify-center text-center gap-2">
+        {appLogo ? (
+            <img src={appLogo} alt="Toggi Fun World Logo" className="w-20 h-20 md:w-24 md:h-24 object-contain" />
+        ) : (
+            <div className="w-20 h-20 md:w-24 md:h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
+                <span className="text-gray-600 font-bold">Logo</span>
+            </div>
+        )}
         <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-          Toggi Fun World
+            Toggi Fun World
         </h1>
-        <p className="text-lg text-gray-400">Feel the thrill</p>
+        <p className="text-lg font-semibold text-gray-300 tracking-wider">feel the thrill</p>
+        <p className="text-base text-gray-500 mt-2">Bashundhara City Development Ltd, Panthapath, Dhaka</p>
       </div>
 
       <div className="w-full max-w-4xl space-y-6">

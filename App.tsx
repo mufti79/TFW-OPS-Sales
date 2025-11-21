@@ -6,6 +6,7 @@ import useFirebaseSync from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
 import NotificationComponent from './components/AttendanceCheckin';
+import useLocalStorage from './hooks/useLocalStorage';
 
 
 import Login from './components/Login';
@@ -73,6 +74,15 @@ type FirebaseObject<T extends { id: number }> = Record<number, Omit<T, 'id'>>;
 
 const AppContent: React.FC = () => {
     const { role, currentUser, login, logout } = useAuth();
+    const [appLogo, setAppLogo] = useLocalStorage<string | null>('tfw-app-logo', null);
+
+    // Dynamically update the favicon
+    useEffect(() => {
+      const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = appLogo || 'data:image/x-icon;,'; // Use data URI or an empty one
+      }
+    }, [appLogo]);
     
     // On app load, check if a session reset is required from a daily rollover.
     // This is the most reliable way to ensure a clean state after a new day starts.
@@ -609,7 +619,7 @@ const AppContent: React.FC = () => {
             </div>
         </div>
     );
-    if (!role || !currentUser) return <Login onLogin={handleLogin} operators={operators} ticketSalesPersonnel={ticketSalesPersonnel} />;
+    if (!role || !currentUser) return <Login onLogin={handleLogin} operators={operators} ticketSalesPersonnel={ticketSalesPersonnel} appLogo={appLogo} />;
     
     const renderContent = () => {
         switch (currentView) {
@@ -638,7 +648,7 @@ const AppContent: React.FC = () => {
     return (
         <div className="flex flex-col min-h-screen">
             {(role === 'operator' || role === 'ticket-sales') && <KioskModeWrapper />}
-            <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={handleShowModal} currentView={currentView} connectionStatus={connectionStatus} />
+            <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={handleShowModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo} />
             <main className="container mx-auto p-4 flex-grow">{renderContent()}</main>
             {currentView === 'counter' && <Footer title="Total Guests Today" count={totalGuests} showReset={role === 'admin'} onReset={handleResetCounts} gradient="bg-gradient-to-r from-purple-400 to-pink-600" />}
             {currentView === 'ticket-sales-dashboard' && <Footer title="Total Ticket Sales Today" count={totalSales} showReset={role === 'admin' || role === 'sales-officer'} onReset={handleResetSales} gradient="bg-gradient-to-r from-teal-400 to-cyan-500" />}
@@ -646,7 +656,7 @@ const AppContent: React.FC = () => {
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
-            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={setAppLogo} />}
             <footer className="text-center py-4 mt-auto">
               <p className="text-gray-600 text-xs font-light">
                   Developed By
