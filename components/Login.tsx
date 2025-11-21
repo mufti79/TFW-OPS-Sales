@@ -71,11 +71,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 p-4 relative">
-      <div className="mb-12 flex flex-col items-center justify-center text-center gap-2">
+      <div className="mb-12 flex flex-col items-center justify-center text-center">
         {appLogo ? (
-            <img src={appLogo} alt="Toggi Fun World Logo" className="w-20 h-20 md:w-24 md:h-24 object-contain" />
+            <img src={appLogo} alt="Toggi Fun World Logo" className="mb-2 w-20 h-20 md:w-24 md:h-24 object-contain" />
         ) : (
-            <div className="w-20 h-20 md:w-24 md:h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
+            <div className="mb-2 w-20 h-20 md:w-24 md:h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
                 <span className="text-gray-600 font-bold">Logo</span>
             </div>
         )}
@@ -83,7 +83,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
             Toggi Fun World
         </h1>
         <p className="text-lg font-semibold text-gray-300 tracking-wider">feel the thrill</p>
-        <p className="text-base text-gray-500 mt-2">Bashundhara City Development Ltd, Panthapath, Dhaka</p>
+        <p className="text-base text-gray-500">Bashundhara City Development Ltd, Panthapath, Dhaka</p>
       </div>
 
       <div className="w-full max-w-4xl space-y-6">
