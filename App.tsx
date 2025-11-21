@@ -553,6 +553,30 @@ const AppContent: React.FC = () => {
                 showNotification(`Failed to reset data for ${dateToReset}. Check connection and permissions.`, 'error');
             });
     };
+    
+    const handleSyncConfig = useCallback(() => {
+        if (!window.confirm("This will overwrite the ride, operator, and counter configurations in the database with the values from the application code. Custom image URLs saved via the app will be reset. Are you sure?")) {
+            return;
+        }
+        if (isFirebaseConfigured) {
+            const updates = {
+                'config/rides': RIDES,
+                'config/operators': OPERATORS,
+                'config/ticketSalesPersonnel': TICKET_SALES_PERSONNEL,
+                'config/counters': COUNTERS,
+            };
+            database.ref().update(updates)
+                .then(() => {
+                    logAction('CONFIG_SYNC', 'Synced configuration from code to database.');
+                    showNotification('Configuration synced from code. The app will now reload.', 'success', 5000);
+                    setTimeout(() => window.location.reload(), 2000);
+                })
+                .catch((error: Error) => {
+                     console.error("Firebase config sync failed:", error);
+                     showNotification('Failed to sync configuration.', 'error');
+                });
+        }
+    }, [logAction, showNotification]);
 
 
     const handleNavigate = (view: View) => { setCurrentView(view); setSearchTerm(''); setSelectedFloor(''); };
@@ -694,7 +718,7 @@ const AppContent: React.FC = () => {
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
-            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} onSyncConfig={handleSyncConfig} />}
             <footer className="text-center py-4 mt-auto">
               <p className="text-gray-600 text-xs font-light">
                   Developed By
