@@ -57,6 +57,7 @@ const Header: React.FC<HeaderProps> = ({
           links.push(<button key="ts-roster" onClick={() => onNavigate('ts-roster')} className={navLinkClasses}>Sales Roster</button>);
           links.push(<button key="sales-dashboard" onClick={() => onNavigate('sales-officer-dashboard')} className={navLinkClasses}>Sales Dashboard</button>);
       }
+      
       if (isManager || isSalesManager) {
           links.push(<button key="history" onClick={() => onNavigate('history')} className={navLinkClasses}>History Log</button>);
       }
@@ -83,6 +84,7 @@ const Header: React.FC<HeaderProps> = ({
           links.push(<button key="m-ts-roster" onClick={() => closeMenu('ts-roster')} className={`${navLinkClasses} w-full text-left block`}>Sales Roster</button>);
           links.push(<button key="m-sales-dashboard" onClick={() => closeMenu('sales-officer-dashboard')} className={`${navLinkClasses} w-full text-left block`}>Sales Dashboard</button>);
       }
+      
       if (isManager || isSalesManager) {
         links.push(<button key="m-history" onClick={() => closeMenu('history')} className={`${navLinkClasses} w-full text-left block`}>History Log</button>);
       }

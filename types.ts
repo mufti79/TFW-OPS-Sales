@@ -57,3 +57,13 @@ export interface PackageSalesRecord {
   vipAmount: number;
   otherAmount: number;
 }
+
+// FIX: Added the missing 'MaintenanceRecord' interface to resolve the import error in MaintenanceDashboard.tsx.
+export interface MaintenanceRecord {
+  date: string; // YYYY-MM-DD
+  rideName: string;
+  hardwareRepaired: boolean;
+  softwareIssueSolved: boolean;
+  partsReplaced: boolean;
+  isOutOfService: boolean;
+}

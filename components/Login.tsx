@@ -15,6 +15,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   const [officerError, setOfficerError] = useState('');
   const [salesOfficerPin, setSalesOfficerPin] = useState('');
   const [salesOfficerError, setSalesOfficerError] = useState('');
+  
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
   const [selectedTicketSalesId, setSelectedTicketSalesId] = useState<string>('');
 
@@ -47,6 +48,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
       setSalesOfficerPin('');
     }
   };
+
+  
   
   const handleOperatorLogin = () => {
     if (!selectedOperatorId) return;

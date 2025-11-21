@@ -32,6 +32,7 @@ import ConfigErrorScreen from './components/ConfigErrorScreen';
 import Dashboard from './components/Dashboard';
 
 
+
 // Notification System Implementation
 interface NotificationState {
   message: string;
@@ -125,6 +126,7 @@ const AppContent: React.FC = () => {
         if (r === 'sales-officer') return 'sales-officer-dashboard';
         if (r === 'ticket-sales') return 'ts-roster';
         if (r === 'operator') return 'roster';
+        
         return 'counter'; // Should not be reached if role is set
     }, []);
 
@@ -699,6 +701,7 @@ const AppContent: React.FC = () => {
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} />;
+            
             case 'counter': default: return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {filteredRides.map(ride => <RideCard key={ride.id} ride={ride} onCountChange={handleCountChange} role={role} onChangePicture={() => handleShowModal('edit-image', ride)} />)}

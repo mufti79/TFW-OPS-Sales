@@ -10,6 +10,7 @@ export const SALES_OFFICER_PIN = '5678';
 
 
 
+
 export const useAuth = () => {
   const [role, setRole] = useLocalStorage<Role>('authRole', null);
   const [currentUser, setCurrentUser] = useLocalStorage<Operator | null>('authUser', null);
@@ -40,6 +41,7 @@ export const useAuth = () => {
           return true;
         }
         return false;
+      
       case 'operator':
       case 'ticket-sales':
         if (payload && typeof payload !== 'string') {
