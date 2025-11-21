@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 
 export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | null;
 
-export const ADMIN_PIN = '1234';
+export const ADMIN_PIN = '9999';
 export const OPERATION_OFFICER_PIN = '4321';
 export const SALES_OFFICER_PIN = '5678';
 
