@@ -6,7 +6,6 @@ import useFirebaseSync from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
 import NotificationComponent from './components/AttendanceCheckin';
-import useLocalStorage from './hooks/useLocalStorage';
 
 
 import Login from './components/Login';
@@ -74,15 +73,6 @@ type FirebaseObject<T extends { id: number }> = Record<number, Omit<T, 'id'>>;
 
 const AppContent: React.FC = () => {
     const { role, currentUser, login, logout } = useAuth();
-    const [appLogo, setAppLogo] = useLocalStorage<string | null>('tfw-app-logo', null);
-
-    // Dynamically update the favicon
-    useEffect(() => {
-      const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-      if (favicon) {
-        favicon.href = appLogo || 'data:image/x-icon;,'; // Use data URI or an empty one
-      }
-    }, [appLogo]);
     
     // On app load, check if a session reset is required from a daily rollover.
     // This is the most reliable way to ensure a clean state after a new day starts.
@@ -161,7 +151,46 @@ const AppContent: React.FC = () => {
     const { data: attendanceData, setData: setAttendanceData, isLoading: l9 } = useFirebaseSync<AttendanceData>('data/attendance', {});
     const { data: historyLogData, setData: setHistoryLogData, isLoading: l10 } = useFirebaseSync<Record<number, Omit<HistoryRecord, 'id'>>>('data/historyLog', {});
     const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>>('data/packageSales', {});
+    
+    // **FIX**: Dedicated state and effect for logo to ensure robust cross-device syncing.
+    const [appLogo, setAppLogo] = useState<string | null>(null);
+    const [isLogoLoading, setIsLogoLoading] = useState(isFirebaseConfigured);
 
+    useEffect(() => {
+        if (!isFirebaseConfigured) return;
+        const logoRef = database.ref('config/appLogo');
+        const listener = logoRef.on('value', (snapshot) => {
+            const logoData = snapshot.val();
+            setAppLogo(logoData || null);
+            setIsLogoLoading(false);
+        }, (error) => {
+            console.error("Firebase logo read error:", error);
+            setIsLogoLoading(false);
+        });
+
+        // Cleanup function
+        return () => logoRef.off('value', listener);
+    }, []);
+
+    const handleLogoChange = useCallback((newLogo: string | null) => {
+        if (!isFirebaseConfigured) {
+            showNotification("Cannot save logo, Firebase is not configured.", "error");
+            return;
+        }
+        database.ref('config/appLogo').set(newLogo)
+            .catch(error => {
+                console.error("Firebase logo write error:", error);
+                showNotification("Failed to save logo. Check connection.", "error");
+            });
+    }, [showNotification]);
+
+    // Dynamically update the favicon
+    useEffect(() => {
+      const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = appLogo || 'data:image/x-icon;,'; // Use data URI or an empty one
+      }
+    }, [appLogo]);
     
     // Memoized arrays derived from Firebase objects for UI rendering
     const rides = useMemo<Ride[]>(() => ridesData ? Object.entries(ridesData).map(([id, ride]) => ({ id: Number(id), ...ride })) : RIDES_ARRAY, [ridesData]);
@@ -191,7 +220,7 @@ const AppContent: React.FC = () => {
         'Operator Assignments': l7, 'Sales Assignments': l8, 'Attendance Records': l9,
         'History Log': l10, 'Package Sales': l12,
     };
-    const isFirebaseLoading = Object.values(loadingStates).some(status => status);
+    const isFirebaseLoading = Object.values(loadingStates).some(status => status) || isLogoLoading;
 
     // UI State
     const [searchTerm, setSearchTerm] = useState('');
@@ -428,7 +457,7 @@ const AppContent: React.FC = () => {
                 attendanceData, historyLogData, packageSalesData,
             },
             config: {
-                ridesData, operatorsData, ticketSalesPersonnelData, countersData,
+                ridesData, operatorsData, ticketSalesPersonnelData, countersData, appLogo,
             }
         };
 
@@ -455,7 +484,7 @@ const AppContent: React.FC = () => {
             }
 
             // A series of confirmations for destructive actions
-            if (!window.confirm("Stage 1/3: You are about to overwrite all CONFIGURATION data (Rides, Operators, Counters). This cannot be undone. Proceed?")) return;
+            if (!window.confirm("Stage 1/3: You are about to overwrite all CONFIGURATION data (Rides, Operators, Counters, Logo). This cannot be undone. Proceed?")) return;
             if (!window.confirm("Stage 2/3: You are about to overwrite all OPERATIONAL data (Counts, Sales, Assignments, Attendance). This cannot be undone. Proceed?")) return;
             if (!window.confirm("Stage 3/3: FINAL CONFIRMATION. Are you absolutely sure you want to restore from this backup? All current data will be permanently lost.")) return;
 
@@ -464,6 +493,7 @@ const AppContent: React.FC = () => {
             setOperatorsData(backupData.config.operatorsData || {});
             setTicketSalesPersonnelData(backupData.config.ticketSalesPersonnelData || {});
             setCountersData(backupData.config.countersData || {});
+            handleLogoChange(backupData.config.appLogo || null);
 
             // Restore Data
             setDailyCounts(backupData.data.dailyCounts || {});
@@ -615,6 +645,14 @@ const AppContent: React.FC = () => {
                             )}
                         </li>
                     ))}
+                     <li className="flex items-center justify-between text-lg animate-fade-in-up">
+                        <span className="text-gray-300">App Logo</span>
+                        {isLogoLoading ? (
+                             <svg className="animate-spin h-5 w-5 text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        )}
+                    </li>
                 </ul>
             </div>
         </div>
@@ -656,7 +694,7 @@ const AppContent: React.FC = () => {
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
-            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={setAppLogo} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} />}
             <footer className="text-center py-4 mt-auto">
               <p className="text-gray-600 text-xs font-light">
                   Developed By
