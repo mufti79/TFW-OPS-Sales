@@ -1,3 +1,4 @@
+
 import { Ride, Operator, Counter } from './types';
 
 // Utility function to convert array to an object with IDs as keys, which is a Firebase best practice.
@@ -108,7 +109,7 @@ export const RIDES_ARRAY: Ride[] = [
   { id: 96, name: 'Carousel 12 seat', floor: '9th', imageUrl: 'https://picsum.photos/seed/96-Carousel12seat/400/300' },
   { id: 97, name: 'Mini Pirate ship', floor: '9th', imageUrl: 'https://picsum.photos/seed/97-MiniPirateship/400/300' },
   { id: 98, name: 'Gyroscope', floor: '9th', imageUrl: 'https://picsum.photos/seed/98-Gyroscope/400/300' },
-  { id: 99, name: 'Joy Horse', floor: '9th', imageUrl: 'https://picsum.photos/seed/99-JoyHorse/400/300' },
+  { id: 99, name: 'Toddler Zone', floor: '9th', imageUrl: 'https://picsum.photos/seed/99-ToddlerZone/400/300' },
   { id: 100, name: 'Go Fishing 1', floor: '9th', imageUrl: 'https://picsum.photos/seed/100-GoFishing1/400/300' },
   { id: 101, name: 'Go Fishing 2', floor: '9th', imageUrl: 'https://picsum.photos/seed/101-GoFishing2/400/300' },
   { id: 102, name: 'Summer Time 1', floor: '9th', imageUrl: 'https://picsum.photos/seed/102-SummerTime1/400/300' },
