@@ -17,6 +17,7 @@ interface TicketSalesAssignmentViewProps {
 const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, onSave, selectedDate, attendance }) => {
   const [assignments, setAssignments] = useState<Record<string, number[]>>({});
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
+  const [dropdownPosition, setDropdownPosition] = useState<'up' | 'down'>('down');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showNotification } = useNotification();
   
@@ -83,6 +84,24 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
         setAssignments({});
     }
   };
+
+    const handleToggleDropdown = (e: React.MouseEvent<HTMLButtonElement>, counterId: number) => {
+        if (openDropdownId === counterId) {
+            setOpenDropdownId(null);
+            return;
+        }
+
+        const buttonRect = e.currentTarget.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - buttonRect.bottom;
+        const dropdownHeight = 240; // Corresponds to max-h-60
+
+        if (spaceBelow < dropdownHeight && buttonRect.top > spaceBelow) {
+            setDropdownPosition('up');
+        } else {
+            setDropdownPosition('down');
+        }
+        setOpenDropdownId(counterId);
+    };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -216,13 +235,13 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                             <p className="text-sm text-gray-400 mb-2">{counter.location}</p>
                             <div className="relative">
                                 <button
-                                    onClick={() => setOpenDropdownId(openDropdownId === counter.id ? null : counter.id)}
+                                    onClick={(e) => handleToggleDropdown(e, counter.id)}
                                     className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-left truncate"
                                 >
                                     {assignedNames || <span className="text-gray-500">Unassigned</span>}
                                 </button>
                                 {openDropdownId === counter.id && (
-                                    <div className="absolute z-10 mt-1 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                    <div className={`absolute z-10 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto ${dropdownPosition === 'up' ? 'bottom-full mb-1' : 'mt-1'}`}>
                                         {ticketSalesPersonnel.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
                                             const isPresent = attendanceStatusMap.get(op.id);
                                             const statusLabel = isPresent ? '(P)' : '(A)';

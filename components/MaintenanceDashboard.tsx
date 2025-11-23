@@ -95,8 +95,8 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ onNavigate 
       if (record.softwareIssueSolved) summary[month].software++;
       if (record.partsReplaced) summary[month].parts++;
     });
-    // FIX: Explicitly cast Date objects to `any` to ensure correct numeric coercion for sorting, resolving a type inference issue with data from localStorage.
-    return Object.entries(summary).sort((a,b) => (new Date(b[0]) as any) - (new Date(a[0]) as any));
+    // FIX: Sort by date chronologically. Using getTime() ensures a numeric subtraction for the sort function, resolving the type error.
+    return Object.entries(summary).sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
   }, [maintenanceData]);
 
   const rangeData = useMemo(() => {
