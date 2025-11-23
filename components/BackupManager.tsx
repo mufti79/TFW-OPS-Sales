@@ -9,6 +9,9 @@ interface BackupManagerProps {
   appLogo: string | null;
   onLogoChange: (logoBase64: string | null) => void;
   onSyncConfig: () => void;
+  otherSalesCategories: string[];
+  onRenameCategory: (oldName: string, newName: string) => void;
+  onDeleteCategory: (name: string) => void;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -53,13 +56,15 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 };
 
 
-const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, onSyncConfig }) => {
+const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, onSyncConfig, otherSalesCategories, onRenameCategory, onDeleteCategory }) => {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const [resetDate, setResetDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [newLogoPreview, setNewLogoPreview] = useState<string | null>(null);
   const { showNotification } = useNotification();
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   const handleFileImportClick = () => {
     fileInputRef.current?.click();
@@ -127,6 +132,19 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
           setNewLogoPreview(null);
       }
   };
+  
+  const handleStartRename = (name: string) => {
+    setEditingCategory(name);
+    setNewCategoryName(name);
+  };
+
+  const handleConfirmRename = () => {
+    if (editingCategory && newCategoryName.trim()) {
+        onRenameCategory(editingCategory, newCategoryName.trim());
+        setEditingCategory(null);
+        setNewCategoryName('');
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
@@ -139,6 +157,43 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
             </button>
           </div>
           
+           <div className="mt-8 border-t border-gray-600 pt-6">
+            <h3 className="text-xl font-bold text-teal-400 mb-2">Manage 'Other Sales' Categories</h3>
+            <p className="text-sm text-gray-400 mb-4">Rename categories to correct typos or delete them from the suggestion list. Renaming will update all historical records.</p>
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-2 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                {otherSalesCategories.map(cat => (
+                    <div key={cat} className="flex items-center justify-between bg-gray-700 p-2 rounded-md">
+                        {editingCategory === cat ? (
+                            <input
+                                type="text"
+                                value={newCategoryName}
+                                onChange={(e) => setNewCategoryName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleConfirmRename()}
+                                className="flex-grow px-2 py-1 bg-gray-800 border border-gray-500 rounded-md text-sm"
+                                autoFocus
+                            />
+                        ) : (
+                            <span className="text-gray-300">{cat}</span>
+                        )}
+                        <div className="flex gap-2 ml-2">
+                            {editingCategory === cat ? (
+                                <>
+                                    <button onClick={handleConfirmRename} className="px-2 py-1 bg-green-600 text-white rounded-md text-xs">Save</button>
+                                    <button onClick={() => setEditingCategory(null)} className="px-2 py-1 bg-gray-500 text-white rounded-md text-xs">Cancel</button>
+                                </>
+                            ) : (
+                                <>
+                                    <button onClick={() => handleStartRename(cat)} className="px-2 py-1 bg-blue-600 text-white rounded-md text-xs">Rename</button>
+                                    <button onClick={() => onDeleteCategory(cat)} className="px-2 py-1 bg-red-700 text-white rounded-md text-xs">Delete</button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                ))}
+                 {otherSalesCategories.length === 0 && <p className="text-gray-500 text-center text-sm">No custom categories created yet.</p>}
+            </div>
+           </div>
+
           <div className="mt-8 border-t border-gray-600 pt-6">
             <h3 className="text-xl font-bold text-gray-100 mb-2">Manage Application Logo</h3>
             <p className="text-sm text-gray-400 mb-4">Set the logo for the login screen, header, and browser tab.</p>

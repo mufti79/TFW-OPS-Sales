@@ -1,3 +1,4 @@
+
 export interface Ride {
   id: number;
   name: string;
@@ -58,7 +59,10 @@ export interface PackageSalesRecord {
   otherSales: { category: string; amount: number }[];
 }
 
-// FIX: Added the missing 'MaintenanceRecord' interface to resolve the import error in MaintenanceDashboard.tsx.
+// FIX: Define PackageSalesData type for Firebase data structure to resolve import errors.
+export type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;
+
+// FIX: Added the missing MaintenanceRecord interface to resolve import errors.
 export interface MaintenanceRecord {
   date: string; // YYYY-MM-DD
   rideName: string;

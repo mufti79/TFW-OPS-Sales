@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Operator, PackageSalesRecord } from '../types';
+// FIX: Imported PackageSalesData from types.ts to use the shared type definition.
+import { Operator, PackageSalesRecord, PackageSalesData } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 
-type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;
 type OtherSaleItem = { id: string; category: string; amount: number };
 
 interface DailySalesEntryProps {

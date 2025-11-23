@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
-import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, PackageSalesRecord, AttendanceData } from './types';
+// FIX: Imported PackageSalesData to resolve a type error.
+import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
@@ -152,7 +153,7 @@ const AppContent: React.FC = () => {
     const { data: ticketSalesAssignments, setData: setTicketSalesAssignments, isLoading: l8 } = useFirebaseSync<Record<string, Record<string, number[]>>>('data/ticketSalesAssignments', {});
     const { data: attendanceData, setData: setAttendanceData, isLoading: l9 } = useFirebaseSync<AttendanceData>('data/attendance', {});
     const { data: historyLogData, setData: setHistoryLogData, isLoading: l10 } = useFirebaseSync<Record<number, Omit<HistoryRecord, 'id'>>>('data/historyLog', {});
-    const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>>('data/packageSales', {});
+    const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<PackageSalesData>('data/packageSales', {});
     const { data: otherSalesCategories, setData: setOtherSalesCategories, isLoading: l11 } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     
     // **FIX**: Dedicated state and effect for logo to ensure robust cross-device syncing.
@@ -685,6 +686,66 @@ const AppContent: React.FC = () => {
         }
     };
 
+    const handleRenameOtherSalesCategory = useCallback(async (oldName: string, newName: string) => {
+        if (!oldName || !newName || oldName === newName) return;
+        if (!window.confirm(`Are you sure you want to rename "${oldName}" to "${newName}"? This will update all historical sales records.`)) return;
+
+        // 1. Update the config list
+        const newCategories = otherSalesCategories.map(c => c === oldName ? newName : c);
+        setOtherSalesCategories([...new Set(newCategories)].sort());
+
+        // 2. Update all historical records
+        if (isFirebaseConfigured) {
+            try {
+                const salesSnapshot = await database.ref('data/packageSales').once('value');
+                const salesData: PackageSalesData = salesSnapshot.val() || {};
+                const updates: { [key: string]: any } = {};
+
+                for (const date in salesData) {
+                    for (const personnelId in salesData[date]) {
+                        const record = salesData[date][personnelId];
+                        if (record.otherSales && Array.isArray(record.otherSales)) {
+                            let wasModified = false;
+                            const updatedOtherSales = record.otherSales.map(item => {
+                                if (item.category === oldName) {
+                                    wasModified = true;
+                                    return { ...item, category: newName };
+                                }
+                                return item;
+                            });
+
+                            if (wasModified) {
+                                updates[`data/packageSales/${date}/${personnelId}/otherSales`] = updatedOtherSales;
+                            }
+                        }
+                    }
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    await database.ref().update(updates);
+                }
+                
+                logAction('CATEGORY_RENAME', `Renamed category "${oldName}" to "${newName}".`);
+                showNotification('Category renamed successfully across all records.', 'success');
+
+            } catch (error) {
+                console.error("Failed to rename category:", error);
+                showNotification('Failed to update historical records.', 'error');
+                // Revert the config change on failure
+                setOtherSalesCategories(otherSalesCategories);
+            }
+        }
+    }, [otherSalesCategories, setOtherSalesCategories, logAction, showNotification]);
+
+    const handleDeleteOtherSalesCategory = useCallback((categoryToDelete: string) => {
+        if (!window.confirm(`Are you sure you want to delete the category "${categoryToDelete}"? This will remove it from the suggestion list but will NOT change any historical records.`)) return;
+
+        const newCategories = otherSalesCategories.filter(c => c !== categoryToDelete);
+        setOtherSalesCategories(newCategories);
+        logAction('CATEGORY_DELETE', `Deleted category: "${categoryToDelete}".`);
+        showNotification('Category deleted from suggestion list.', 'success');
+    }, [otherSalesCategories, setOtherSalesCategories, logAction, showNotification]);
+
     if (!isFirebaseConfigured) return <ConfigErrorScreen />;
     if (isFirebaseLoading) return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
@@ -751,7 +812,7 @@ const AppContent: React.FC = () => {
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
-            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} onSyncConfig={handleSyncConfig} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} onSyncConfig={handleSyncConfig} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} />}
             <footer className="text-center py-4 mt-auto">
               <p className="text-gray-600 text-xs font-light">
                   Developed By
