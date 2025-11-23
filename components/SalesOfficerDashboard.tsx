@@ -127,6 +127,8 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
 const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSalesPersonnel, packageSales, startDate, endDate, onStartDateChange, onEndDateChange, role, onEditSales, otherSalesCategories }) => {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingPersonnel, setEditingPersonnel] = useState<Operator | null>(null);
+    const [expandedPersonnelId, setExpandedPersonnelId] = useState<number | null>(null);
+    const [showTotalBreakdown, setShowTotalBreakdown] = useState(false);
 
     const handleEditClick = (personnel: Operator) => {
         setEditingPersonnel(personnel);
@@ -234,13 +236,16 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     <div><p className="text-sm text-gray-400">Xtreme</p><p className="text-lg font-bold">{rangeTotals.xtremeQty} / {rangeTotals.xtremeAmount.toLocaleString()} BDT</p></div>
                     <div><p className="text-sm text-gray-400">Kiddo</p><p className="text-lg font-bold">{rangeTotals.kiddoQty} / {rangeTotals.kiddoAmount.toLocaleString()} BDT</p></div>
                     <div><p className="text-sm text-gray-400">VIP</p><p className="text-lg font-bold">{rangeTotals.vipQty} / {rangeTotals.vipAmount.toLocaleString()} BDT</p></div>
-                    <div className="relative group cursor-pointer" title={rangeTotals.otherBreakdown}>
-                        <p className="text-sm text-gray-400">Other</p>
-                        <p className="text-lg font-bold">{rangeTotals.otherAmount.toLocaleString()} BDT</p>
-                        {rangeTotals.otherAmount > 0 && (
-                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-gray-900 text-white text-xs rounded-md py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-wrap border border-gray-600 shadow-lg z-10">
-                                {rangeTotals.otherBreakdown}
-                            </span>
+                    <div className="relative">
+                        <button onClick={() => setShowTotalBreakdown(!showTotalBreakdown)} className="w-full text-center cursor-pointer">
+                            <p className="text-sm text-gray-400 flex items-center justify-center gap-1">Other <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></p>
+                            <p className="text-lg font-bold">{rangeTotals.otherAmount.toLocaleString()} BDT</p>
+                        </button>
+                        {showTotalBreakdown && rangeTotals.otherAmount > 0 && (
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-gray-900 text-white text-xs rounded-md py-2 px-3 border border-gray-600 shadow-lg z-10 text-left">
+                                <h4 className="font-bold mb-1 text-sm">Other Sales Breakdown</h4>
+                                <pre className="whitespace-pre-wrap font-sans">{rangeTotals.otherBreakdown}</pre>
+                            </div>
                         )}
                     </div>
                     <div className="col-span-2 md:col-span-1 border-t-2 md:border-t-0 md:border-l-2 border-teal-500 pt-4 md:pt-0 md:pl-4"><p className="text-md font-bold text-gray-300">Grand Total</p><p className="text-2xl font-bold text-teal-400">{rangeTotals.totalAmount.toLocaleString()} BDT</p></div>
@@ -263,21 +268,44 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                             const otherTotal = sales ? sales.otherSales.reduce((s, i) => s + i.amount, 0) : 0;
                             const totalQty = sales ? sales.xtremeQty + sales.kiddoQty + sales.vipQty : 0;
                             const totalAmount = sales ? sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotal : 0;
-                            const otherBreakdown = sales && sales.otherSales.length > 0 ? sales.otherSales.filter(s => s.amount > 0).map(s => `${s.category}: ${s.amount.toLocaleString()}`).join('\n') : 'No other sales';
+                            const isExpanded = expandedPersonnelId === personnel.id;
                             
                             return (
-                                <tr key={personnel.id} className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-800/50'} border-t border-gray-700`}>
-                                    <td className="p-3 font-medium">{personnel.name}</td>
-                                    <td className="p-3 text-right tabular-nums">{sales ? `${sales.xtremeQty.toLocaleString()} / ${sales.xtremeAmount.toLocaleString()}` : '0 / 0'}</td>
-                                    <td className="p-3 text-right tabular-nums">{sales ? `${sales.kiddoQty.toLocaleString()} / ${sales.kiddoAmount.toLocaleString()}` : '0 / 0'}</td>
-                                    <td className="p-3 text-right tabular-nums">{sales ? `${sales.vipQty.toLocaleString()} / ${sales.vipAmount.toLocaleString()}` : '0 / 0'}</td>
-                                    <td className="p-3 text-right tabular-nums relative group cursor-pointer" title={otherBreakdown}>
-                                        {otherTotal.toLocaleString()}
-                                        {sales && sales.otherSales.length > 0 && otherTotal > 0 && <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-gray-900 text-white text-xs rounded-md py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-wrap border border-gray-600 shadow-lg z-10">{otherBreakdown}</span>}
-                                    </td>
-                                    <td className="p-3 text-right font-bold text-lg text-teal-400 tabular-nums">{`${totalQty.toLocaleString()} / ${totalAmount.toLocaleString()}`}</td>
-                                    <td className="p-3 text-center">{(role === 'admin' || role === 'sales-officer') && <button onClick={() => handleEditClick(personnel)} className="px-3 py-1 bg-blue-600 text-white font-semibold rounded-md text-sm">Edit</button>}</td>
-                                </tr>
+                                <React.Fragment key={personnel.id}>
+                                    <tr className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-800/50'} border-t border-gray-700`}>
+                                        <td className="p-3 font-medium flex items-center">
+                                            {sales && sales.otherSales.length > 0 && otherTotal > 0 && (
+                                                <button onClick={() => setExpandedPersonnelId(isExpanded ? null : personnel.id)} className="mr-2 p-1 rounded-full hover:bg-gray-600">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
+                                                </button>
+                                            )}
+                                            {personnel.name}
+                                        </td>
+                                        <td className="p-3 text-right tabular-nums">{sales ? `${sales.xtremeQty.toLocaleString()} / ${sales.xtremeAmount.toLocaleString()}` : '0 / 0'}</td>
+                                        <td className="p-3 text-right tabular-nums">{sales ? `${sales.kiddoQty.toLocaleString()} / ${sales.kiddoAmount.toLocaleString()}` : '0 / 0'}</td>
+                                        <td className="p-3 text-right tabular-nums">{sales ? `${sales.vipQty.toLocaleString()} / ${sales.vipAmount.toLocaleString()}` : '0 / 0'}</td>
+                                        <td className="p-3 text-right tabular-nums">{otherTotal.toLocaleString()}</td>
+                                        <td className="p-3 text-right font-bold text-lg text-teal-400 tabular-nums">{`${totalQty.toLocaleString()} / ${totalAmount.toLocaleString()}`}</td>
+                                        <td className="p-3 text-center">{(role === 'admin' || role === 'sales-officer') && <button onClick={() => handleEditClick(personnel)} className="px-3 py-1 bg-blue-600 text-white font-semibold rounded-md text-sm">Edit</button>}</td>
+                                    </tr>
+                                    {isExpanded && sales && sales.otherSales.length > 0 && otherTotal > 0 && (
+                                        <tr className="bg-gray-900/50">
+                                            <td colSpan={7} className="p-4">
+                                                <div className="pl-8">
+                                                    <h4 className="font-semibold text-gray-300 mb-2">Other Sales Breakdown for {personnel.name}:</h4>
+                                                    <ul className="space-y-1 text-sm">
+                                                        {sales.otherSales.filter(s => s.amount > 0).map((sale, i) => (
+                                                            <li key={i} className="flex justify-between max-w-sm">
+                                                                <span className="text-gray-400">{sale.category || 'Uncategorized'}:</span>
+                                                                <span className="font-semibold text-gray-200">{sale.amount.toLocaleString()} BDT</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </React.Fragment>
                             );
                         })}
                     </tbody>
