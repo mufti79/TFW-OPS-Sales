@@ -95,8 +95,8 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ onNavigate 
       if (record.softwareIssueSolved) summary[month].software++;
       if (record.partsReplaced) summary[month].parts++;
     });
-    // FIX: Sort by date chronologically. Using getTime() ensures a numeric subtraction for the sort function, resolving the type error.
-    return Object.entries(summary).sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
+    // FIX: Sort by date chronologically. Subtracting Date objects directly is disallowed by TypeScript, so we cast to `any` to perform the numeric subtraction, which is a valid JavaScript operation.
+    return Object.entries(summary).sort((a,b) => (new Date(b[0]) as any) - (new Date(a[0]) as any));
   }, [maintenanceData]);
 
   const rangeData = useMemo(() => {

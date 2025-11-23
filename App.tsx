@@ -153,6 +153,7 @@ const AppContent: React.FC = () => {
     const { data: attendanceData, setData: setAttendanceData, isLoading: l9 } = useFirebaseSync<AttendanceData>('data/attendance', {});
     const { data: historyLogData, setData: setHistoryLogData, isLoading: l10 } = useFirebaseSync<Record<number, Omit<HistoryRecord, 'id'>>>('data/historyLog', {});
     const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>>('data/packageSales', {});
+    const { data: otherSalesCategories, setData: setOtherSalesCategories, isLoading: l11 } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     
     // **FIX**: Dedicated state and effect for logo to ensure robust cross-device syncing.
     const [appLogo, setAppLogo] = useState<string | null>(null);
@@ -220,7 +221,7 @@ const AppContent: React.FC = () => {
         'Ride Counts': l1, 'Ticket Sales': l2, 'Ride Configuration': l3,
         'Operator Roster': l4, 'Sales Personnel': l5, 'Counter Configuration': l6,
         'Operator Assignments': l7, 'Sales Assignments': l8, 'Attendance Records': l9,
-        'History Log': l10, 'Package Sales': l12,
+        'History Log': l10, 'Other Categories': l11, 'Package Sales': l12,
     };
     const isFirebaseLoading = Object.values(loadingStates).some(status => status) || isLogoLoading;
 
@@ -424,6 +425,20 @@ const AppContent: React.FC = () => {
     const handleSavePackageSales = useCallback((salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser || !isFirebaseConfigured) return;
         
+        // Learn new categories from the submitted data
+        const existingCategories = new Set(otherSalesCategories);
+        let categoriesWereUpdated = false;
+        salesData.otherSales?.forEach(item => {
+            if (item.category && !existingCategories.has(item.category)) {
+                existingCategories.add(item.category);
+                categoriesWereUpdated = true;
+            }
+        });
+
+        if (categoriesWereUpdated) {
+            setOtherSalesCategories(Array.from(existingCategories).sort());
+        }
+
         database.ref(`data/packageSales/${selectedDate}/${currentUser.id}`).set(salesData)
             .then(() => {
                 logAction('PACKAGE_SALES_UPDATE', `${currentUser.name} updated package sales for ${selectedDate}.`);
@@ -433,11 +448,25 @@ const AppContent: React.FC = () => {
                 console.error("Firebase package sales update failed:", error);
                 showNotification('Failed to save package sales. Check connection.', 'error');
             });
-    }, [currentUser, selectedDate, logAction, showNotification]);
+    }, [currentUser, selectedDate, logAction, showNotification, otherSalesCategories, setOtherSalesCategories]);
 
     const handleEditPackageSales = useCallback((date: string, personnelId: number, salesData: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser || !isFirebaseConfigured) return;
         const personnelName = ticketSalesPersonnel.find(p => p.id === personnelId)?.name || 'Unknown Personnel';
+
+        // Learn new categories
+        const existingCategories = new Set(otherSalesCategories);
+        let categoriesWereUpdated = false;
+        salesData.otherSales?.forEach(item => {
+            if (item.category && !existingCategories.has(item.category)) {
+                existingCategories.add(item.category);
+                categoriesWereUpdated = true;
+            }
+        });
+    
+        if (categoriesWereUpdated) {
+            setOtherSalesCategories(Array.from(existingCategories).sort());
+        }
 
         database.ref(`data/packageSales/${date}/${personnelId}`).set(salesData)
             .then(() => {
@@ -448,7 +477,7 @@ const AppContent: React.FC = () => {
                 console.error("Firebase package sales correction failed:", error);
                 showNotification('Failed to update sales record. Check connection.', 'error');
             });
-    }, [currentUser, logAction, showNotification, ticketSalesPersonnel]);
+    }, [currentUser, logAction, showNotification, ticketSalesPersonnel, otherSalesCategories, setOtherSalesCategories]);
 
     const handleExportData = () => {
         const backupData = {
@@ -459,7 +488,7 @@ const AppContent: React.FC = () => {
                 attendanceData, historyLogData, packageSalesData,
             },
             config: {
-                ridesData, operatorsData, ticketSalesPersonnelData, countersData, appLogo,
+                ridesData, operatorsData, ticketSalesPersonnelData, countersData, appLogo, otherSalesCategories
             }
         };
 
@@ -496,6 +525,7 @@ const AppContent: React.FC = () => {
             setTicketSalesPersonnelData(backupData.config.ticketSalesPersonnelData || {});
             setCountersData(backupData.config.countersData || {});
             handleLogoChange(backupData.config.appLogo || null);
+            setOtherSalesCategories(backupData.config.otherSalesCategories || []);
 
             // Restore Data
             setDailyCounts(backupData.data.dailyCounts || {});
@@ -699,8 +729,8 @@ const AppContent: React.FC = () => {
             case 'ts-roster': return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTicketSalesAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
             case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} counters={counters}/>;
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
-            case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} />;
-            case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} />;
+            case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
+            case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
             
             case 'counter': default: return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

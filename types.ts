@@ -55,7 +55,7 @@ export interface PackageSalesRecord {
   kiddoAmount: number;
   vipQty: number;
   vipAmount: number;
-  otherAmount: number;
+  otherSales: { category: string; amount: number }[];
 }
 
 // FIX: Added the missing 'MaintenanceRecord' interface to resolve the import error in MaintenanceDashboard.tsx.
