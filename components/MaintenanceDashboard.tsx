@@ -95,8 +95,8 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ onNavigate 
       if (record.softwareIssueSolved) summary[month].software++;
       if (record.partsReplaced) summary[month].parts++;
     });
-    // FIX: Sort by date chronologically. Subtracting Date objects directly is disallowed by TypeScript, so we cast to `any` to perform the numeric subtraction, which is a valid JavaScript operation.
-    return Object.entries(summary).sort((a,b) => (new Date(b[0]) as any) - (new Date(a[0]) as any));
+    // FIX: Sort by date chronologically. The 'any' cast is not type-safe. Using getTime() for numeric comparison is the correct approach.
+    return Object.entries(summary).sort((a,b) => new Date(b[0]).getTime() - new Date(a[0]).getTime());
   }, [maintenanceData]);
 
   const rangeData = useMemo(() => {
@@ -188,54 +188,4 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ onNavigate 
         </div>
 
         {/* Date Range Analysis */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                 <h2 className="text-xl font-bold mb-4">Problem Solving Status (by Range)</h2>
-                 <div className="flex items-center gap-4 mb-6 p-4 bg-gray-900/50 rounded-lg">
-                    <label className="font-semibold">Select a Range:</label>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="px-2 py-1 bg-gray-800 border border-gray-600 rounded-md"/>
-                    <span>to</span>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate} className="px-2 py-1 bg-gray-800 border border-gray-600 rounded-md"/>
-                 </div>
-                 
-                 {/* Bar Chart */}
-                 <div className="flex items-end justify-around h-64 border-l border-b border-gray-600 p-4">
-                    <div className="flex flex-col items-center">
-                        <div className="w-16 bg-pink-500 rounded-t-md" style={{ height: `${(rangeData.summary.hardware / maxChartValue) * 100}%` }}></div>
-                        <span className="mt-2 font-bold text-2xl text-pink-400">{rangeData.summary.hardware}</span>
-                    </div>
-                     <div className="flex flex-col items-center">
-                        <div className="w-16 bg-blue-500 rounded-t-md" style={{ height: `${(rangeData.summary.software / maxChartValue) * 100}%` }}></div>
-                         <span className="mt-2 font-bold text-2xl text-blue-400">{rangeData.summary.software}</span>
-                    </div>
-                     <div className="flex flex-col items-center">
-                        <div className="w-16 bg-indigo-500 rounded-t-md" style={{ height: `${(rangeData.summary.parts / maxChartValue) * 100}%` }}></div>
-                         <span className="mt-2 font-bold text-2xl text-indigo-400">{rangeData.summary.parts}</span>
-                    </div>
-                 </div>
-                 <div className="flex justify-around mt-2 text-xs text-gray-400">
-                    <span className="flex items-center gap-2"><span className="w-3 h-3 bg-pink-500 rounded-full"></span>Hardware</span>
-                    <span className="flex items-center gap-2"><span className="w-3 h-3 bg-blue-500 rounded-full"></span>Software</span>
-                    <span className="flex items-center gap-2"><span className="w-3 h-3 bg-indigo-500 rounded-full"></span>Parts</span>
-                 </div>
-            </div>
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <h2 className="text-xl font-bold mb-4 text-purple-400">G&R Out of Service</h2>
-                <p className="text-xs text-gray-500 mb-4">For range: {new Date(startDate + 'T00:00:00').toLocaleDateString()} to {new Date(endDate + 'T00:00:00').toLocaleDateString()}</p>
-                {rangeData.outOfServiceRides.length > 0 ? (
-                    <ul className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                        {rangeData.outOfServiceRides.map(rideName => (
-                            <li key={rideName} className="p-2 bg-gray-700/50 rounded-md text-gray-300">{rideName}</li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="text-gray-500">No rides were reported out of service in this period.</p>
-                )}
-            </div>
-        </div>
-
-    </div>
-  );
-};
-
-export default MaintenanceDashboard;
+        <div className="grid

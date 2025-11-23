@@ -162,16 +162,34 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
     }, [packageSales, startDate, endDate]);
 
     const rangeTotals = useMemo(() => {
-        const totals = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherAmount: 0, totalQty: 0, totalAmount: 0 };
+        const totals = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherAmount: 0, totalQty: 0, totalAmount: 0, otherBreakdown: '' };
+        const otherSalesByCategory = new Map<string, number>();
+
         for(const sales of aggregatedSalesByPersonnel.values()) {
-            const otherTotal = sales.otherSales.reduce((s, i) => s + i.amount, 0);
+            const otherTotalForRow = sales.otherSales.reduce((s, i) => s + i.amount, 0);
             totals.xtremeQty += sales.xtremeQty; totals.xtremeAmount += sales.xtremeAmount;
             totals.kiddoQty += sales.kiddoQty; totals.kiddoAmount += sales.kiddoAmount;
             totals.vipQty += sales.vipQty; totals.vipAmount += sales.vipAmount;
-            totals.otherAmount += otherTotal;
+            totals.otherAmount += otherTotalForRow;
             totals.totalQty += sales.xtremeQty + sales.kiddoQty + sales.vipQty;
-            totals.totalAmount += sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotal;
+            totals.totalAmount += sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotalForRow;
+
+            sales.otherSales.forEach(item => {
+                if (item.category && item.amount > 0) {
+                    otherSalesByCategory.set(item.category, (otherSalesByCategory.get(item.category) || 0) + item.amount);
+                }
+            });
         }
+
+        totals.otherBreakdown = Array.from(otherSalesByCategory.entries())
+            .sort((a, b) => b[1] - a[1]) // Sort by amount descending
+            .map(([category, amount]) => `${category}: ${amount.toLocaleString()}`)
+            .join('\n');
+        
+        if (!totals.otherBreakdown) {
+            totals.otherBreakdown = 'No categorized other sales';
+        }
+
         return totals;
     }, [aggregatedSalesByPersonnel]);
     
@@ -216,7 +234,15 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     <div><p className="text-sm text-gray-400">Xtreme</p><p className="text-lg font-bold">{rangeTotals.xtremeQty} / {rangeTotals.xtremeAmount.toLocaleString()} BDT</p></div>
                     <div><p className="text-sm text-gray-400">Kiddo</p><p className="text-lg font-bold">{rangeTotals.kiddoQty} / {rangeTotals.kiddoAmount.toLocaleString()} BDT</p></div>
                     <div><p className="text-sm text-gray-400">VIP</p><p className="text-lg font-bold">{rangeTotals.vipQty} / {rangeTotals.vipAmount.toLocaleString()} BDT</p></div>
-                    <div><p className="text-sm text-gray-400">Other</p><p className="text-lg font-bold">{rangeTotals.otherAmount.toLocaleString()} BDT</p></div>
+                    <div className="relative group cursor-pointer" title={rangeTotals.otherBreakdown}>
+                        <p className="text-sm text-gray-400">Other</p>
+                        <p className="text-lg font-bold">{rangeTotals.otherAmount.toLocaleString()} BDT</p>
+                        {rangeTotals.otherAmount > 0 && (
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-gray-900 text-white text-xs rounded-md py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-wrap border border-gray-600 shadow-lg z-10">
+                                {rangeTotals.otherBreakdown}
+                            </span>
+                        )}
+                    </div>
                     <div className="col-span-2 md:col-span-1 border-t-2 md:border-t-0 md:border-l-2 border-teal-500 pt-4 md:pt-0 md:pl-4"><p className="text-md font-bold text-gray-300">Grand Total</p><p className="text-2xl font-bold text-teal-400">{rangeTotals.totalAmount.toLocaleString()} BDT</p></div>
                 </div>
             </div>
@@ -237,7 +263,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                             const otherTotal = sales ? sales.otherSales.reduce((s, i) => s + i.amount, 0) : 0;
                             const totalQty = sales ? sales.xtremeQty + sales.kiddoQty + sales.vipQty : 0;
                             const totalAmount = sales ? sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotal : 0;
-                            const otherBreakdown = sales ? sales.otherSales.filter(s => s.amount > 0).map(s => `${s.category}: ${s.amount.toLocaleString()}`).join('\n') : 'No other sales';
+                            const otherBreakdown = sales && sales.otherSales.length > 0 ? sales.otherSales.filter(s => s.amount > 0).map(s => `${s.category}: ${s.amount.toLocaleString()}`).join('\n') : 'No other sales';
                             
                             return (
                                 <tr key={personnel.id} className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-800/50'} border-t border-gray-700`}>
@@ -247,7 +273,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                                     <td className="p-3 text-right tabular-nums">{sales ? `${sales.vipQty.toLocaleString()} / ${sales.vipAmount.toLocaleString()}` : '0 / 0'}</td>
                                     <td className="p-3 text-right tabular-nums relative group cursor-pointer" title={otherBreakdown}>
                                         {otherTotal.toLocaleString()}
-                                        {sales && sales.otherSales.length > 0 && <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-gray-900 text-white text-xs rounded-md py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-wrap border border-gray-600 shadow-lg z-10">{otherBreakdown}</span>}
+                                        {sales && sales.otherSales.length > 0 && otherTotal > 0 && <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs bg-gray-900 text-white text-xs rounded-md py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-pre-wrap border border-gray-600 shadow-lg z-10">{otherBreakdown}</span>}
                                     </td>
                                     <td className="p-3 text-right font-bold text-lg text-teal-400 tabular-nums">{`${totalQty.toLocaleString()} / ${totalAmount.toLocaleString()}`}</td>
                                     <td className="p-3 text-center">{(role === 'admin' || role === 'sales-officer') && <button onClick={() => handleEditClick(personnel)} className="px-3 py-1 bg-blue-600 text-white font-semibold rounded-md text-sm">Edit</button>}</td>
