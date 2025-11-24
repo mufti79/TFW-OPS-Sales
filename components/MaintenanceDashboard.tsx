@@ -7,9 +7,10 @@ interface MaintenanceDashboardProps {
   onDateChange: (date: string) => void;
   onUpdateTicketStatus: (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator) => void;
   maintenancePersonnel: Operator[];
+  onClearSolved: (date: string) => void;
 }
 
-const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenanceTickets, selectedDate, onDateChange, onUpdateTicketStatus, maintenancePersonnel }) => {
+const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenanceTickets, selectedDate, onDateChange, onUpdateTicketStatus, maintenancePersonnel, onClearSolved }) => {
   const [selectedTechnician, setSelectedTechnician] = useState<Operator | null>(null);
 
   const { sortedTickets, ticketNumberMap } = useMemo(() => {
@@ -180,7 +181,18 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
 
         {/* Solved Column */}
         <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <h2 className="text-xl font-bold text-green-400 mb-4">Solved ({solvedTickets.length})</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-green-400">Solved ({solvedTickets.length})</h2>
+            {solvedTickets.length > 0 && (
+              <button
+                onClick={() => onClearSolved(selectedDate)}
+                className="px-3 py-1 bg-red-800 text-white font-semibold rounded-md text-xs hover:bg-red-700"
+                title="Clear all solved tickets for this day"
+              >
+                Clear Solved
+              </button>
+            )}
+          </div>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
             {solvedTickets.map(ticket => (
               <div key={ticket.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-600 opacity-70">

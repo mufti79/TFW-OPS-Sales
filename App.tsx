@@ -850,6 +850,44 @@ const AppContent: React.FC = () => {
         }
     };
 
+    const handleClearSolvedTickets = useCallback((date: string) => {
+        if (!window.confirm(`Are you sure you want to permanently clear all SOLVED maintenance tickets for ${date}? This cannot be undone.`)) return;
+
+        if (isFirebaseConfigured) {
+            const dateTicketsRef = database.ref(`data/maintenanceTickets/${date}`);
+            dateTicketsRef.once('value', (snapshot) => {
+                const ticketsOnDate = snapshot.val();
+                if (!ticketsOnDate) {
+                    showNotification('No tickets to clear for this date.', 'info');
+                    return;
+                }
+
+                const updates: { [key: string]: null } = {};
+                let clearedCount = 0;
+                for (const ticketId in ticketsOnDate) {
+                    if (ticketsOnDate[ticketId].status === 'solved') {
+                        updates[`data/maintenanceTickets/${date}/${ticketId}`] = null;
+                        clearedCount++;
+                    }
+                }
+
+                if (clearedCount > 0) {
+                    database.ref().update(updates)
+                        .then(() => {
+                            logAction('CLEAR_SOLVED_TICKETS', `Cleared ${clearedCount} solved maintenance tickets for ${date}.`);
+                            showNotification(`${clearedCount} solved tickets for ${date} have been cleared.`, 'success');
+                        })
+                        .catch(e => {
+                            console.error("Failed to clear solved tickets:", e);
+                            showNotification('Could not clear solved tickets.', 'error');
+                        });
+                } else {
+                    showNotification('There are no solved tickets to clear for this date.', 'info');
+                }
+            });
+        }
+    }, [logAction, showNotification]);
+
 
     if (!isFirebaseConfigured) return <ConfigErrorScreen />;
     if (isFirebaseLoading) return (
@@ -897,7 +935,7 @@ const AppContent: React.FC = () => {
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
-            case 'maintenance-dashboard': return <MaintenanceDashboard maintenanceTickets={maintenanceTickets} selectedDate={selectedDate} onDateChange={setSelectedDate} onUpdateTicketStatus={handleUpdateTicketStatus} maintenancePersonnel={maintenancePersonnel} />;
+            case 'maintenance-dashboard': return <MaintenanceDashboard maintenanceTickets={maintenanceTickets} selectedDate={selectedDate} onDateChange={setSelectedDate} onUpdateTicketStatus={handleUpdateTicketStatus} maintenancePersonnel={maintenancePersonnel} onClearSolved={handleClearSolvedTickets} />;
             
             case 'counter': default: return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

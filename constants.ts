@@ -261,7 +261,8 @@ const uniqueFloors = [...new Set(RIDES_ARRAY.map(ride => ride.floor))];
 const floorOrder = ['17th', '16th', '15th', '14th', '13th', '12th', '11th', '10th', '9th', '1st'];
 // FIX: Export SECURITY_FLOORS constant to resolve import errors in SecurityView and ManagementView.
 export const SECURITY_FLOORS = ['9th', '10th', '11th', '12th', '13th', '14th', '15th', '16th', '17th'];
-export const FLOORS = uniqueFloors.sort((a, b) => {
+// FIX: The specified error could not be reproduced. As a best practice, changed the sort to be non-mutating by creating a shallow copy of the array first. This prevents potential side-effect bugs.
+export const FLOORS = [...uniqueFloors].sort((a, b) => {
     const indexA = floorOrder.indexOf(a);
     const indexB = floorOrder.indexOf(b);
     if (indexA === -1) return 1;
