@@ -764,7 +764,7 @@ const AppContent: React.FC = () => {
         const ride = rides.find(r => r.id === rideId);
         if (!ride) return;
 
-        const ticketId = `${today}-${rideId}`;
+        const ticketId = `${today}-${rideId}-${Date.now()}`;
         const newTicket: MaintenanceTicket = {
             id: ticketId,
             date: today,

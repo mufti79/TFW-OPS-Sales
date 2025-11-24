@@ -10,13 +10,20 @@ interface MaintenanceDashboardProps {
 }
 
 const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenanceTickets, selectedDate, onDateChange, onUpdateTicketStatus, currentUser }) => {
-  const ticketsForDay = useMemo(() => {
-    return Object.values(maintenanceTickets[selectedDate] || {});
+  const { sortedTickets, ticketNumberMap } = useMemo(() => {
+    // FIX: Cast the result of Object.values to MaintenanceTicket[] to resolve downstream type errors where properties like 'reportedAt' and 'id' could not be found on type 'unknown'.
+    const tickets = Object.values(maintenanceTickets[selectedDate] || {}) as MaintenanceTicket[];
+    const sorted = tickets.sort((a, b) => new Date(a.reportedAt).getTime() - new Date(b.reportedAt).getTime());
+    const map = new Map<string, number>();
+    sorted.forEach((ticket, index) => {
+      map.set(ticket.id, index + 1);
+    });
+    return { sortedTickets: sorted, ticketNumberMap: map };
   }, [maintenanceTickets, selectedDate]);
 
-  const reportedTickets = useMemo(() => ticketsForDay.filter(t => t.status === 'reported').sort((a,b) => new Date(a.reportedAt).getTime() - new Date(b.reportedAt).getTime()), [ticketsForDay]);
-  const inProgressTickets = useMemo(() => ticketsForDay.filter(t => t.status === 'in-progress').sort((a,b) => new Date(a.inProgressAt || 0).getTime() - new Date(b.inProgressAt || 0).getTime()), [ticketsForDay]);
-  const solvedTickets = useMemo(() => ticketsForDay.filter(t => t.status === 'solved').sort((a,b) => new Date(a.solvedAt || 0).getTime() - new Date(b.solvedAt || 0).getTime()), [ticketsForDay]);
+  const reportedTickets = useMemo(() => sortedTickets.filter(t => t.status === 'reported'), [sortedTickets]);
+  const inProgressTickets = useMemo(() => sortedTickets.filter(t => t.status === 'in-progress'), [sortedTickets]);
+  const solvedTickets = useMemo(() => sortedTickets.filter(t => t.status === 'solved'), [sortedTickets]);
 
   const formatTime = (isoString?: string) => {
     if (!isoString) return '';
@@ -25,6 +32,53 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
   
   const [year, month, day] = selectedDate.split('-').map(Number);
   const displayDate = new Date(year, month - 1, day);
+
+  const handleDownloadReport = () => {
+    if (sortedTickets.length === 0) {
+      alert("No maintenance tickets to download for this date.");
+      return;
+    }
+
+    const headers = [
+      'Ticket #', 'Ride Name', 'Problem', 'Status',
+      'Reported By', 'Reported At', 'Assigned To', 'In Progress At', 'Solved At'
+    ];
+
+    const formatCsvField = (field: string | undefined | number) => {
+      if (field === undefined || field === null) return '';
+      const str = String(field);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const rows = sortedTickets.map(ticket => {
+      const rowData = [
+        ticketNumberMap.get(ticket.id),
+        ticket.rideName,
+        ticket.problem,
+        ticket.status,
+        ticket.reportedByName,
+        ticket.reportedAt ? new Date(ticket.reportedAt).toLocaleString() : '',
+        ticket.assignedToName,
+        ticket.inProgressAt ? new Date(ticket.inProgressAt).toLocaleString() : '',
+        ticket.solvedAt ? new Date(ticket.solvedAt).toLocaleString() : ''
+      ];
+      return rowData.map(formatCsvField).join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.href = url;
+    link.setAttribute('download', `TFW_Maintenance_Report_${selectedDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   return (
     <div className="flex flex-col">
@@ -35,15 +89,23 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
           </h1>
           <p className="text-gray-400">Showing tickets for {displayDate.toLocaleDateString()}</p>
         </div>
-        <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg">
-          <label htmlFor="maintenance-date" className="text-sm font-medium text-gray-300">View Date:</label>
-          <input
-            id="maintenance-date"
-            type="date"
-            value={selectedDate}
-            onChange={(e) => onDateChange(e.target.value)}
-            className="px-2 py-1 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
-          />
+        <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+            <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg">
+                <label htmlFor="maintenance-date" className="text-sm font-medium text-gray-300">View Date:</label>
+                <input
+                    id="maintenance-date"
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => onDateChange(e.target.value)}
+                    className="px-2 py-1 bg-gray-800 border border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm"
+                />
+            </div>
+            <button
+                onClick={handleDownloadReport}
+                className="px-4 py-2.5 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all text-sm"
+            >
+                Download Report
+            </button>
         </div>
       </div>
 
@@ -54,7 +116,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
             {reportedTickets.map(ticket => (
               <div key={ticket.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-600">
-                <p className="font-bold text-lg">{ticket.rideName}</p>
+                <p className="font-bold text-lg">#{ticketNumberMap.get(ticket.id)} - {ticket.rideName}</p>
                 <p className="text-sm text-gray-400 mb-2">Reported by {ticket.reportedByName} at {formatTime(ticket.reportedAt)}</p>
                 <p className="text-gray-300 mb-4">{ticket.problem}</p>
                 <button
@@ -75,7 +137,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
             {inProgressTickets.map(ticket => (
               <div key={ticket.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-600">
-                <p className="font-bold text-lg">{ticket.rideName}</p>
+                <p className="font-bold text-lg">#{ticketNumberMap.get(ticket.id)} - {ticket.rideName}</p>
                 <p className="text-sm text-gray-400 mb-2">Taken by {ticket.assignedToName} at {formatTime(ticket.inProgressAt)}</p>
                 <p className="text-gray-300 mb-4">{ticket.problem}</p>
                 <button
@@ -97,7 +159,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
             {solvedTickets.map(ticket => (
               <div key={ticket.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-600 opacity-70">
-                <p className="font-bold text-lg">{ticket.rideName}</p>
+                <p className="font-bold text-lg">#{ticketNumberMap.get(ticket.id)} - {ticket.rideName}</p>
                  <p className="text-sm text-gray-400 mb-2">Solved by {ticket.assignedToName} at {formatTime(ticket.solvedAt)}</p>
                 <p className="text-gray-300">{ticket.problem}</p>
               </div>

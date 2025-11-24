@@ -330,7 +330,15 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             {myAssignedRides.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {myAssignedRides.map(ride => {
-                        const ticket = maintenanceTickets[`${selectedDate}-${ride.id}`];
+                        // FIX: Cast the result of Object.values to MaintenanceTicket[] to resolve multiple downstream type errors.
+                        const ticketsForRide = (Object.values(maintenanceTickets) as MaintenanceTicket[]).filter(
+                            t => t.rideId === ride.id
+                        );
+                        const sortedTickets = ticketsForRide.sort((a, b) => 
+                            new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime()
+                        );
+                        const activeTicket = sortedTickets.find(t => t.status !== 'solved');
+
                         return (
                           <div key={ride.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-1 transition-all duration-300 border border-gray-700 flex flex-col group">
                             <div className="relative">
@@ -355,7 +363,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                                 <h3 className="text-xl font-bold text-gray-100">{ride.name}</h3>
                               </div>
                               <Counter count={ride.count} onCountChange={(newCount) => onCountChange(ride.id, newCount)} />
-                              <MaintenanceSection ride={ride} ticket={ticket} onReportProblem={onReportProblem} />
+                              <MaintenanceSection ride={ride} ticket={activeTicket} onReportProblem={onReportProblem} />
                             </div>
                           </div>
                         )
