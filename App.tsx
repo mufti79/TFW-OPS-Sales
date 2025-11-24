@@ -837,7 +837,8 @@ const AppContent: React.FC = () => {
         if (!window.confirm("Are you sure you want to permanently delete ALL maintenance tickets? This action cannot be undone.")) return;
 
         if (isFirebaseConfigured) {
-            database.ref('data/maintenanceTickets').remove()
+            // FIX: Changed from remove() to set({}) to reliably clear the data without triggering re-initialization from the sync hook.
+            database.ref('data/maintenanceTickets').set({})
                 .then(() => {
                     logAction('CLEAR_MAINTENANCE_TICKETS', 'Cleared all maintenance tickets from the database.');
                     showNotification('All maintenance tickets have been cleared.', 'success');
