@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNotification } from '../imageStore';
+import { Ride } from '../types';
 
 interface BackupManagerProps {
   onClose: () => void;
@@ -11,6 +12,8 @@ interface BackupManagerProps {
   otherSalesCategories: string[];
   onRenameCategory: (oldName: string, newName: string) => void;
   onDeleteCategory: (name: string) => void;
+  obsoleteRides: Ride[];
+  onRemoveObsoleteRides: () => void;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -55,7 +58,7 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 };
 
 
-const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory }) => {
+const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory, obsoleteRides, onRemoveObsoleteRides }) => {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
@@ -229,6 +232,33 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
             <div className="mt-4 p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm rounded-lg">
                 <strong>Warning:</strong> Restoring from a backup is a destructive action. It will permanently overwrite all current data in the application.
             </div>
+          </div>
+
+           <div className="mt-8 border-t border-gray-600 pt-6">
+            <h3 className="text-xl font-bold text-orange-400 mb-2">Database Cleanup</h3>
+            <p className="text-sm text-gray-400 mb-4">
+                The following rides exist in your database but have been removed from the application's code. You can permanently remove them to keep your data clean.
+            </p>
+            {obsoleteRides.length > 0 ? (
+                <div className="space-y-3">
+                    <ul className="space-y-2 text-gray-300 bg-gray-900/50 p-3 rounded-lg border border-gray-700">
+                        {obsoleteRides.map(ride => (
+                            <li key={ride.id} className="flex justify-between items-center">
+                                <span>{ride.name} <span className="text-xs text-gray-500">(ID: {ride.id})</span></span>
+                                <span className="text-sm text-gray-400">{ride.floor} Floor</span>
+                            </li>
+                        ))}
+                    </ul>
+                    <button
+                        onClick={onRemoveObsoleteRides}
+                        className="w-full px-5 py-2.5 bg-orange-600 text-white font-bold rounded-lg hover:bg-orange-700 active:scale-95 transition-all"
+                    >
+                        Remove {obsoleteRides.length} Obsolete Ride(s) from Database
+                    </button>
+                </div>
+            ) : (
+                <p className="text-gray-500 text-center py-4">No obsolete rides found in the database.</p>
+            )}
           </div>
 
            <div className="mt-8 border-t border-gray-600 pt-6">

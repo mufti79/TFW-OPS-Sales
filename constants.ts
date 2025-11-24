@@ -18,8 +18,6 @@ export const RIDES_ARRAY: Ride[] = [
   { id: 5, name: 'Walk the Plank', floor: '16th', imageUrl: 'https://picsum.photos/seed/5-WalkthePlank/400/300' },
   { id: 6, name: 'Simulator Roller Coaster', floor: '16th', imageUrl: 'https://picsum.photos/seed/6-SimulatorRollerCoaster/400/300' },
   { id: 7, name: 'Fly Max', floor: '16th', imageUrl: 'https://picsum.photos/seed/7-FlyMax/400/300' },
-  { id: 8, name: '7D Cinema', floor: '16th', imageUrl: 'https://picsum.photos/seed/8-7DCinema/400/300' },
-  { id: 9, name: '5D Cinema', floor: '16th', imageUrl: 'https://picsum.photos/seed/9-5DCinema/400/300' },
   { id: 10, name: 'Laser Tag 1', floor: '15th', imageUrl: 'https://picsum.photos/seed/10-LaserTag1/400/300' },
   { id: 11, name: 'V of War', floor: '15th', imageUrl: 'https://picsum.photos/seed/11-VofWar/400/300' },
   { id: 12, name: 'VR Egg', floor: '15th', imageUrl: 'https://picsum.photos/seed/12-VREgg/400/300' },

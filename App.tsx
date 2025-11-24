@@ -587,30 +587,6 @@ const AppContent: React.FC = () => {
             });
     };
     
-    const handleSyncConfig = useCallback(() => {
-        if (!window.confirm("This will overwrite the ride, operator, and counter configurations in the database with the values from the application code. Custom image URLs saved via the app will be reset. Are you sure?")) {
-            return;
-        }
-        if (!isFirebaseConfigured) return;
-    
-        const updates = {
-            'config/rides': RIDES,
-            'config/operators': OPERATORS,
-            'config/ticketSalesPersonnel': TICKET_SALES_PERSONNEL,
-            'config/counters': COUNTERS,
-        };
-        database.ref().update(updates)
-            .then(() => {
-                logAction('CONFIG_SYNC', `Manually synced config from code.`);
-                showNotification('Configuration synced successfully! The app will reload.', 'success', 5000);
-                setTimeout(() => window.location.reload(), 2000);
-            })
-            .catch((error) => {
-                console.error("Firebase config sync failed:", error);
-                showNotification('Failed to sync configuration.', 'error');
-            });
-    }, [logAction, showNotification]);
-
     const handleNavigate = (view: View) => { setCurrentView(view); setSearchTerm(''); setSelectedFloor(''); };
     const handleShowModal = (modalType: Modal, ride?: Ride) => { if (ride) setSelectedRideForModal(ride); setModal(modalType); };
 
@@ -745,6 +721,37 @@ const AppContent: React.FC = () => {
         showNotification('Category deleted from suggestion list.', 'success');
     }, [otherSalesCategories, setOtherSalesCategories, logAction, showNotification]);
 
+    const [obsoleteRides, setObsoleteRides] = useState<Ride[]>([]);
+    useEffect(() => {
+        if (ridesData) {
+            const codeRideIds = new Set(RIDES_ARRAY.map(r => r.id));
+            const dbRides: Ride[] = Object.entries(ridesData).map(([id, ride]) => ({ id: Number(id), ...ride as any }));
+            const obsolete = dbRides.filter(r => !codeRideIds.has(r.id));
+            setObsoleteRides(obsolete);
+        }
+    }, [ridesData]);
+
+    const handleRemoveObsoleteRides = useCallback(() => {
+        if (obsoleteRides.length === 0) return;
+        if (!window.confirm(`Are you sure you want to permanently remove ${obsoleteRides.length} obsolete ride(s) from the database? This cannot be undone.`)) return;
+
+        if (isFirebaseConfigured) {
+            const updates: { [key: string]: null } = {};
+            obsoleteRides.forEach(ride => {
+                updates[`config/rides/${ride.id}`] = null;
+            });
+            database.ref().update(updates)
+                .then(() => {
+                    logAction('DB_CLEANUP', `Removed obsolete rides: ${obsoleteRides.map(r => r.name).join(', ')}.`);
+                    showNotification('Obsolete rides removed successfully!', 'success');
+                })
+                .catch(error => {
+                    console.error("Firebase obsolete ride removal failed:", error);
+                    showNotification('Failed to remove obsolete rides.', 'error');
+                });
+        }
+    }, [obsoleteRides, logAction, showNotification]);
+
     if (!isFirebaseConfigured) return <ConfigErrorScreen />;
     if (isFirebaseLoading) return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
@@ -811,7 +818,7 @@ const AppContent: React.FC = () => {
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
-            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} onSyncConfig={handleSyncConfig} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={obsoleteRides} onRemoveObsoleteRides={handleRemoveObsoleteRides} />}
             <footer className="text-center py-4 mt-auto">
               <p className="text-gray-600 text-xs font-light">
                   Developed By
