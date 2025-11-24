@@ -489,7 +489,7 @@ const AppContent: React.FC = () => {
                 attendanceData, historyLogData, packageSalesData,
             },
             config: {
-                ridesData, operatorsData, ticketSalesPersonnelData, countersData, appLogo, otherSalesCategories
+                ridesData, operatorsData, ticketSalesPersonnelData, countersData, appLogo, otherSalesCategories,
             }
         };
 
@@ -511,7 +511,7 @@ const AppContent: React.FC = () => {
     const handleImportData = (jsonString: string) => {
         try {
             const backupData = JSON.parse(jsonString);
-            if (!backupData.version || !backupData.data || !backupData.config) {
+            if (!backupData.data || !backupData.config) {
                 throw new Error('Invalid backup file format.');
             }
 
@@ -591,26 +591,25 @@ const AppContent: React.FC = () => {
         if (!window.confirm("This will overwrite the ride, operator, and counter configurations in the database with the values from the application code. Custom image URLs saved via the app will be reset. Are you sure?")) {
             return;
         }
-        if (isFirebaseConfigured) {
-            const updates = {
-                'config/rides': RIDES,
-                'config/operators': OPERATORS,
-                'config/ticketSalesPersonnel': TICKET_SALES_PERSONNEL,
-                'config/counters': COUNTERS,
-            };
-            database.ref().update(updates)
-                .then(() => {
-                    logAction('CONFIG_SYNC', 'Synced configuration from code to database.');
-                    showNotification('Configuration synced from code. The app will now reload.', 'success', 5000);
-                    setTimeout(() => window.location.reload(), 2000);
-                })
-                .catch((error: Error) => {
-                     console.error("Firebase config sync failed:", error);
-                     showNotification('Failed to sync configuration.', 'error');
-                });
-        }
+        if (!isFirebaseConfigured) return;
+    
+        const updates = {
+            'config/rides': RIDES,
+            'config/operators': OPERATORS,
+            'config/ticketSalesPersonnel': TICKET_SALES_PERSONNEL,
+            'config/counters': COUNTERS,
+        };
+        database.ref().update(updates)
+            .then(() => {
+                logAction('CONFIG_SYNC', `Manually synced config from code.`);
+                showNotification('Configuration synced successfully! The app will reload.', 'success', 5000);
+                setTimeout(() => window.location.reload(), 2000);
+            })
+            .catch((error) => {
+                console.error("Firebase config sync failed:", error);
+                showNotification('Failed to sync configuration.', 'error');
+            });
     }, [logAction, showNotification]);
-
 
     const handleNavigate = (view: View) => { setCurrentView(view); setSearchTerm(''); setSelectedFloor(''); };
     const handleShowModal = (modalType: Modal, ride?: Ride) => { if (ride) setSelectedRideForModal(ride); setModal(modalType); };

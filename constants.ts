@@ -1,4 +1,3 @@
-
 import { Ride, Operator, Counter } from './types';
 
 // Utility function to convert array to an object with IDs as keys, which is a Firebase best practice.

@@ -8,7 +8,6 @@ interface BackupManagerProps {
   onResetDay: (date: string) => void;
   appLogo: string | null;
   onLogoChange: (logoBase64: string | null) => void;
-  onSyncConfig: () => void;
   otherSalesCategories: string[];
   onRenameCategory: (oldName: string, newName: string) => void;
   onDeleteCategory: (name: string) => void;
@@ -56,7 +55,7 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 };
 
 
-const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, onSyncConfig, otherSalesCategories, onRenameCategory, onDeleteCategory }) => {
+const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory }) => {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
@@ -230,23 +229,6 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
             <div className="mt-4 p-3 bg-red-900/50 border border-red-700 text-red-300 text-sm rounded-lg">
                 <strong>Warning:</strong> Restoring from a backup is a destructive action. It will permanently overwrite all current data in the application.
             </div>
-          </div>
-
-          <div className="mt-8 border-t border-gray-600 pt-6">
-            <h3 className="text-xl font-bold text-indigo-400 mb-2">Sync Configuration from Code</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              If you have updated the hard-coded lists of rides, operators, or counters in the source code, this will force the database to update with those changes.
-            </p>
-            <div className="mt-4 p-3 bg-yellow-900/50 border border-yellow-700 text-yellow-300 text-sm rounded-lg">
-                <strong>Warning:</strong> This will reset any custom ride images you have uploaded through the app.
-            </div>
-            <button 
-                onClick={onSyncConfig} 
-                className="w-full mt-4 px-5 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 110 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
-                Sync Configuration from Code
-            </button>
           </div>
 
            <div className="mt-8 border-t border-gray-600 pt-6">
