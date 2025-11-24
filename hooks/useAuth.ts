@@ -2,7 +2,7 @@ import useLocalStorage from './useLocalStorage';
 import { Operator } from '../types';
 import { useCallback } from 'react';
 
-export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | null;
+export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'maintenance' | null;
 
 export const ADMIN_PIN = '9999';
 export const OPERATION_OFFICER_PIN = '4321';
@@ -16,7 +16,7 @@ export const useAuth = () => {
   const [currentUser, setCurrentUser] = useLocalStorage<Operator | null>('authUser', null);
 
   const login = useCallback((
-    newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer', 
+    newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'maintenance', 
     payload?: string | Operator
   ): boolean => {
     switch (newRole) {
@@ -44,6 +44,7 @@ export const useAuth = () => {
       
       case 'operator':
       case 'ticket-sales':
+      case 'maintenance':
         if (payload && typeof payload !== 'string') {
           setRole(newRole);
           setCurrentUser(payload as Operator);

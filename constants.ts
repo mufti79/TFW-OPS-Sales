@@ -220,6 +220,13 @@ export const TICKET_SALES_PERSONNEL_ARRAY: Operator[] = [
   { id: 22200602, name: 'Lima Parvin' },
 ];
 
+export const MAINTENANCE_PERSONNEL_ARRAY: Operator[] = [
+    { id: 9001, name: 'Maintenance Lead' },
+    { id: 9002, name: 'Sr. Technician A' },
+    { id: 9003, name: 'Sr. Technician B' },
+    { id: 9004, name: 'Jr. Technician A' },
+];
+
 export const COUNTERS_ARRAY: Counter[] = [
     { id: 1, name: 'L-1, North (Attrium)', location: 'Level-1, TFW Booth' },
     { id: 2, name: 'L-1, South (Attrium)', location: 'Level-1, TFW Booth' },
@@ -247,6 +254,7 @@ export const COUNTERS_ARRAY: Counter[] = [
 export const RIDES = arrayToObjectById(RIDES_ARRAY);
 export const OPERATORS = arrayToObjectById(OPERATORS_ARRAY);
 export const TICKET_SALES_PERSONNEL = arrayToObjectById(TICKET_SALES_PERSONNEL_ARRAY);
+export const MAINTENANCE_PERSONNEL = arrayToObjectById(MAINTENANCE_PERSONNEL_ARRAY);
 export const COUNTERS = arrayToObjectById(COUNTERS_ARRAY);
 
 const uniqueFloors = [...new Set(RIDES_ARRAY.map(ride => ride.floor))];

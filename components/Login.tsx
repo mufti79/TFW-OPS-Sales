@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Operator } from '../types';
+import { MAINTENANCE_PERSONNEL_ARRAY } from '../constants';
 
 interface LoginProps {
-  onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator) => boolean;
+  onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'maintenance', payload?: string | Operator) => boolean;
   operators: Operator[];
   ticketSalesPersonnel: Operator[];
   appLogo: string | null;
@@ -18,6 +19,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
   const [selectedTicketSalesId, setSelectedTicketSalesId] = useState<string>('');
+  const [selectedMaintenanceId, setSelectedMaintenanceId] = useState<string>('');
 
   const handleAdminLogin = () => {
     if (onLogin('admin', adminPin)) {
@@ -64,6 +66,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
     const personnel = ticketSalesPersonnel.find(p => p.id === parseInt(selectedTicketSalesId, 10));
     if (personnel) {
         onLogin('ticket-sales', personnel);
+    }
+  };
+  
+  const handleMaintenanceLogin = () => {
+    if (!selectedMaintenanceId) return;
+    const personnel = MAINTENANCE_PERSONNEL_ARRAY.find(p => p.id === parseInt(selectedMaintenanceId, 10));
+    if (personnel) {
+        onLogin('maintenance', personnel);
     }
   };
 
@@ -193,29 +203,55 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
                 </div>
             </div>
             
-            {/* Admin Login */}
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 max-w-sm mx-auto">
-            <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Admin Login</h2>
-            <div className="space-y-3">
-                <input
-                type="password"
-                placeholder="Enter Admin PIN"
-                value={adminPin}
-                onChange={(e) => handlePinChange(setAdminPin, setAdminError, e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-                className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all text-center text-xl tracking-widest"
-                maxLength={4}
-                aria-label="Admin PIN"
-                autoComplete="off"
-                />
-                {adminError && <p className="text-red-400 text-sm text-center">{adminError}</p>}
-                <button
-                onClick={handleAdminLogin}
-                className="w-full px-6 py-3 bg-pink-600 text-white font-bold rounded-lg hover:bg-pink-700 active:scale-95 transition-all text-lg"
-                >
-                Enter as Admin
-                </button>
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Maintenance Login */}
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                    <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Maintenance Login</h2>
+                    <div className="space-y-4">
+                        <select
+                        value={selectedMaintenanceId}
+                        onChange={(e) => setSelectedMaintenanceId(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                        aria-label="Select your name for Maintenance"
+                        >
+                        <option value="">-- Select Your Name --</option>
+                        {MAINTENANCE_PERSONNEL_ARRAY.sort((a,b) => a.name.localeCompare(b.name)).map(op => (
+                            <option key={op.id} value={op.id}>{op.name}</option>
+                        ))}
+                        </select>
+                        <button
+                        onClick={handleMaintenanceLogin}
+                        disabled={!selectedMaintenanceId}
+                        className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 active:scale-95 transition-all text-lg disabled:bg-gray-600 disabled:cursor-not-allowed"
+                        >
+                        Login
+                        </button>
+                    </div>
+                </div>
+                {/* Admin Login */}
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Admin Login</h2>
+                <div className="space-y-3">
+                    <input
+                    type="password"
+                    placeholder="Enter Admin PIN"
+                    value={adminPin}
+                    onChange={(e) => handlePinChange(setAdminPin, setAdminError, e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                    className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all text-center text-xl tracking-widest"
+                    maxLength={4}
+                    aria-label="Admin PIN"
+                    autoComplete="off"
+                    />
+                    {adminError && <p className="text-red-400 text-sm text-center">{adminError}</p>}
+                    <button
+                    onClick={handleAdminLogin}
+                    className="w-full px-6 py-3 bg-pink-600 text-white font-bold rounded-lg hover:bg-pink-700 active:scale-95 transition-all text-lg"
+                    >
+                    Enter as Admin
+                    </button>
+                </div>
+                </div>
             </div>
         </div>
       </div>

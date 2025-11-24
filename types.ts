@@ -71,3 +71,19 @@ export interface MaintenanceRecord {
   partsReplaced: boolean;
   isOutOfService: boolean;
 }
+
+export interface MaintenanceTicket {
+  id: string; // Composite key, e.g., YYYY-MM-DD-rideId
+  date: string; // YYYY-MM-DD
+  rideId: number;
+  rideName: string;
+  problem: string;
+  status: 'reported' | 'in-progress' | 'solved';
+  reportedById: number;
+  reportedByName: string;
+  assignedToId?: number;
+  assignedToName?: string;
+  reportedAt: string; // ISO string
+  inProgressAt?: string; // ISO string
+  solvedAt?: string; // ISO string
+}

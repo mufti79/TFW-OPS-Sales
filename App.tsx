@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
+import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY, MAINTENANCE_PERSONNEL } from './constants';
 // FIX: Imported PackageSalesData to resolve a type error.
-import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
+import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData, MaintenanceTicket } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
@@ -31,6 +31,7 @@ import DailySalesEntry from './components/DailySalesEntry';
 import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import Dashboard from './components/Dashboard';
+import MaintenanceDashboard from './components/MaintenanceDashboard';
 
 
 
@@ -69,7 +70,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 };
 
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'maintenance-dashboard';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 type FirebaseObject<T extends { id: number }> = Record<number, Omit<T, 'id'>>;
 
@@ -127,6 +128,7 @@ const AppContent: React.FC = () => {
         if (r === 'sales-officer') return 'sales-officer-dashboard';
         if (r === 'ticket-sales') return 'ts-roster';
         if (r === 'operator') return 'roster';
+        if (r === 'maintenance') return 'maintenance-dashboard';
         
         return 'counter'; // Should not be reached if role is set
     }, []);
@@ -155,6 +157,7 @@ const AppContent: React.FC = () => {
     const { data: historyLogData, setData: setHistoryLogData, isLoading: l10 } = useFirebaseSync<Record<number, Omit<HistoryRecord, 'id'>>>('data/historyLog', {});
     const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<PackageSalesData>('data/packageSales', {});
     const { data: otherSalesCategories, setData: setOtherSalesCategories, isLoading: l11 } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
+    const { data: maintenanceTickets, setData: setMaintenanceTickets, isLoading: l13 } = useFirebaseSync<Record<string, Record<string, MaintenanceTicket>>>('data/maintenanceTickets', {});
     
     // **FIX**: Dedicated state and effect for logo to ensure robust cross-device syncing.
     const [appLogo, setAppLogo] = useState<string | null>(null);
@@ -223,6 +226,7 @@ const AppContent: React.FC = () => {
         'Operator Roster': l4, 'Sales Personnel': l5, 'Counter Configuration': l6,
         'Operator Assignments': l7, 'Sales Assignments': l8, 'Attendance Records': l9,
         'History Log': l10, 'Other Categories': l11, 'Package Sales': l12,
+        'Maintenance Tickets': l13,
     };
     const isFirebaseLoading = Object.values(loadingStates).some(status => status) || isLogoLoading;
 
@@ -326,7 +330,7 @@ const AppContent: React.FC = () => {
     const totalSales = useMemo(() => Object.values(ticketSalesData[today] || {}).reduce((sum, count) => sum + count, 0), [ticketSalesData, today]);
     const hasCheckedInToday = useMemo(() => !!(currentUser && attendanceData[today]?.[currentUser.id]), [currentUser, attendanceData, today]);
 
-    const handleLogin = (newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator): boolean => {
+    const handleLogin = (newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'maintenance', payload?: string | Operator): boolean => {
         const success = login(newRole, payload);
         if (success && payload) {
             const user = typeof payload === 'object' ? payload : { id: 0, name: newRole };
@@ -486,7 +490,7 @@ const AppContent: React.FC = () => {
             timestamp: new Date().toISOString(),
             data: {
                 dailyCounts, ticketSalesData, dailyAssignments, ticketSalesAssignments,
-                attendanceData, historyLogData, packageSalesData,
+                attendanceData, historyLogData, packageSalesData, maintenanceTickets
             },
             config: {
                 ridesData, operatorsData, ticketSalesPersonnelData, countersData, appLogo, otherSalesCategories,
@@ -536,6 +540,7 @@ const AppContent: React.FC = () => {
             setAttendanceData(backupData.data.attendanceData || {});
             setHistoryLogData(backupData.data.historyLogData || {});
             setPackageSalesData(backupData.data.packageSalesData || {});
+            setMaintenanceTickets(backupData.data.maintenanceTickets || {});
 
             logAction('DATA_IMPORT', 'Imported data from a backup file, overwriting all existing data.');
             showNotification('Data imported successfully! The app may need to reload.', 'success', 6000);
@@ -567,7 +572,8 @@ const AppContent: React.FC = () => {
             `data/operatorAssignments/${dateToReset}`,
             `data/ticketSalesAssignments/${dateToReset}`,
             `data/attendance/${dateToReset}`,
-            `data/packageSales/${dateToReset}`
+            `data/packageSales/${dateToReset}`,
+            `data/maintenanceTickets/${dateToReset}`,
         ];
 
         const updates: { [key: string]: null } = {};
@@ -752,6 +758,59 @@ const AppContent: React.FC = () => {
         }
     }, [obsoleteRides, logAction, showNotification]);
 
+    const handleReportProblem = useCallback((rideId: number, problem: string) => {
+        if (!currentUser || !isFirebaseConfigured || !problem.trim()) return;
+
+        const ride = rides.find(r => r.id === rideId);
+        if (!ride) return;
+
+        const ticketId = `${today}-${rideId}`;
+        const newTicket: MaintenanceTicket = {
+            id: ticketId,
+            date: today,
+            rideId: ride.id,
+            rideName: ride.name,
+            problem: problem.trim(),
+            status: 'reported',
+            reportedById: currentUser.id,
+            reportedByName: currentUser.name,
+            reportedAt: new Date().toISOString(),
+        };
+
+        database.ref(`data/maintenanceTickets/${today}/${ticketId}`).set(newTicket)
+            .then(() => {
+                logAction('MAINTENANCE_REPORT', `Problem reported for ${ride.name}: ${problem.trim()}`);
+                showNotification('Problem reported successfully!', 'success');
+            })
+            .catch(error => {
+                console.error("Firebase ticket creation failed:", error);
+                showNotification('Failed to report problem. Check connection.', 'error');
+            });
+    }, [currentUser, today, rides, logAction, showNotification]);
+
+    const handleUpdateTicketStatus = useCallback((ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved') => {
+        if (!currentUser || !isFirebaseConfigured) return;
+        
+        const updates: Partial<MaintenanceTicket> = { status: newStatus };
+        if (newStatus === 'in-progress') {
+            updates.inProgressAt = new Date().toISOString();
+            updates.assignedToId = currentUser.id;
+            updates.assignedToName = currentUser.name;
+        } else if (newStatus === 'solved') {
+            updates.solvedAt = new Date().toISOString();
+        }
+
+        database.ref(`data/maintenanceTickets/${ticket.date}/${ticket.id}`).update(updates)
+            .then(() => {
+                logAction('MAINTENANCE_UPDATE', `Status for ${ticket.rideName} updated to ${newStatus}.`);
+                showNotification('Ticket status updated.', 'success');
+            })
+            .catch(error => {
+                console.error("Firebase ticket update failed:", error);
+                showNotification('Failed to update ticket status. Check connection.', 'error');
+            });
+    }, [currentUser, logAction, showNotification]);
+
     if (!isFirebaseConfigured) return <ConfigErrorScreen />;
     if (isFirebaseLoading) return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
@@ -790,7 +849,7 @@ const AppContent: React.FC = () => {
             case 'expertise': return <ExpertiseReport operators={operators} dailyAssignments={dailyAssignments} rides={rides} />;
             case 'roster':
                 const ridesForRoster = rides.map(ride => ({ ...ride, count: dailyCounts[selectedDate]?.[ride.id] || 0 }));
-                return <DailyRoster rides={ridesForRoster} operators={operators} dailyAssignments={dailyAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleCountChange} onShowModal={handleShowModal} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
+                return <DailyRoster rides={ridesForRoster} operators={operators} dailyAssignments={dailyAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleCountChange} onShowModal={handleShowModal} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} maintenanceTickets={maintenanceTickets[selectedDate] || {}} onReportProblem={handleReportProblem} />;
             case 'ticket-sales-dashboard': return <TicketSalesView countersWithSales={countersWithSales} onSalesChange={handleSalesChange} />;
             case 'ts-assignments': return <TicketSalesAssignmentView counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} onSave={handleSaveTicketSalesAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
             case 'ts-roster': return <TicketSalesRoster counters={counters} ticketSalesPersonnel={ticketSalesPersonnel} dailyAssignments={ticketSalesAssignments} selectedDate={selectedDate} onDateChange={setSelectedDate} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTicketSalesAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
@@ -798,6 +857,7 @@ const AppContent: React.FC = () => {
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
+            case 'maintenance-dashboard': return <MaintenanceDashboard maintenanceTickets={maintenanceTickets} selectedDate={selectedDate} onDateChange={setSelectedDate} onUpdateTicketStatus={handleUpdateTicketStatus} currentUser={currentUser!} />;
             
             case 'counter': default: return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

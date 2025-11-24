@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react';
-import { Ride, Operator, AttendanceRecord, RideWithCount } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Ride, Operator, AttendanceRecord, RideWithCount, MaintenanceTicket } from '../types';
 import { Role } from '../hooks/useAuth';
 import RideCard from './RideCard';
 import BriefingCheckin from './BriefingCheckin';
+// FIX: Add missing import for Counter component
+import Counter from './Counter';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
@@ -22,9 +24,86 @@ interface DailyRosterProps {
   hasCheckedInToday: boolean;
   onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
   isCheckinAllowed: boolean;
+  maintenanceTickets: Record<string, MaintenanceTicket>;
+  onReportProblem: (rideId: number, problem: string) => void;
 }
 
-const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal, hasCheckedInToday, onClockIn, isCheckinAllowed }) => {
+const MaintenanceSection: React.FC<{
+    ride: Ride;
+    ticket: MaintenanceTicket | undefined;
+    onReportProblem: (rideId: number, problem: string) => void;
+}> = ({ ride, ticket, onReportProblem }) => {
+    const [problemText, setProblemText] = useState('');
+    const [isReporting, setIsReporting] = useState(false);
+
+    const formatTime = (isoString?: string) => {
+        if (!isoString) return '';
+        return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const handleSubmit = () => {
+        if (problemText.trim()) {
+            onReportProblem(ride.id, problemText.trim());
+            setIsReporting(false);
+            setProblemText('');
+        }
+    };
+
+    if (ticket) {
+        let statusColor = 'text-yellow-400';
+        if (ticket.status === 'in-progress') statusColor = 'text-blue-400';
+        if (ticket.status === 'solved') statusColor = 'text-green-400';
+
+        return (
+            <div className="mt-4 pt-3 border-t border-gray-700">
+                <h4 className="font-semibold text-gray-300 text-sm mb-2">Maintenance Status</h4>
+                <div className="bg-gray-700/50 p-3 rounded-lg text-xs space-y-1">
+                    <p><strong>Status:</strong> <span className={`font-bold capitalize ${statusColor}`}>{ticket.status}</span></p>
+                    <p><strong>Problem:</strong> {ticket.problem}</p>
+                    <p><strong>Reported:</strong> {formatTime(ticket.reportedAt)} by {ticket.reportedByName}</p>
+                    {ticket.status !== 'reported' && ticket.assignedToName && (
+                        <p><strong>Technician:</strong> {ticket.assignedToName} ({formatTime(ticket.inProgressAt)})</p>
+                    )}
+                    {ticket.status === 'solved' && (
+                        <p><strong>Solved:</strong> {formatTime(ticket.solvedAt)}</p>
+                    )}
+                </div>
+            </div>
+        );
+    }
+    
+    if (isReporting) {
+        return (
+            <div className="mt-4 pt-3 border-t border-gray-700">
+                <h4 className="font-semibold text-gray-300 text-sm mb-2">Report a Problem</h4>
+                <textarea
+                    value={problemText}
+                    onChange={(e) => setProblemText(e.target.value)}
+                    placeholder="Describe the issue..."
+                    className="w-full h-20 p-2 bg-gray-900 border border-gray-600 rounded-md text-sm mb-2"
+                />
+                <div className="flex gap-2">
+                    <button onClick={handleSubmit} className="flex-grow px-3 py-1.5 bg-red-600 text-white font-semibold rounded-md text-sm">Submit Report</button>
+                    <button onClick={() => setIsReporting(false)} className="px-3 py-1.5 bg-gray-600 text-white rounded-md text-sm">Cancel</button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mt-4 pt-3 border-t border-gray-700">
+            <button
+                onClick={() => setIsReporting(true)}
+                className="w-full px-3 py-2 bg-red-800 text-white font-semibold rounded-lg text-sm hover:bg-red-700 transition-colors"
+            >
+                Report Problem
+            </button>
+        </div>
+    );
+};
+
+
+const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal, hasCheckedInToday, onClockIn, isCheckinAllowed, maintenanceTickets, onReportProblem }) => {
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
       const [hours, minutes] = timeStr.split(':');
@@ -250,15 +329,37 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
             {myAssignedRides.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {myAssignedRides.map(ride => (
-                        <RideCard
-                            key={ride.id}
-                            ride={ride}
-                            onCountChange={onCountChange}
-                            role={role}
-                            onChangePicture={() => onShowModal('edit-image', ride)}
-                        />
-                    ))}
+                    {myAssignedRides.map(ride => {
+                        const ticket = maintenanceTickets[`${selectedDate}-${ride.id}`];
+                        return (
+                          <div key={ride.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-1 transition-all duration-300 border border-gray-700 flex flex-col group">
+                            <div className="relative">
+                              <img src={ride.imageUrl} alt={ride.name} className="w-full h-48 object-cover" />
+                               {isManager && (
+                                  <button 
+                                      onClick={() => onShowModal('edit-image', ride)}
+                                      className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                      aria-label="Change ride picture"
+                                  >
+                                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                      </svg>
+                                  </button>
+                              )}
+                            </div>
+                            <div className="p-4 flex flex-col flex-grow">
+                              <div className="flex-grow">
+                                <span className="inline-block bg-purple-600 text-white text-xs font-semibold px-2 py-1 rounded-full mb-2">
+                                  {ride.floor} Floor
+                                </span>
+                                <h3 className="text-xl font-bold text-gray-100">{ride.name}</h3>
+                              </div>
+                              <Counter count={ride.count} onCountChange={(newCount) => onCountChange(ride.id, newCount)} />
+                              <MaintenanceSection ride={ride} ticket={ticket} onReportProblem={onReportProblem} />
+                            </div>
+                          </div>
+                        )
+                    })}
                 </div>
             ) : (
                 <div className="text-center py-16">
