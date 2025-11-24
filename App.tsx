@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
-import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY, MAINTENANCE_PERSONNEL } from './constants';
+import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY, MAINTENANCE_PERSONNEL, MAINTENANCE_PERSONNEL_ARRAY } from './constants';
 // FIX: Imported PackageSalesData to resolve a type error.
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, CounterWithSales, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData, MaintenanceTicket } from './types';
 import { useAuth, Role } from './hooks/useAuth';
@@ -158,6 +158,7 @@ const AppContent: React.FC = () => {
     const { data: packageSalesData, setData: setPackageSalesData, isLoading: l12 } = useFirebaseSync<PackageSalesData>('data/packageSales', {});
     const { data: otherSalesCategories, setData: setOtherSalesCategories, isLoading: l11 } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     const { data: maintenanceTickets, setData: setMaintenanceTickets, isLoading: l13 } = useFirebaseSync<Record<string, Record<string, MaintenanceTicket>>>('data/maintenanceTickets', {});
+    const { data: maintenancePersonnelData, setData: setMaintenancePersonnelData, isLoading: l14 } = useFirebaseSync<FirebaseObject<Operator>>('config/maintenancePersonnel', MAINTENANCE_PERSONNEL);
     
     // **FIX**: Dedicated state and effect for logo to ensure robust cross-device syncing.
     const [appLogo, setAppLogo] = useState<string | null>(null);
@@ -220,13 +221,14 @@ const AppContent: React.FC = () => {
         }
         return sales;
     }, [packageSalesData]);
+    const maintenancePersonnel = useMemo<Operator[]>(() => maintenancePersonnelData ? Object.entries(maintenancePersonnelData).map(([id, p]) => ({ id: Number(id), ...p })) : MAINTENANCE_PERSONNEL_ARRAY, [maintenancePersonnelData]);
     
     const loadingStates = {
         'Ride Counts': l1, 'Ticket Sales': l2, 'Ride Configuration': l3,
         'Operator Roster': l4, 'Sales Personnel': l5, 'Counter Configuration': l6,
         'Operator Assignments': l7, 'Sales Assignments': l8, 'Attendance Records': l9,
         'History Log': l10, 'Other Categories': l11, 'Package Sales': l12,
-        'Maintenance Tickets': l13,
+        'Maintenance Tickets': l13, 'Maintenance Personnel': l14,
     };
     const isFirebaseLoading = Object.values(loadingStates).some(status => status) || isLogoLoading;
 
@@ -493,7 +495,7 @@ const AppContent: React.FC = () => {
                 attendanceData, historyLogData, packageSalesData, maintenanceTickets
             },
             config: {
-                ridesData, operatorsData, ticketSalesPersonnelData, countersData, appLogo, otherSalesCategories,
+                ridesData, operatorsData, ticketSalesPersonnelData, countersData, appLogo, otherSalesCategories, maintenancePersonnelData
             }
         };
 
@@ -531,6 +533,7 @@ const AppContent: React.FC = () => {
             setCountersData(backupData.config.countersData || {});
             handleLogoChange(backupData.config.appLogo || null);
             setOtherSalesCategories(backupData.config.otherSalesCategories || []);
+            setMaintenancePersonnelData(backupData.config.maintenancePersonnelData || {});
 
             // Restore Data
             setDailyCounts(backupData.data.dailyCounts || {});
@@ -788,28 +791,48 @@ const AppContent: React.FC = () => {
             });
     }, [currentUser, today, rides, logAction, showNotification]);
 
-    const handleUpdateTicketStatus = useCallback((ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved') => {
-        if (!currentUser || !isFirebaseConfigured) return;
+    const handleUpdateTicketStatus = useCallback((ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator) => {
+        if (!isFirebaseConfigured) return;
         
         const updates: Partial<MaintenanceTicket> = { status: newStatus };
         if (newStatus === 'in-progress') {
             updates.inProgressAt = new Date().toISOString();
-            updates.assignedToId = currentUser.id;
-            updates.assignedToName = currentUser.name;
+            updates.assignedToId = technician.id;
+            updates.assignedToName = technician.name;
         } else if (newStatus === 'solved') {
             updates.solvedAt = new Date().toISOString();
         }
 
         database.ref(`data/maintenanceTickets/${ticket.date}/${ticket.id}`).update(updates)
             .then(() => {
-                logAction('MAINTENANCE_UPDATE', `Status for ${ticket.rideName} updated to ${newStatus}.`);
+                logAction('MAINTENANCE_UPDATE', `${technician.name} updated status for ${ticket.rideName} to ${newStatus}.`);
                 showNotification('Ticket status updated.', 'success');
             })
             .catch(error => {
                 console.error("Firebase ticket update failed:", error);
                 showNotification('Failed to update ticket status. Check connection.', 'error');
             });
-    }, [currentUser, logAction, showNotification]);
+    }, [logAction, showNotification]);
+    
+    // FIX: Switched to a direct set method to avoid Firebase transaction errors.
+    const handleAddMaintenancePersonnel = (name: string) => {
+        const newId = Date.now();
+        const currentData = maintenancePersonnelData || {};
+        const newData = { ...currentData, [newId]: { name } };
+        setMaintenancePersonnelData(newData);
+        logAction('ADD_MAINTENANCE_PERSONNEL', `Added new technician: '${name}'.`);
+    };
+
+    // FIX: Switched to a direct set method to avoid Firebase transaction errors.
+    const handleDeleteMaintenancePersonnel = (id: number) => {
+        const currentData = maintenancePersonnelData || {};
+        const newState = { ...currentData };
+        const deletedName = newState[id]?.name || 'Unknown';
+        delete newState[id];
+        setMaintenancePersonnelData(newState);
+        logAction('DELETE_MAINTENANCE_PERSONNEL', `Deleted technician: ${deletedName}.`);
+    };
+
 
     if (!isFirebaseConfigured) return <ConfigErrorScreen />;
     if (isFirebaseLoading) return (
@@ -857,7 +880,7 @@ const AppContent: React.FC = () => {
             case 'history': return <HistoryLog history={historyLog} onClearHistory={handleClearHistory} />;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser!} selectedDate={selectedDate} onDateChange={setSelectedDate} packageSales={packageSalesData} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={ticketSalesPersonnel} packageSales={packageSalesData} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
-            case 'maintenance-dashboard': return <MaintenanceDashboard maintenanceTickets={maintenanceTickets} selectedDate={selectedDate} onDateChange={setSelectedDate} onUpdateTicketStatus={handleUpdateTicketStatus} currentUser={currentUser!} />;
+            case 'maintenance-dashboard': return <MaintenanceDashboard maintenanceTickets={maintenanceTickets} selectedDate={selectedDate} onDateChange={setSelectedDate} onUpdateTicketStatus={handleUpdateTicketStatus} maintenancePersonnel={maintenancePersonnel} />;
             
             case 'counter': default: return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -878,7 +901,7 @@ const AppContent: React.FC = () => {
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
-            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={obsoleteRides} onRemoveObsoleteRides={handleRemoveObsoleteRides} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={obsoleteRides} onRemoveObsoleteRides={handleRemoveObsoleteRides} onAddMaintenancePersonnel={handleAddMaintenancePersonnel} onDeleteMaintenancePersonnel={handleDeleteMaintenancePersonnel} maintenancePersonnel={maintenancePersonnel} />}
             <footer className="text-center py-4 mt-auto">
               <p className="text-gray-600 text-xs font-light">
                   Developed By

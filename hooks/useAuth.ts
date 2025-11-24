@@ -7,6 +7,7 @@ export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' |
 export const ADMIN_PIN = '9999';
 export const OPERATION_OFFICER_PIN = '4321';
 export const SALES_OFFICER_PIN = '5678';
+export const MAINTENANCE_PIN = '2468';
 
 
 
@@ -41,10 +42,17 @@ export const useAuth = () => {
           return true;
         }
         return false;
+      case 'maintenance':
+        if (payload === MAINTENANCE_PIN) {
+          setRole('maintenance');
+          // Set a generic user for the role. The specific technician will be selected on the dashboard.
+          setCurrentUser({ id: -3, name: 'Maintenance Team' });
+          return true;
+        }
+        return false;
       
       case 'operator':
       case 'ticket-sales':
-      case 'maintenance':
         if (payload && typeof payload !== 'string') {
           setRole(newRole);
           setCurrentUser(payload as Operator);

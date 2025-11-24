@@ -16,10 +16,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   const [officerError, setOfficerError] = useState('');
   const [salesOfficerPin, setSalesOfficerPin] = useState('');
   const [salesOfficerError, setSalesOfficerError] = useState('');
+  const [maintenancePin, setMaintenancePin] = useState('');
+  const [maintenanceError, setMaintenanceError] = useState('');
   
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
   const [selectedTicketSalesId, setSelectedTicketSalesId] = useState<string>('');
-  const [selectedMaintenanceId, setSelectedMaintenanceId] = useState<string>('');
 
   const handleAdminLogin = () => {
     if (onLogin('admin', adminPin)) {
@@ -51,7 +52,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
     }
   };
 
-  
+  const handleMaintenanceLogin = () => {
+    if (onLogin('maintenance', maintenancePin)) {
+      setMaintenanceError('');
+      setMaintenancePin('');
+    } else {
+      setMaintenanceError('Incorrect PIN. Please try again.');
+      setMaintenancePin('');
+    }
+  };
   
   const handleOperatorLogin = () => {
     if (!selectedOperatorId) return;
@@ -66,14 +75,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
     const personnel = ticketSalesPersonnel.find(p => p.id === parseInt(selectedTicketSalesId, 10));
     if (personnel) {
         onLogin('ticket-sales', personnel);
-    }
-  };
-  
-  const handleMaintenanceLogin = () => {
-    if (!selectedMaintenanceId) return;
-    const personnel = MAINTENANCE_PERSONNEL_ARRAY.find(p => p.id === parseInt(selectedMaintenanceId, 10));
-    if (personnel) {
-        onLogin('maintenance', personnel);
     }
   };
 
@@ -207,24 +208,24 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
                 {/* Maintenance Login */}
                 <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
                     <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Maintenance Login</h2>
-                    <div className="space-y-4">
-                        <select
-                        value={selectedMaintenanceId}
-                        onChange={(e) => setSelectedMaintenanceId(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-                        aria-label="Select your name for Maintenance"
-                        >
-                        <option value="">-- Select Your Name --</option>
-                        {MAINTENANCE_PERSONNEL_ARRAY.sort((a,b) => a.name.localeCompare(b.name)).map(op => (
-                            <option key={op.id} value={op.id}>{op.name}</option>
-                        ))}
-                        </select>
+                    <div className="space-y-3">
+                        <input
+                            type="password"
+                            placeholder="Enter Maintenance PIN"
+                            value={maintenancePin}
+                            onChange={(e) => handlePinChange(setMaintenancePin, setMaintenanceError, e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleMaintenanceLogin()}
+                            className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center text-xl tracking-widest"
+                            maxLength={4}
+                            aria-label="Maintenance PIN"
+                            autoComplete="off"
+                        />
+                        {maintenanceError && <p className="text-red-400 text-sm text-center">{maintenanceError}</p>}
                         <button
-                        onClick={handleMaintenanceLogin}
-                        disabled={!selectedMaintenanceId}
-                        className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 active:scale-95 transition-all text-lg disabled:bg-gray-600 disabled:cursor-not-allowed"
+                            onClick={handleMaintenanceLogin}
+                            className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 active:scale-95 transition-all text-lg"
                         >
-                        Login
+                            Enter as Maintenance
                         </button>
                     </div>
                 </div>

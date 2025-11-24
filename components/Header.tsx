@@ -22,7 +22,6 @@ interface HeaderProps {
   appLogo: string | null;
 }
 
-// FIX: The Header component was not returning any JSX, causing a type error. Added a complete JSX structure for a responsive navigation bar, including navigation links, search/filter controls, and user actions. Also added the missing `export default Header;` to resolve the import error in App.tsx.
 const Header: React.FC<HeaderProps> = ({
   onSearch,
   onSelectFloor,
@@ -42,7 +41,13 @@ const Header: React.FC<HeaderProps> = ({
   const isAdmin = role === 'admin';
   const isSalesRole = role === 'ticket-sales' || role === 'sales-officer';
   const isMaintenance = role === 'maintenance';
-  const headerTitle = isSalesRole ? 'TFW Sales' : 'TFW Ops';
+  
+  const getHeaderTitle = () => {
+    if (isSalesRole) return 'TFW Sales';
+    if (isMaintenance) return 'TFW Maintenance';
+    return 'TFW Ops';
+  };
+  const headerTitle = getHeaderTitle();
 
   const navLinkClasses = "px-3 py-2 rounded-md text-sm font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition-colors";
 

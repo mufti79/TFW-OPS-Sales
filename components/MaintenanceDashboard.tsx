@@ -1,17 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { MaintenanceTicket, Operator } from '../types';
 
 interface MaintenanceDashboardProps {
   maintenanceTickets: Record<string, Record<string, MaintenanceTicket>>;
   selectedDate: string;
   onDateChange: (date: string) => void;
-  onUpdateTicketStatus: (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved') => void;
-  currentUser: Operator;
+  onUpdateTicketStatus: (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator) => void;
+  maintenancePersonnel: Operator[];
 }
 
-const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenanceTickets, selectedDate, onDateChange, onUpdateTicketStatus, currentUser }) => {
+const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenanceTickets, selectedDate, onDateChange, onUpdateTicketStatus, maintenancePersonnel }) => {
+  const [selectedTechnician, setSelectedTechnician] = useState<Operator | null>(null);
+
   const { sortedTickets, ticketNumberMap } = useMemo(() => {
-    // FIX: Cast the result of Object.values to MaintenanceTicket[] to resolve downstream type errors where properties like 'reportedAt' and 'id' could not be found on type 'unknown'.
     const tickets = Object.values(maintenanceTickets[selectedDate] || {}) as MaintenanceTicket[];
     const sorted = tickets.sort((a, b) => new Date(a.reportedAt).getTime() - new Date(b.reportedAt).getTime());
     const map = new Map<string, number>();
@@ -78,6 +79,12 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
     link.click();
     document.body.removeChild(link);
   };
+  
+  const handleTechnicianSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const techId = parseInt(e.target.value, 10);
+      const technician = maintenancePersonnel.find(p => p.id === techId) || null;
+      setSelectedTechnician(technician);
+  };
 
 
   return (
@@ -108,6 +115,22 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
             </button>
         </div>
       </div>
+      
+       <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
+            <label htmlFor="technician-select" className="block text-lg font-medium text-gray-200 mb-2">Select Your Name to Proceed</label>
+            <select
+                id="technician-select"
+                value={selectedTechnician?.id || ''}
+                onChange={handleTechnicianSelect}
+                className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-lg"
+            >
+                <option value="">-- Select Technician --</option>
+                {maintenancePersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+            </select>
+            {!selectedTechnician && <p className="text-yellow-400 text-sm mt-2">You must select your name before you can take or solve issues.</p>}
+        </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Reported Column */}
@@ -120,8 +143,9 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                 <p className="text-sm text-gray-400 mb-2">Reported by {ticket.reportedByName} at {formatTime(ticket.reportedAt)}</p>
                 <p className="text-gray-300 mb-4">{ticket.problem}</p>
                 <button
-                  onClick={() => onUpdateTicketStatus(ticket, 'in-progress')}
-                  className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => selectedTechnician && onUpdateTicketStatus(ticket, 'in-progress', selectedTechnician)}
+                  disabled={!selectedTechnician}
+                  className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
                 >
                   Take Issue
                 </button>
@@ -141,9 +165,10 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                 <p className="text-sm text-gray-400 mb-2">Taken by {ticket.assignedToName} at {formatTime(ticket.inProgressAt)}</p>
                 <p className="text-gray-300 mb-4">{ticket.problem}</p>
                 <button
-                  onClick={() => onUpdateTicketStatus(ticket, 'solved')}
-                  disabled={ticket.assignedToId !== currentUser.id}
+                  onClick={() => selectedTechnician && onUpdateTicketStatus(ticket, 'solved', selectedTechnician)}
+                  disabled={!selectedTechnician || ticket.assignedToId !== selectedTechnician.id}
                   className="w-full px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
+                  title={!selectedTechnician ? "Select your name first" : (ticket.assignedToId !== selectedTechnician.id ? "Another technician is handling this issue" : "")}
                 >
                   Mark as Solved
                 </button>

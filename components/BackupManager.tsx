@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useNotification } from '../imageStore';
-import { Ride } from '../types';
+import { Ride, Operator } from '../types';
 
 interface BackupManagerProps {
   onClose: () => void;
@@ -14,6 +14,9 @@ interface BackupManagerProps {
   onDeleteCategory: (name: string) => void;
   obsoleteRides: Ride[];
   onRemoveObsoleteRides: () => void;
+  maintenancePersonnel: Operator[];
+  onAddMaintenancePersonnel: (name: string) => void;
+  onDeleteMaintenancePersonnel: (id: number) => void;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -58,7 +61,7 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 };
 
 
-const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory, obsoleteRides, onRemoveObsoleteRides }) => {
+const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory, obsoleteRides, onRemoveObsoleteRides, maintenancePersonnel, onAddMaintenancePersonnel, onDeleteMaintenancePersonnel }) => {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
@@ -67,6 +70,7 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
   const { showNotification } = useNotification();
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newPersonnelName, setNewPersonnelName] = useState('');
 
   const handleFileImportClick = () => {
     fileInputRef.current?.click();
@@ -148,6 +152,14 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
     }
   };
 
+  const handleAddPersonnel = () => {
+      if (newPersonnelName.trim()) {
+          onAddMaintenancePersonnel(newPersonnelName.trim());
+          setNewPersonnelName('');
+          showNotification('Technician added.', 'success');
+      }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
       <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg border border-gray-700 animate-fade-in-up flex flex-col">
@@ -159,6 +171,31 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
             </button>
           </div>
           
+           <div className="border-t border-gray-600 pt-6">
+                <h3 className="text-xl font-bold text-indigo-400 mb-2">Manage Maintenance Personnel</h3>
+                <p className="text-sm text-gray-400 mb-4">Add or remove engineers and technicians from the maintenance team roster.</p>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 bg-gray-900/50 p-3 rounded-lg border border-gray-700 mb-4">
+                    {maintenancePersonnel.map(p => (
+                        <div key={p.id} className="flex items-center justify-between bg-gray-700 p-2 rounded-md">
+                            <span className="text-gray-300">{p.name}</span>
+                            <button onClick={() => onDeleteMaintenancePersonnel(p.id)} className="px-2 py-1 bg-red-700 text-white rounded-md text-xs">Delete</button>
+                        </div>
+                    ))}
+                    {maintenancePersonnel.length === 0 && <p className="text-gray-500 text-center text-sm">No personnel added yet.</p>}
+                </div>
+                <div className="flex gap-3">
+                    <input
+                        type="text"
+                        placeholder="Enter new technician name"
+                        value={newPersonnelName}
+                        onChange={(e) => setNewPersonnelName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddPersonnel()}
+                        className="flex-grow px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <button onClick={handleAddPersonnel} className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Add</button>
+                </div>
+            </div>
+
            <div className="mt-8 border-t border-gray-600 pt-6">
             <h3 className="text-xl font-bold text-teal-400 mb-2">Manage 'Other Sales' Categories</h3>
             <p className="text-sm text-gray-400 mb-4">Rename categories to correct typos or delete them from the suggestion list. Renaming will update all historical records.</p>
