@@ -17,6 +17,7 @@ interface BackupManagerProps {
   maintenancePersonnel: Operator[];
   onAddMaintenancePersonnel: (name: string) => void;
   onDeleteMaintenancePersonnel: (id: number) => void;
+  onClearMaintenanceTickets: () => void;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -61,7 +62,7 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 };
 
 
-const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory, obsoleteRides, onRemoveObsoleteRides, maintenancePersonnel, onAddMaintenancePersonnel, onDeleteMaintenancePersonnel }) => {
+const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory, obsoleteRides, onRemoveObsoleteRides, maintenancePersonnel, onAddMaintenancePersonnel, onDeleteMaintenancePersonnel, onClearMaintenanceTickets }) => {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
@@ -320,6 +321,22 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     Reset Selected Day's Data
+                </button>
+            </div>
+          </div>
+          
+          <div className="mt-8 border-t border-gray-600 pt-6 p-4 bg-red-900/50 rounded-lg border border-red-700">
+            <h3 className="text-xl font-bold text-red-300 mb-2">Danger Zone</h3>
+            <div className="flex justify-between items-center">
+                <div>
+                    <p className="font-semibold text-gray-200">Clear All Maintenance Tickets</p>
+                    <p className="text-sm text-red-300">This will permanently delete all maintenance ticket history. This action cannot be undone.</p>
+                </div>
+                <button
+                    onClick={onClearMaintenanceTickets}
+                    className="px-4 py-2 bg-red-800 text-white font-bold rounded-lg hover:bg-red-700 active:scale-95 transition-all"
+                >
+                    Clear All Tickets
                 </button>
             </div>
           </div>

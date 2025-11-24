@@ -833,6 +833,22 @@ const AppContent: React.FC = () => {
         logAction('DELETE_MAINTENANCE_PERSONNEL', `Deleted technician: ${deletedName}.`);
     };
 
+    const handleClearMaintenanceTickets = () => {
+        if (!window.confirm("Are you sure you want to permanently delete ALL maintenance tickets? This action cannot be undone.")) return;
+
+        if (isFirebaseConfigured) {
+            database.ref('data/maintenanceTickets').remove()
+                .then(() => {
+                    logAction('CLEAR_MAINTENANCE_TICKETS', 'Cleared all maintenance tickets from the database.');
+                    showNotification('All maintenance tickets have been cleared.', 'success');
+                })
+                .catch(e => {
+                    console.error("Failed to clear maintenance tickets:", e);
+                    showNotification('Could not clear maintenance tickets.', 'error');
+                });
+        }
+    };
+
 
     if (!isFirebaseConfigured) return <ConfigErrorScreen />;
     if (isFirebaseLoading) return (
@@ -901,7 +917,7 @@ const AppContent: React.FC = () => {
             {modal === 'edit-image' && selectedRideForModal && <EditImageModal ride={selectedRideForModal} onClose={() => setModal(null)} onSave={handleSaveImage} />}
             {modal === 'ai-assistant' && <CodeAssistant rides={rides} dailyCounts={dailyCounts} onClose={() => setModal(null)} />}
             {modal === 'operators' && <OperatorManager operators={operators} onClose={() => setModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators} />}
-            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={obsoleteRides} onRemoveObsoleteRides={handleRemoveObsoleteRides} onAddMaintenancePersonnel={handleAddMaintenancePersonnel} onDeleteMaintenancePersonnel={handleDeleteMaintenancePersonnel} maintenancePersonnel={maintenancePersonnel} />}
+            {modal === 'backup' && <BackupManager onClose={() => setModal(null)} onExport={handleExportData} onImport={handleImportData} onResetDay={handleResetDay} appLogo={appLogo} onLogoChange={handleLogoChange} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={obsoleteRides} onRemoveObsoleteRides={handleRemoveObsoleteRides} onAddMaintenancePersonnel={handleAddMaintenancePersonnel} onDeleteMaintenancePersonnel={handleDeleteMaintenancePersonnel} maintenancePersonnel={maintenancePersonnel} onClearMaintenanceTickets={handleClearMaintenanceTickets} />}
             <footer className="text-center py-4 mt-auto">
               <p className="text-gray-600 text-xs font-light">
                   Developed By
