@@ -1,22 +1,34 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { MaintenanceTicket, Operator } from '../types';
 
 interface MaintenanceDashboardProps {
   maintenanceTickets: Record<string, Record<string, MaintenanceTicket>>;
   selectedDate: string;
   onDateChange: (date: string) => void;
-  onUpdateTicketStatus: (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator, helper?: Operator | null) => void;
+  onUpdateTicketStatus: (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator, helpers?: Operator[]) => void;
   maintenancePersonnel: Operator[];
   onClearSolved: (date: string) => void;
 }
 
 const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenanceTickets, selectedDate, onDateChange, onUpdateTicketStatus, maintenancePersonnel, onClearSolved }) => {
   const [selectedTechnician, setSelectedTechnician] = useState<Operator | null>(null);
-  const [selectedHelper, setSelectedHelper] = useState<Operator | null>(null);
+  const [selectedHelpers, setSelectedHelpers] = useState<Operator[]>([]);
+  const [isHelperDropdownOpen, setIsHelperDropdownOpen] = useState(false);
+  const helperDropdownRef = useRef<HTMLDivElement>(null);
+
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (helperDropdownRef.current && !helperDropdownRef.current.contains(event.target as Node)) {
+        setIsHelperDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const { sortedTickets, ticketNumberMap } = useMemo(() => {
-    // FIX: Cast Object.values to the correct type to resolve downstream errors
     const tickets = Object.values(maintenanceTickets[selectedDate] || {}) as MaintenanceTicket[];
     const sorted = tickets.sort((a, b) => new Date(a.reportedAt).getTime() - new Date(b.reportedAt).getTime());
     const map = new Map<string, number>();
@@ -46,7 +58,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
 
     const headers = [
       'Ticket #', 'Ride Name', 'Problem', 'Status',
-      'Reported By', 'Reported At', 'Assigned To', 'Helper', 'In Progress At', 'Solved At'
+      'Reported By', 'Reported At', 'Assigned To', 'Helpers', 'In Progress At', 'Solved At'
     ];
 
     const formatCsvField = (field: string | undefined | number) => {
@@ -67,7 +79,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
         ticket.reportedByName,
         ticket.reportedAt ? new Date(ticket.reportedAt).toLocaleString() : '',
         ticket.assignedToName,
-        ticket.helperName,
+        ticket.helperNames?.join('; '),
         ticket.inProgressAt ? new Date(ticket.inProgressAt).toLocaleString() : '',
         ticket.solvedAt ? new Date(ticket.solvedAt).toLocaleString() : ''
       ];
@@ -89,15 +101,18 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
       const techId = parseInt(e.target.value, 10);
       const technician = maintenancePersonnel.find(p => p.id === techId) || null;
       setSelectedTechnician(technician);
-      if (technician && technician.id === selectedHelper?.id) {
-          setSelectedHelper(null);
+      // If the newly selected primary technician was also a helper, remove them from the helper list
+      if (technician && selectedHelpers.some(h => h.id === technician.id)) {
+        setSelectedHelpers(prev => prev.filter(h => h.id !== technician.id));
       }
   };
 
-  const handleHelperSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const helperId = parseInt(e.target.value, 10);
-    const helper = maintenancePersonnel.find(p => p.id === helperId) || null;
-    setSelectedHelper(helper);
+  const handleToggleHelper = (helper: Operator) => {
+    setSelectedHelpers(prev =>
+        prev.some(h => h.id === helper.id)
+            ? prev.filter(h => h.id !== helper.id)
+            : [...prev, helper]
+    );
   };
 
 
@@ -146,22 +161,34 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                 </select>
                 {!selectedTechnician && <p className="text-yellow-400 text-sm mt-2">You must select your name before you can take or solve issues.</p>}
             </div>
-            <div className="flex-grow">
-                <label htmlFor="helper-select" className="block text-sm font-medium text-gray-400 mb-1">helper</label>
-                <select
-                    id="helper-select"
-                    value={selectedHelper?.id || ''}
-                    onChange={handleHelperSelect}
-                    className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+            <div className="flex-grow relative" ref={helperDropdownRef}>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Select Helper name(s)</label>
+                <button
+                    onClick={() => setIsHelperDropdownOpen(prev => !prev)}
                     disabled={!selectedTechnician}
+                    className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-left truncate disabled:bg-gray-700 disabled:cursor-not-allowed"
                 >
-                    <option value="">-- No Helper --</option>
-                    {maintenancePersonnel
-                        .filter(p => p.id !== selectedTechnician?.id)
-                        .sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                </select>
+                    {selectedHelpers.length > 0 ? selectedHelpers.map(h => h.name).join(', ') : <span className="text-gray-500">-- No Helpers --</span>}
+                </button>
+                {isHelperDropdownOpen && selectedTechnician && (
+                    <div className="absolute z-10 w-full max-w-sm mt-1 bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {maintenancePersonnel
+                            .filter(p => p.id !== selectedTechnician?.id)
+                            .sort((a,b) => a.name.localeCompare(b.name))
+                            .map(p => (
+                                <label key={p.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedHelpers.some(h => h.id === p.id)}
+                                        onChange={() => handleToggleHelper(p)}
+                                        className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className="ml-3 text-gray-300">{p.name}</span>
+                                </label>
+                            ))
+                        }
+                    </div>
+                )}
             </div>
         </div>
 
@@ -176,7 +203,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                 <p className="text-sm text-gray-400 mb-2">Reported by {ticket.reportedByName} at {formatTime(ticket.reportedAt)}</p>
                 <p className="text-gray-300 mb-4">{ticket.problem}</p>
                 <button
-                  onClick={() => selectedTechnician && onUpdateTicketStatus(ticket, 'in-progress', selectedTechnician, selectedHelper)}
+                  onClick={() => selectedTechnician && onUpdateTicketStatus(ticket, 'in-progress', selectedTechnician, selectedHelpers)}
                   disabled={!selectedTechnician}
                   className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
                 >
@@ -195,7 +222,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
             {inProgressTickets.map(ticket => (
               <div key={ticket.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-600">
                 <p className="font-bold text-lg">#{ticketNumberMap.get(ticket.id)} - {ticket.rideName}</p>
-                <p className="text-sm text-gray-400 mb-2">Taken by {ticket.assignedToName}{ticket.helperName ? ` (w/ ${ticket.helperName})` : ''} at {formatTime(ticket.inProgressAt)}</p>
+                <p className="text-sm text-gray-400 mb-2">Taken by {ticket.assignedToName}{ticket.helperNames && ticket.helperNames.length > 0 ? ` (w/ ${ticket.helperNames.join(', ')})` : ''} at {formatTime(ticket.inProgressAt)}</p>
                 <p className="text-gray-300 mb-4">{ticket.problem}</p>
                 <button
                   onClick={() => selectedTechnician && onUpdateTicketStatus(ticket, 'solved', selectedTechnician)}
@@ -229,7 +256,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
             {solvedTickets.map(ticket => (
               <div key={ticket.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-600 opacity-70">
                 <p className="font-bold text-lg">#{ticketNumberMap.get(ticket.id)} - {ticket.rideName}</p>
-                 <p className="text-sm text-gray-400 mb-2">Solved by {ticket.assignedToName}{ticket.helperName ? ` (w/ ${ticket.helperName})` : ''} at {formatTime(ticket.solvedAt)}</p>
+                 <p className="text-sm text-gray-400 mb-2">Solved by {ticket.assignedToName}{ticket.helperNames && ticket.helperNames.length > 0 ? ` (w/ ${ticket.helperNames.join(', ')})` : ''} at {formatTime(ticket.solvedAt)}</p>
                 <p className="text-gray-300">{ticket.problem}</p>
               </div>
             ))}
