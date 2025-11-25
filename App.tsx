@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback, useEffect, useRef, ReactNode } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY, MAINTENANCE_PERSONNEL, MAINTENANCE_PERSONNEL_ARRAY } from './constants';
 // FIX: Imported PackageSalesData to resolve a type error.
@@ -791,7 +792,7 @@ const AppContent: React.FC = () => {
             });
     }, [currentUser, today, rides, logAction, showNotification]);
 
-    const handleUpdateTicketStatus = useCallback((ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator) => {
+    const handleUpdateTicketStatus = useCallback((ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator, helpers?: Operator[]) => {
         if (!isFirebaseConfigured) return;
         
         const updates: Partial<MaintenanceTicket> = { status: newStatus };
@@ -799,6 +800,13 @@ const AppContent: React.FC = () => {
             updates.inProgressAt = new Date().toISOString();
             updates.assignedToId = technician.id;
             updates.assignedToName = technician.name;
+            if (helpers && helpers.length > 0) {
+                updates.helperIds = helpers.map(h => h.id);
+                updates.helperNames = helpers.map(h => h.name);
+            } else {
+                updates.helperIds = undefined;
+                updates.helperNames = undefined;
+            }
         } else if (newStatus === 'solved') {
             updates.solvedAt = new Date().toISOString();
         }

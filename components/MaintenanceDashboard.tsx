@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import { MaintenanceTicket, Operator } from '../types';
 
@@ -5,13 +6,14 @@ interface MaintenanceDashboardProps {
   maintenanceTickets: Record<string, Record<string, MaintenanceTicket>>;
   selectedDate: string;
   onDateChange: (date: string) => void;
-  onUpdateTicketStatus: (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator) => void;
+  onUpdateTicketStatus: (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator, helper?: Operator | null) => void;
   maintenancePersonnel: Operator[];
   onClearSolved: (date: string) => void;
 }
 
 const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenanceTickets, selectedDate, onDateChange, onUpdateTicketStatus, maintenancePersonnel, onClearSolved }) => {
   const [selectedTechnician, setSelectedTechnician] = useState<Operator | null>(null);
+  const [selectedHelper, setSelectedHelper] = useState<Operator | null>(null);
 
   const { sortedTickets, ticketNumberMap } = useMemo(() => {
     // FIX: Cast Object.values to the correct type to resolve downstream errors
@@ -44,7 +46,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
 
     const headers = [
       'Ticket #', 'Ride Name', 'Problem', 'Status',
-      'Reported By', 'Reported At', 'Assigned To', 'In Progress At', 'Solved At'
+      'Reported By', 'Reported At', 'Assigned To', 'Helper', 'In Progress At', 'Solved At'
     ];
 
     const formatCsvField = (field: string | undefined | number) => {
@@ -65,6 +67,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
         ticket.reportedByName,
         ticket.reportedAt ? new Date(ticket.reportedAt).toLocaleString() : '',
         ticket.assignedToName,
+        ticket.helperName,
         ticket.inProgressAt ? new Date(ticket.inProgressAt).toLocaleString() : '',
         ticket.solvedAt ? new Date(ticket.solvedAt).toLocaleString() : ''
       ];
@@ -86,6 +89,15 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
       const techId = parseInt(e.target.value, 10);
       const technician = maintenancePersonnel.find(p => p.id === techId) || null;
       setSelectedTechnician(technician);
+      if (technician && technician.id === selectedHelper?.id) {
+          setSelectedHelper(null);
+      }
+  };
+
+  const handleHelperSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const helperId = parseInt(e.target.value, 10);
+    const helper = maintenancePersonnel.find(p => p.id === helperId) || null;
+    setSelectedHelper(helper);
   };
 
 
@@ -118,20 +130,39 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
         </div>
       </div>
       
-       <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-            <label htmlFor="technician-select" className="block text-lg font-medium text-gray-200 mb-2">Select Your Name</label>
-            <select
-                id="technician-select"
-                value={selectedTechnician?.id || ''}
-                onChange={handleTechnicianSelect}
-                className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-lg"
-            >
-                <option value="">-- Select --</option>
-                {maintenancePersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-            </select>
-            {!selectedTechnician && <p className="text-yellow-400 text-sm mt-2">You must select your name before you can take or solve issues.</p>}
+       <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600 flex flex-col sm:flex-row gap-4 items-end">
+            <div className="flex-grow">
+                <label htmlFor="technician-select" className="block text-lg font-medium text-gray-200 mb-2">Select Your Name</label>
+                <select
+                    id="technician-select"
+                    value={selectedTechnician?.id || ''}
+                    onChange={handleTechnicianSelect}
+                    className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-lg"
+                >
+                    <option value="">-- Select --</option>
+                    {maintenancePersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                </select>
+                {!selectedTechnician && <p className="text-yellow-400 text-sm mt-2">You must select your name before you can take or solve issues.</p>}
+            </div>
+            <div className="flex-grow">
+                <label htmlFor="helper-select" className="block text-sm font-medium text-gray-400 mb-1">helper</label>
+                <select
+                    id="helper-select"
+                    value={selectedHelper?.id || ''}
+                    onChange={handleHelperSelect}
+                    className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                    disabled={!selectedTechnician}
+                >
+                    <option value="">-- No Helper --</option>
+                    {maintenancePersonnel
+                        .filter(p => p.id !== selectedTechnician?.id)
+                        .sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                </select>
+            </div>
         </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -145,7 +176,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                 <p className="text-sm text-gray-400 mb-2">Reported by {ticket.reportedByName} at {formatTime(ticket.reportedAt)}</p>
                 <p className="text-gray-300 mb-4">{ticket.problem}</p>
                 <button
-                  onClick={() => selectedTechnician && onUpdateTicketStatus(ticket, 'in-progress', selectedTechnician)}
+                  onClick={() => selectedTechnician && onUpdateTicketStatus(ticket, 'in-progress', selectedTechnician, selectedHelper)}
                   disabled={!selectedTechnician}
                   className="w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed transition-colors"
                 >
@@ -164,7 +195,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
             {inProgressTickets.map(ticket => (
               <div key={ticket.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-600">
                 <p className="font-bold text-lg">#{ticketNumberMap.get(ticket.id)} - {ticket.rideName}</p>
-                <p className="text-sm text-gray-400 mb-2">Taken by {ticket.assignedToName} at {formatTime(ticket.inProgressAt)}</p>
+                <p className="text-sm text-gray-400 mb-2">Taken by {ticket.assignedToName}{ticket.helperName ? ` (w/ ${ticket.helperName})` : ''} at {formatTime(ticket.inProgressAt)}</p>
                 <p className="text-gray-300 mb-4">{ticket.problem}</p>
                 <button
                   onClick={() => selectedTechnician && onUpdateTicketStatus(ticket, 'solved', selectedTechnician)}
@@ -198,7 +229,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
             {solvedTickets.map(ticket => (
               <div key={ticket.id} className="bg-gray-900/50 p-4 rounded-lg border border-gray-600 opacity-70">
                 <p className="font-bold text-lg">#{ticketNumberMap.get(ticket.id)} - {ticket.rideName}</p>
-                 <p className="text-sm text-gray-400 mb-2">Solved by {ticket.assignedToName} at {formatTime(ticket.solvedAt)}</p>
+                 <p className="text-sm text-gray-400 mb-2">Solved by {ticket.assignedToName}{ticket.helperName ? ` (w/ ${ticket.helperName})` : ''} at {formatTime(ticket.solvedAt)}</p>
                 <p className="text-gray-300">{ticket.problem}</p>
               </div>
             ))}

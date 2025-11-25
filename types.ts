@@ -86,4 +86,6 @@ export interface MaintenanceTicket {
   reportedAt: string; // ISO string
   inProgressAt?: string; // ISO string
   solvedAt?: string; // ISO string
+  helperIds?: number[];
+  helperNames?: string[];
 }
