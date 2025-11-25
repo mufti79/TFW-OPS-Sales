@@ -14,6 +14,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
   const [selectedTechnician, setSelectedTechnician] = useState<Operator | null>(null);
 
   const { sortedTickets, ticketNumberMap } = useMemo(() => {
+    // FIX: Cast Object.values to the correct type to resolve downstream errors
     const tickets = Object.values(maintenanceTickets[selectedDate] || {}) as MaintenanceTicket[];
     const sorted = tickets.sort((a, b) => new Date(a.reportedAt).getTime() - new Date(b.reportedAt).getTime());
     const map = new Map<string, number>();
@@ -118,14 +119,14 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
       </div>
       
        <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600">
-            <label htmlFor="technician-select" className="block text-lg font-medium text-gray-200 mb-2">Select Your Name to Proceed</label>
+            <label htmlFor="technician-select" className="block text-lg font-medium text-gray-200 mb-2">Select Your Name</label>
             <select
                 id="technician-select"
                 value={selectedTechnician?.id || ''}
                 onChange={handleTechnicianSelect}
                 className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-lg"
             >
-                <option value="">-- Select Technician --</option>
+                <option value="">-- Select --</option>
                 {maintenancePersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
