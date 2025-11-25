@@ -1,9 +1,9 @@
+
 import React, { useMemo, useState } from 'react';
 import { Ride, Operator, AttendanceRecord, RideWithCount, MaintenanceTicket } from '../types';
 import { Role } from '../hooks/useAuth';
-import RideCard from './RideCard';
 import BriefingCheckin from './BriefingCheckin';
-// FIX: Add missing import for Counter component
+// FIX: Add missing import for Counter component to resolve 'Cannot find name Counter' error.
 import Counter from './Counter';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster';
@@ -62,7 +62,7 @@ const MaintenanceSection: React.FC<{
                     <p><strong>Problem:</strong> {ticket.problem}</p>
                     <p><strong>Reported:</strong> {formatTime(ticket.reportedAt)} by {ticket.reportedByName}</p>
                     {ticket.status !== 'reported' && ticket.assignedToName && (
-                        <p><strong>Technician:</strong> {ticket.assignedToName} ({formatTime(ticket.inProgressAt)})</p>
+                        <p><strong>concern:</strong> {ticket.assignedToName} ({formatTime(ticket.inProgressAt)})</p>
                     )}
                     {ticket.status === 'solved' && (
                         <p><strong>Solved:</strong> {formatTime(ticket.solvedAt)}</p>
@@ -79,10 +79,10 @@ const MaintenanceSection: React.FC<{
                 <textarea
                     value={problemText}
                     onChange={(e) => setProblemText(e.target.value)}
-                    placeholder="Describe the issue..."
-                    className="w-full h-20 p-2 bg-gray-900 border border-gray-600 rounded-md text-sm mb-2"
+                    placeholder="Describe the problem..."
+                    className="w-full h-24 p-2 bg-gray-900 border border-gray-600 rounded-md text-sm mb-2"
                 />
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-2">
                     <button onClick={handleSubmit} className="flex-grow px-3 py-1.5 bg-red-600 text-white font-semibold rounded-md text-sm">Submit Report</button>
                     <button onClick={() => setIsReporting(false)} className="px-3 py-1.5 bg-gray-600 text-white rounded-md text-sm">Cancel</button>
                 </div>
@@ -115,8 +115,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   };
 
   const { assignmentsByOperator, unassignedRides, operatorsWithAttendance, presentCount, absentCount } = useMemo(() => {
-    // FIX: Use a more specific type to handle both legacy and current data formats correctly.
-    const assignmentsToday = dailyAssignments[selectedDate] || {};
+    const assignmentsToday: Record<string, any> = dailyAssignments[selectedDate] || {};
+    // FIX: In useMemo, explicitly typed rideMap to ensure TypeScript correctly infers the type of ride as RideWithCount, resolving errors when adding it to the assignmentsByOperator map.
     const rideMap = new Map<string, RideWithCount>(rides.map(r => [r.id.toString(), r]));
     
     const assignmentsByOperator = new Map<number, RideWithCount[]>();
@@ -125,8 +125,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     for (const [rideId, operatorIdValue] of Object.entries(assignmentsToday)) {
         const ride = rideMap.get(rideId);
         if (ride) {
-          // FIX: Property 'forEach' does not exist on type 'unknown'. Handle legacy data format where an assignment might be a single number instead of an array.
-          const operatorIds = Array.isArray(operatorIdValue) ? (operatorIdValue as number[]) : [operatorIdValue as number];
+          const operatorIds = Array.isArray(operatorIdValue) ? operatorIdValue : [operatorIdValue];
           operatorIds.forEach((operatorId: number) => {
             const operatorRides = assignmentsByOperator.get(operatorId);
             if (operatorRides) {
@@ -175,14 +174,11 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     if (role !== 'operator' || !currentUser) {
         return [];
     }
-
-    // FIX: Argument of type 'unknown' is not assignable to parameter of type 'string'. Explicitly provide generic types to `new Map` to ensure correct type inference.
-    const rideIdToNameMap = new Map<string, string>(rides.map(r => [r.id.toString(), r.name]));
+    const rideIdToNameMap = new Map(rides.map(r => [r.id.toString(), r.name]));
     const operatedRidesCount = new Map<string, number>();
 
     for (const dayAssignments of Object.values(dailyAssignments)) {
-        for (const [rideId, operatorIdValueUntyped] of Object.entries(dayAssignments)) {
-            const operatorIdValue = operatorIdValueUntyped as any;
+        for (const [rideId, operatorIdValue] of Object.entries(dayAssignments)) {
             const operatorIds = Array.isArray(operatorIdValue) ? operatorIdValue : [operatorIdValue];
             if (operatorIds.includes(currentUser.id)) {
                 const rideName = rideIdToNameMap.get(rideId);
@@ -206,7 +202,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
     const headers = ['Operator Name', 'Checked In', 'Attended Briefing', 'Briefing Time', 'Assigned Rides'];
     
-    const rows = operatorsWithAttendance.map(operator => {
+    // FIX: Explicitly type `operator` to resolve type inference issues with `useMemo`.
+    const rows = operatorsWithAttendance.map((operator: Operator & { attendance: AttendanceRecord | null }) => {
         const assignedRides = assignmentsByOperator.get(operator.id);
         const rideNames = assignedRides ? assignedRides.map(r => r.name).join('; ') : 'N/A';
         
@@ -244,7 +241,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
     const headers = ['Operator Name', 'Status', 'Briefing Attended', 'Briefing Time'];
     
-    const rows = operatorsWithAttendance.map(operator => {
+    const rows = operatorsWithAttendance.map((operator: Operator & { attendance: AttendanceRecord | null }) => {
         const status = operator.attendance ? 'Present' : 'Absent';
         let attendedBriefing = 'N/A';
         let briefingTime = 'N/A';
@@ -330,13 +327,9 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             {myAssignedRides.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {myAssignedRides.map(ride => {
-                        // FIX: Cast the result of Object.values to MaintenanceTicket[] to resolve multiple downstream type errors.
-                        const ticketsForRide = (Object.values(maintenanceTickets) as MaintenanceTicket[]).filter(
-                            t => t.rideId === ride.id
-                        );
-                        const sortedTickets = ticketsForRide.sort((a, b) => 
-                            new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime()
-                        );
+                        // FIX: Cast Object.values to MaintenanceTicket[] to resolve type errors
+                        const ticketsForRide = (Object.values(maintenanceTickets) as MaintenanceTicket[]).filter(t => t.rideId === ride.id);
+                        const sortedTickets = ticketsForRide.sort((a, b) => new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime());
                         const activeTicket = sortedTickets.find(t => t.status !== 'solved');
 
                         return (
