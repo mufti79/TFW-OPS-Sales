@@ -149,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-            Operations Dashboard
+            Operations Dashboard (v2)
           </h1>
           <p className="text-gray-400">Showing data for {displayDate.toLocaleDateString()}</p>
         </div>
