@@ -149,7 +149,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-            Operations Dashboard
+            Operations Dashboard (v2)
           </h1>
           <p className="text-gray-400">Showing data for {displayDate.toLocaleDateString()}</p>
         </div>
@@ -245,7 +245,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
                 <div className="space-y-4 max-h-72 overflow-y-auto pr-2">
                     <div>
                         <h3 className="font-semibold text-green-400 mb-2">Present ({dashboardData.presentOperators.length})</h3>
-                        {dashboardData.presentOperators.length > 0 ? (
+                        {dashboardData.presentOperators..length > 0 ? (
                             <ul className="space-y-1 text-sm text-gray-300">
                                 {dashboardData.presentOperators.map(op => <li key={op.id}>{op.name}</li>)}
                             </ul>
