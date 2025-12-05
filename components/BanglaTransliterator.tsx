@@ -1,1 +1,4 @@
-
+return (
+        <div>{transliteratedText}</div>
+    );
+}
