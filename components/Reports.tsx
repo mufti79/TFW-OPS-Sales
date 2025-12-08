@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Ride } from '../types';
 
 interface ReportsProps {
@@ -25,14 +25,10 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     const month = String(currentDate.getMonth() + 1).padStart(2, '0');
     const monthPrefix = `${year}-${month}`;
 
-    // FIX: Changed from for...in to Object.entries for better type inference.
     for (const [dateStr, dayCounts] of Object.entries(dailyCounts)) {
       if (dateStr.startsWith(monthPrefix)) {
-        // FIX: Operator '+' cannot be applied to types 'unknown' and 'unknown'.
-        // FIX: Operator '>' cannot be applied to types 'unknown' and 'number'.
-        // FIX: Argument of type 'unknown' is not assignable to parameter of type 'number'.
-        // By using Object.entries, `dayCounts` is correctly typed as Record<string, number>, and `Object.values` returns `number[]`, fixing the reduce operation.
-        const total = Object.values(dayCounts).reduce((sum, count) => sum + count, 0);
+        const counts = typeof dayCounts === 'object' && dayCounts !== null ? Object.values(dayCounts) : [];
+        const total = counts.reduce((sum, count) => sum + (typeof count === 'number' ? count : 0), 0);
         if (total > 0) {
           data.set(dateStr, total);
         }
@@ -114,23 +110,64 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
   const calendarDays = generateCalendarDays();
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // Calculate Breakdown Data
+  const breakdownData = useMemo(() => {
+    const rideCounts: Record<string, number> = {};
+    const rideMap = new Map<string, Ride>(rides.map(r => [r.id.toString(), r]));
+
+    let datesToInclude: string[] = [];
+
+    if (selectedRange.start && selectedRange.end) {
+        // Range mode: include dates in range
+        let current = new Date(selectedRange.start);
+        while (current <= selectedRange.end) {
+            datesToInclude.push(toLocalDateString(current));
+            current.setDate(current.getDate() + 1);
+        }
+    } else {
+        // Month mode: include dates in current month
+        datesToInclude = Array.from(monthData.keys());
+    }
+
+    datesToInclude.forEach(dateStr => {
+        const dayCounts = dailyCounts[dateStr] || {};
+        Object.entries(dayCounts).forEach(([rideId, count]) => {
+            if (typeof count === 'number') {
+                rideCounts[rideId] = (rideCounts[rideId] || 0) + count;
+            }
+        });
+    });
+
+    return Object.entries(rideCounts)
+        .map(([rideId, total]) => {
+            const ride = rideMap.get(rideId);
+            return {
+                name: ride?.name || `Unknown Ride (${rideId})`,
+                floor: ride?.floor || 'N/A',
+                total
+            };
+        })
+        .sort((a, b) => b.total - a.total);
+  }, [dailyCounts, monthData, selectedRange, rides]);
+
+
   const handleDownloadMonthReport = () => {
     const monthRideData: Record<string, number> = {};
     for (const dateStr of monthData.keys()) {
         const countsForDay = dailyCounts[dateStr] || {};
         for (const rideId in countsForDay) {
-            monthRideData[rideId] = (monthRideData[rideId] || 0) + countsForDay[rideId];
+            const count = countsForDay[rideId];
+            if (typeof count === 'number') {
+                monthRideData[rideId] = (monthRideData[rideId] || 0) + count;
+            }
         }
     }
     
-    // FIX: Explicitly providing generic types to `new Map` ensures TypeScript correctly infers `ride` as type `Ride | undefined` instead of `unknown`.
     const rideIdMap = new Map<string, Ride>(rides.map(r => [r.id.toString(), r]));
     const reportData = Object.entries(monthRideData).map(([rideId, total]) => {
         const ride = rideIdMap.get(rideId);
         return {
-            // FIX: Property 'name' does not exist on type 'unknown'.
             name: ride?.name || 'Unknown Ride',
-            // FIX: Property 'floor' does not exist on type 'unknown'.
             floor: ride?.floor || 'N/A',
             total
         };
@@ -266,6 +303,46 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
                     Download Month Report (CSV)
                  </button>
             </div>
+        </div>
+
+        {/* NEW: Ride Breakdown Table */}
+        <div className="mt-8 bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
+            <div className="p-4 border-b border-gray-700">
+                <h3 className="text-xl font-bold text-gray-200">
+                    Ride Breakdown 
+                    <span className="text-sm font-normal text-gray-400 ml-2">
+                        ({selectedRange.start && selectedRange.end ? 'Selected Range' : 'Current Month'})
+                    </span>
+                </h3>
+            </div>
+            {breakdownData.length > 0 ? (
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-700/50">
+                            <tr>
+                                <th className="p-4 font-semibold w-16 text-center">Rank</th>
+                                <th className="p-4 font-semibold">Ride Name</th>
+                                <th className="p-4 font-semibold">Floor</th>
+                                <th className="p-4 font-semibold text-right">Guest Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {breakdownData.map((item, index) => (
+                                <tr key={index} className="border-t border-gray-700 hover:bg-gray-700/30">
+                                    <td className="p-4 text-center text-gray-400 font-bold">{index + 1}</td>
+                                    <td className="p-4 font-medium text-gray-200">{item.name}</td>
+                                    <td className="p-4 text-gray-400 text-sm">{item.floor}</td>
+                                    <td className="p-4 text-right font-bold text-pink-400 tabular-nums">{item.total.toLocaleString()}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <div className="p-8 text-center text-gray-500">
+                    No guest count data available for this period.
+                </div>
+            )}
         </div>
     </div>
   );
