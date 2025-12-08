@@ -21,16 +21,27 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
 
   const monthData = useMemo(() => {
     const data = new Map<string, number>();
-    const year = currentDate.getFullYear();
-    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-    const monthPrefix = `${year}-${month}`;
+    const targetYear = currentDate.getFullYear();
+    const targetMonth = currentDate.getMonth() + 1; // 0-indexed to 1-based
 
     for (const [dateStr, dayCounts] of Object.entries(dailyCounts)) {
-      if (dateStr.startsWith(monthPrefix)) {
-        const counts = typeof dayCounts === 'object' && dayCounts !== null ? Object.values(dayCounts) : [];
-        const total = counts.reduce((sum, count) => sum + (typeof count === 'number' ? count : 0), 0);
-        if (total > 0) {
-          data.set(dateStr, total);
+      // Robust parsing to handle potential variations in date string format (e.g. padding)
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const d = parseInt(parts[2], 10);
+
+        if (y === targetYear && m === targetMonth) {
+             const counts = typeof dayCounts === 'object' && dayCounts !== null ? Object.values(dayCounts) : [];
+             const total = counts.reduce((sum, count) => sum + (typeof count === 'number' ? count : 0), 0);
+             
+             if (total > 0) {
+                 // Normalize the key to YYYY-MM-DD to match the calendar rendering
+                 const normalizedKey = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                 // Use accumulation in case of duplicate/malformed entries resolving to same day
+                 data.set(normalizedKey, (data.get(normalizedKey) || 0) + total);
+             }
         }
       }
     }
@@ -129,11 +140,31 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     }
 
     datesToInclude.forEach(dateStr => {
-        const dayCounts = dailyCounts[dateStr] || {};
-        Object.entries(dayCounts).forEach(([rideId, count]) => {
-            if (typeof count === 'number') {
-                rideCounts[rideId] = (rideCounts[rideId] || 0) + count;
-            }
+        // We need to match dateStr (normalized) back to keys in dailyCounts
+        // Since we normalized monthData keys, we iterate dailyCounts again or rely on normalized mapping.
+        // For simplicity and accuracy with the robust logic, we can re-scan dailyCounts for these dates.
+        
+        // Optimization: Create a lookup from normalized date to original keys?
+        // Actually, dailyCounts keys might be unnormalized. 
+        // Let's iterate dailyCounts entries and check if they normalize to dateStr.
+        
+        Object.entries(dailyCounts).forEach(([rawDate, dayCounts]) => {
+             const parts = rawDate.split('-');
+             if (parts.length === 3) {
+                 const y = parseInt(parts[0], 10);
+                 const m = parseInt(parts[1], 10);
+                 const d = parseInt(parts[2], 10);
+                 const normalized = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                 
+                 if (normalized === dateStr) {
+                    const counts = typeof dayCounts === 'object' && dayCounts !== null ? dayCounts : {};
+                    Object.entries(counts).forEach(([rideId, count]) => {
+                        if (typeof count === 'number') {
+                            rideCounts[rideId] = (rideCounts[rideId] || 0) + count;
+                        }
+                    });
+                 }
+             }
         });
     });
 
@@ -152,12 +183,23 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
 
   const handleDownloadMonthReport = () => {
     const monthRideData: Record<string, number> = {};
-    for (const dateStr of monthData.keys()) {
-        const countsForDay = dailyCounts[dateStr] || {};
-        for (const rideId in countsForDay) {
-            const count = countsForDay[rideId];
-            if (typeof count === 'number') {
-                monthRideData[rideId] = (monthRideData[rideId] || 0) + count;
+    const targetYear = currentDate.getFullYear();
+    const targetMonth = currentDate.getMonth() + 1;
+
+    for (const [dateStr, countsForDay] of Object.entries(dailyCounts)) {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            
+            if (y === targetYear && m === targetMonth) {
+                 const counts = typeof countsForDay === 'object' && countsForDay !== null ? countsForDay : {};
+                 for (const rideId in counts) {
+                    const count = counts[rideId];
+                    if (typeof count === 'number') {
+                        monthRideData[rideId] = (monthRideData[rideId] || 0) + count;
+                    }
+                }
             }
         }
     }
