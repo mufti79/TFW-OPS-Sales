@@ -80,9 +80,8 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
   
   const handleMonthChange = (offset: number) => {
     setCurrentDate(prev => {
-        const newDate = new Date(prev);
-        newDate.setMonth(newDate.getMonth() + offset);
-        return newDate;
+        // Set date to the 1st of the target month to avoid overflow issues (e.g. Jan 31 -> Feb 28)
+        return new Date(prev.getFullYear(), prev.getMonth() + offset, 1);
     });
     setSelectedRange({ start: null, end: null }); // Clear range on month change
   };
