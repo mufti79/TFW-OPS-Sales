@@ -34,7 +34,10 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
     const [kiddoQty, setKiddoQty] = useState(0);
     const [vipQty, setVipQty] = useState(0);
     const [otherSales, setOtherSales] = useState<OtherSaleItem[]>([]);
-    const [discountPercentage, setDiscountPercentage] = useState(0);
+    
+    // Discount
+    const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
+    const [discountValue, setDiscountValue] = useState(0);
 
     const datesInRange = useMemo(() => {
         const dates = [];
@@ -52,7 +55,15 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
         setXtremeQty(record?.xtremeQty || 0);
         setKiddoQty(record?.kiddoQty || 0);
         setVipQty(record?.vipQty || 0);
-        setDiscountPercentage(record?.discountPercentage || 0);
+        
+        if (record?.discountFixed && record.discountFixed > 0) {
+            setDiscountType('fixed');
+            setDiscountValue(record.discountFixed);
+        } else {
+            setDiscountType('percent');
+            setDiscountValue(record?.discountPercentage || 0);
+        }
+
         const existingOtherSales = record?.otherSales || [];
         if(record?.otherAmount > 0 && existingOtherSales.length === 0) {
             setOtherSales([{ id: `item-${Date.now()}`, category: 'Uncategorized', amount: record.otherAmount }]);
@@ -82,7 +93,8 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
             kiddoQty, kiddoAmount: kiddoQty * prices.kiddo,
             vipQty, vipAmount: vipQty * prices.vip,
             otherSales: otherSales.map(({ category, amount }) => ({ category, amount })),
-            discountPercentage
+            discountPercentage: discountType === 'percent' ? discountValue : 0,
+            discountFixed: discountType === 'fixed' ? discountValue : 0
         };
         onSave(correctionDate, personnel.id, salesData);
         onClose();
@@ -112,8 +124,29 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
                            <div><label htmlFor="vip-qty" className="block text-sm font-medium text-gray-400">VIP Qty</label><input id="vip-qty" type="number" value={vipQty} onChange={e => setVipQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
                         </div>
                         <div>
-                            <label htmlFor="discount-perc" className="block text-sm font-medium text-orange-400">Discount %</label>
-                            <input id="discount-perc" type="number" min="0" max="100" value={discountPercentage} onChange={e => setDiscountPercentage(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
+                            <label className="block text-sm font-medium text-orange-400 mb-1">Discount</label>
+                            <div className="flex gap-2 mb-2">
+                                <button
+                                    onClick={() => { setDiscountType('percent'); setDiscountValue(0); }}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md ${discountType === 'percent' ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+                                >
+                                    Percent %
+                                </button>
+                                <button
+                                    onClick={() => { setDiscountType('fixed'); setDiscountValue(0); }}
+                                    className={`px-3 py-1 text-xs font-medium rounded-md ${discountType === 'fixed' ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300'}`}
+                                >
+                                    Fixed BDT
+                                </button>
+                            </div>
+                            <input 
+                                type="number" 
+                                min="0" 
+                                max={discountType === 'percent' ? 100 : undefined} 
+                                value={discountValue} 
+                                onChange={e => setDiscountValue(Math.max(0, Number(e.target.value)))} 
+                                className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" 
+                            />
                         </div>
                         <div className="p-4 rounded-lg border border-gray-600">
                           <h3 className="text-lg font-bold mb-3">Other Sales</h3>
@@ -175,7 +208,14 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     existing.otherSales = [...existing.otherSales, ...recordOtherSales];
                     
                     const gross = (record.xtremeAmount || 0) + (record.kiddoAmount || 0) + (record.vipAmount || 0) + otherTotal;
-                    const discount = gross * ((record.discountPercentage || 0) / 100);
+                    
+                    // Calculate Discount
+                    let discount = 0;
+                    if (record.discountFixed && record.discountFixed > 0) {
+                        discount = record.discountFixed;
+                    } else if (record.discountPercentage && record.discountPercentage > 0) {
+                        discount = gross * (record.discountPercentage / 100);
+                    }
                     existing.totalDiscount += discount;
                     
                     map.set(personnelId, existing);

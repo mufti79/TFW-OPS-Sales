@@ -24,9 +24,13 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     const targetYear = currentDate.getFullYear();
     const targetMonth = currentDate.getMonth() + 1; // 0-indexed to 1-based
 
+    // Safety check for empty data
+    if (!dailyCounts) return data;
+
     for (const [dateStr, dayCounts] of Object.entries(dailyCounts)) {
       // Robust parsing to handle potential variations in date string format (e.g. padding)
-      const parts = dateStr.split('-');
+      // We expect keys like "2023-10-05" or "2023-10-5"
+      const parts = typeof dateStr === 'string' ? dateStr.split('-') : [];
       if (parts.length === 3) {
         const y = parseInt(parts[0], 10);
         const m = parseInt(parts[1], 10);
@@ -140,14 +144,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     }
 
     datesToInclude.forEach(dateStr => {
-        // We need to match dateStr (normalized) back to keys in dailyCounts
-        // Since we normalized monthData keys, we iterate dailyCounts again or rely on normalized mapping.
-        // For simplicity and accuracy with the robust logic, we can re-scan dailyCounts for these dates.
-        
-        // Optimization: Create a lookup from normalized date to original keys?
-        // Actually, dailyCounts keys might be unnormalized. 
-        // Let's iterate dailyCounts entries and check if they normalize to dateStr.
-        
+        // We iterate dailyCounts again to match normalized dates back to raw data
         Object.entries(dailyCounts).forEach(([rawDate, dayCounts]) => {
              const parts = rawDate.split('-');
              if (parts.length === 3) {
@@ -214,7 +211,10 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
         };
     }).sort((a,b) => b.total - a.total);
 
-    if (reportData.length === 0) return;
+    if (reportData.length === 0) {
+        alert("No data available to download for this month.");
+        return;
+    }
 
     const headers = ['Ride Name', 'Floor', 'Total Guests'];
     const rows = reportData.map(item => `"${item.name}","${item.floor}",${item.total}`);

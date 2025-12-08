@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-// FIX: Imported PackageSalesData from types.ts to use the shared type definition.
+import React, { useState, useEffect, useMemo } from 'react';
 import { Operator, PackageSalesRecord, PackageSalesData } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
 
@@ -76,7 +75,10 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     const [vipQty, setVipQty] = useState(0);
     const [vipAmount, setVipAmount] = useState(0);
     const [otherSales, setOtherSales] = useState<OtherSaleItem[]>([]);
-    const [discountPercentage, setDiscountPercentage] = useState(0);
+    
+    // Discount State
+    const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
+    const [discountValue, setDiscountValue] = useState(0);
 
     const originalRecord = useMemo(() => {
         return packageSales[selectedDate]?.[currentUser.id];
@@ -84,12 +86,12 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
 
     const isDirty = useMemo(() => {
         const currentRecord = {
-            xtremeQty: xtremeQty,
-            kiddoQty: kiddoQty,
-            vipQty: vipQty,
+            xtremeQty, kiddoQty, vipQty,
             otherSales: otherSales.map(({ category, amount }) => ({ category, amount })),
-            discountPercentage: discountPercentage
+            discountPercentage: discountType === 'percent' ? discountValue : 0,
+            discountFixed: discountType === 'fixed' ? discountValue : 0
         };
+        
         const savedOtherSales = originalRecord?.otherSales || ((originalRecord as any)?.otherAmount ? [{ category: 'Uncategorized', amount: (originalRecord as any).otherAmount }] : []);
 
         const savedRecord = {
@@ -97,10 +99,23 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             kiddoQty: originalRecord?.kiddoQty || 0,
             vipQty: originalRecord?.vipQty || 0,
             otherSales: savedOtherSales,
-            discountPercentage: originalRecord?.discountPercentage || 0
+            discountPercentage: originalRecord?.discountPercentage || 0,
+            discountFixed: originalRecord?.discountFixed || 0
         };
+        
+        // Normalize for comparison: check effective values if type switched but value is 0
+        const isCurrentDiscountZero = discountValue === 0;
+        const isSavedDiscountZero = (savedRecord.discountPercentage || 0) === 0 && (savedRecord.discountFixed || 0) === 0;
+        
+        if (isCurrentDiscountZero && isSavedDiscountZero) {
+             // If both are effectively zero, ignore the type/value distinction
+             const { discountPercentage: d1, discountFixed: d2, ...restCurrent } = currentRecord;
+             const { discountPercentage: d3, discountFixed: d4, ...restSaved } = savedRecord;
+             return JSON.stringify(restCurrent) !== JSON.stringify(restSaved);
+        }
+
         return JSON.stringify(currentRecord) !== JSON.stringify(savedRecord);
-    }, [xtremeQty, kiddoQty, vipQty, otherSales, discountPercentage, originalRecord]);
+    }, [xtremeQty, kiddoQty, vipQty, otherSales, discountType, discountValue, originalRecord]);
     
     useEffect(() => {
         if (!isDirty) return;
@@ -120,7 +135,15 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             setKiddoAmount(originalRecord.kiddoAmount || 0);
             setVipQty(originalRecord.vipQty || 0);
             setVipAmount(originalRecord.vipAmount || 0);
-            setDiscountPercentage(originalRecord.discountPercentage || 0);
+            
+            // Handle Discount Loading
+            if (originalRecord.discountFixed && originalRecord.discountFixed > 0) {
+                setDiscountType('fixed');
+                setDiscountValue(originalRecord.discountFixed);
+            } else {
+                setDiscountType('percent');
+                setDiscountValue(originalRecord.discountPercentage || 0);
+            }
             
             const existingOtherSales = originalRecord.otherSales || [];
             // Backward compatibility for old `otherAmount`
@@ -134,7 +157,8 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             setXtremeQty(0); setKiddoQty(0); setVipQty(0);
             setXtremeAmount(0); setKiddoAmount(0); setVipAmount(0);
             setOtherSales([]);
-            setDiscountPercentage(0);
+            setDiscountType('percent');
+            setDiscountValue(0);
         }
     }, [selectedDate, originalRecord]);
     
@@ -181,8 +205,12 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     const totalQty = useMemo(() => xtremeQty + kiddoQty + vipQty, [xtremeQty, kiddoQty, vipQty]);
     
     const discountAmount = useMemo(() => {
-        return grossTotalAmount * (discountPercentage / 100);
-    }, [grossTotalAmount, discountPercentage]);
+        if (discountType === 'percent') {
+            return grossTotalAmount * (discountValue / 100);
+        } else {
+            return discountValue;
+        }
+    }, [grossTotalAmount, discountType, discountValue]);
     
     const netTotalAmount = useMemo(() => {
         return Math.max(0, grossTotalAmount - discountAmount);
@@ -194,7 +222,8 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             kiddoQty, kiddoAmount,
             vipQty, vipAmount,
             otherSales: otherSales.map(({ category, amount }) => ({ category, amount })),
-            discountPercentage
+            discountPercentage: discountType === 'percent' ? discountValue : 0,
+            discountFixed: discountType === 'fixed' ? discountValue : 0
         });
     };
 
@@ -222,7 +251,13 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                     const gross = (userRecord.xtremeAmount || 0) + (userRecord.kiddoAmount || 0) + (userRecord.vipAmount || 0) + otherTotal;
                     summary.totalAmount += gross;
                     
-                    const discount = gross * ((userRecord.discountPercentage || 0) / 100);
+                    let discount = 0;
+                    if (userRecord.discountFixed && userRecord.discountFixed > 0) {
+                        discount = userRecord.discountFixed;
+                    } else if (userRecord.discountPercentage && userRecord.discountPercentage > 0) {
+                        discount = gross * (userRecord.discountPercentage / 100);
+                    }
+                    
                     summary.totalDiscount += discount;
                     summary.netTotal += (gross - discount);
                 }
@@ -309,24 +344,41 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                     </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-end items-center gap-4">
-                     <div className="flex flex-col sm:flex-row items-center gap-4">
-                        <label htmlFor="discount-percent" className="text-lg font-semibold text-orange-400">Discount %</label>
-                        <div className="relative">
-                            <input 
-                                id="discount-percent" 
-                                type="number" 
-                                min="0" 
-                                max="100" 
-                                value={discountPercentage} 
-                                onChange={(e) => setDiscountPercentage(Math.min(100, Math.max(0, Number(e.target.value))))} 
-                                className="w-24 px-3 py-2 bg-gray-900 border border-gray-500 rounded-lg text-right font-bold focus:outline-none focus:ring-2 focus:ring-orange-500" 
-                            />
-                            <span className="absolute right-8 top-2 text-gray-400">%</span>
+                <div className="flex flex-col sm:flex-row justify-end items-center gap-4 bg-gray-900/50 p-4 rounded-lg">
+                    <div className="flex items-center gap-4">
+                        <div className="flex gap-2 p-1 bg-gray-800 rounded-lg">
+                             <button
+                                onClick={() => { setDiscountType('percent'); setDiscountValue(0); }}
+                                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${discountType === 'percent' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                             >
+                                Percent %
+                             </button>
+                             <button
+                                onClick={() => { setDiscountType('fixed'); setDiscountValue(0); }}
+                                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${discountType === 'fixed' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                             >
+                                Fixed BDT
+                             </button>
+                        </div>
+                        <div className="flex flex-col sm:flex-row items-center gap-2">
+                            <label htmlFor="discount-input" className="text-lg font-semibold text-orange-400">Discount</label>
+                            <div className="relative">
+                                <input 
+                                    id="discount-input" 
+                                    type="number" 
+                                    min="0" 
+                                    max={discountType === 'percent' ? 100 : undefined} 
+                                    value={discountValue} 
+                                    onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} 
+                                    className="w-32 px-3 py-2 bg-gray-900 border border-gray-500 rounded-lg text-right font-bold focus:outline-none focus:ring-2 focus:ring-orange-500" 
+                                />
+                                <span className="absolute right-8 top-2 text-gray-400">{discountType === 'percent' ? '%' : '৳'}</span>
+                            </div>
                         </div>
                     </div>
-                    <div className="text-center sm:text-right ml-4">
-                        <p className="text-lg font-semibold text-gray-300">Discounted Total</p>
+
+                    <div className="text-center sm:text-right ml-4 border-l border-gray-600 pl-4">
+                        <p className="text-lg font-semibold text-gray-300">Net Payable</p>
                         <p className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-500">
                             {netTotalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} BDT
                         </p>

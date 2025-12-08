@@ -62,6 +62,7 @@ export interface PackageSalesRecord {
   vipAmount: number;
   otherSales: { category: string; amount: number }[];
   discountPercentage?: number;
+  discountFixed?: number; // New field for fixed amount discount
 }
 
 export type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;
