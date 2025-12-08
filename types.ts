@@ -8,6 +8,10 @@ export interface Ride {
 
 export interface RideWithCount extends Ride {
   count: number;
+  details?: {
+    tickets: number;
+    packages: number;
+  };
 }
 
 export interface Operator {

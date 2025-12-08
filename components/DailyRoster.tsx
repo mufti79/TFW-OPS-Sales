@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Ride, Operator, AttendanceRecord, RideWithCount } from '../types';
 import { Role } from '../hooks/useAuth';
 import BriefingCheckin from './BriefingCheckin';
-import Counter from './Counter';
+import SplitCounter from './SplitCounter';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
@@ -18,7 +18,7 @@ interface DailyRosterProps {
   currentUser: Operator | null;
   attendance: AttendanceRecord[];
   onNavigate: (view: View) => void;
-  onCountChange: (rideId: number, newCount: number) => void;
+  onCountChange: (rideId: number, newCount: number, details?: { tickets: number; packages: number }) => void;
   onShowModal: (modal: Modal, ride?: Ride) => void;
   hasCheckedInToday: boolean;
   onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
@@ -281,7 +281,11 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                             </span>
                             <h3 className="text-xl font-bold text-gray-100">{ride.name}</h3>
                           </div>
-                          <Counter count={ride.count} onCountChange={(newCount) => onCountChange(ride.id, newCount)} />
+                          <SplitCounter 
+                            tickets={ride.details?.tickets || 0} 
+                            packages={ride.details?.packages || 0} 
+                            onChange={(t, p) => onCountChange(ride.id, t + p, { tickets: t, packages: p })} 
+                          />
                         </div>
                       </div>
                     ))}

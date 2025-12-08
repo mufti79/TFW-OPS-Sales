@@ -1,17 +1,21 @@
 import React from 'react';
 import { RideWithCount } from '../types';
-import Counter from './Counter';
+import SplitCounter from './SplitCounter';
 import { Role } from '../hooks/useAuth';
 
 interface RideCardProps {
   ride: RideWithCount;
-  onCountChange: (rideId: number, newCount: number) => void;
+  onCountChange: (rideId: number, newCount: number, details?: { tickets: number; packages: number }) => void;
   role: Role;
   onChangePicture: () => void;
 }
 
 const RideCard: React.FC<RideCardProps> = ({ ride, onCountChange, role, onChangePicture }) => {
   const canChangePicture = role === 'admin' || role === 'operation-officer';
+
+  const handleSplitChange = (tickets: number, packages: number) => {
+    onCountChange(ride.id, tickets + packages, { tickets, packages });
+  };
 
   return (
     <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-1 transition-all duration-300 border border-gray-700 flex flex-col group">
@@ -36,7 +40,11 @@ const RideCard: React.FC<RideCardProps> = ({ ride, onCountChange, role, onChange
           </span>
           <h3 className="text-xl font-bold text-gray-100">{ride.name}</h3>
         </div>
-        <Counter count={ride.count} onCountChange={(newCount) => onCountChange(ride.id, newCount)} />
+        <SplitCounter 
+          tickets={ride.details?.tickets || 0} 
+          packages={ride.details?.packages || 0} 
+          onChange={handleSplitChange} 
+        />
       </div>
     </div>
   );

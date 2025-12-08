@@ -99,6 +99,7 @@ const AppComponent: React.FC = () => {
     const [initialLoading, setInitialLoading] = useState(true);
 
     const { data: dailyCounts, setData: setDailyCounts } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
+    const { data: dailyRideDetails, setData: setDailyRideDetails } = useFirebaseSync<Record<string, Record<string, { tickets: number; packages: number }>>>('data/dailyRideDetails', {});
     const { data: rides, setData: setRides } = useFirebaseSync<Record<number, Omit<Ride, 'id'>>>('config/rides', RIDES);
     const { data: operators, setData: setOperators } = useFirebaseSync<Record<number, Omit<Operator, 'id'>>>('config/operators', OPERATORS);
     const { data: attendanceData, setData: setAttendanceData } = useFirebaseSync<AttendanceData>('data/attendance', {});
@@ -212,14 +213,18 @@ const AppComponent: React.FC = () => {
 
     const handleNavigate = (view: View) => setCurrentView(view);
 
-    const handleSaveCount = useCallback((rideId: number, newCount: number) => {
+    const handleSaveCount = useCallback((rideId: number, newCount: number, details?: { tickets: number, packages: number }) => {
         const rideName = RIDES_ARRAY.find(r => r.id === rideId)?.name || 'Unknown Ride';
         const oldCounts = dailyCounts[selectedDate] || {};
         const oldCount = oldCounts[rideId] || 0;
         
         setDailyCounts(prev => ({ ...prev, [selectedDate]: { ...prev[selectedDate], [rideId]: newCount } }));
-        logAction('UPDATE_COUNT', `Updated count for ${rideName} from ${oldCount} to ${newCount}`);
-    }, [selectedDate, setDailyCounts, logAction, dailyCounts]);
+        if (details) {
+            setDailyRideDetails(prev => ({ ...prev, [selectedDate]: { ...prev[selectedDate], [rideId]: details } }));
+        }
+        
+        logAction('UPDATE_COUNT', `Updated count for ${rideName} to ${newCount} (Tickets: ${details?.tickets || 'N/A'}, Packages: ${details?.packages || 'N/A'})`);
+    }, [selectedDate, setDailyCounts, setDailyRideDetails, logAction, dailyCounts]);
 
     const handleSaveAssignments = (date: string, newAssignments: Record<string, number[]>) => {
         setDailyAssignments(prev => ({ ...prev, [date]: newAssignments }));
@@ -297,6 +302,7 @@ const AppComponent: React.FC = () => {
     const handleResetDay = (date: string) => {
         if (window.confirm(`Are you sure you want to RESET all data for ${date}? This includes counts, assignments, sales, and attendance. This cannot be undone.`)) {
              setDailyCounts(prev => { const n = {...prev}; delete n[date]; return n; });
+             setDailyRideDetails(prev => { const n = {...prev}; delete n[date]; return n; });
              setAttendanceData(prev => { const n = {...prev}; delete n[date]; return n; });
              setDailyAssignments(prev => { const n = {...prev}; delete n[date]; return n; });
              setTSAssignments(prev => { const n = {...prev}; delete n[date]; return n; });
@@ -309,9 +315,20 @@ const AppComponent: React.FC = () => {
     
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
         const countsForDay = dailyCounts[selectedDate] || {};
+        const detailsForDay = dailyRideDetails[selectedDate] || {};
         const ridesFromConfig = Object.entries(rides).map(([id, rideData]) => ({ id: Number(id), ...rideData }));
-        return ridesFromConfig.map(ride => ({ ...ride, count: countsForDay[ride.id] || 0 }));
-    }, [dailyCounts, selectedDate, rides]);
+        
+        return ridesFromConfig.map(ride => {
+            const count = countsForDay[ride.id] || 0;
+            // Default to tickets=count if details missing, for backward compatibility
+            const details = detailsForDay[ride.id] || { tickets: count, packages: 0 };
+            return { 
+                ...ride, 
+                count,
+                details
+            };
+        });
+    }, [dailyCounts, dailyRideDetails, selectedDate, rides]);
 
     const filteredRides = useMemo(() => {
         let filtered = ridesWithCounts;
@@ -326,7 +343,7 @@ const AppComponent: React.FC = () => {
     
     const isCheckinAllowed = useMemo(() => new Date().getHours() < 22, []);
 
-    const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }).length, [dailyCounts, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments]);
+    const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }).length, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments]);
 
     // Note: We deliberately allow the app to run even if not configured to support offline mode.
     
@@ -382,11 +399,11 @@ const AppComponent: React.FC = () => {
         <KioskModeWrapper />
         <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={setCurrentModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo}/>
         <main className="container mx-auto p-4 md:p-6">{renderView()}</main>
-        {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
+        {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); setDailyRideDetails(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
         {currentModal === 'edit-image' && selectedRideForEdit && <EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...prev[rideId], imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/>}
         {currentModal === 'ai-assistant' && <CodeAssistant rides={RIDES_ARRAY} dailyCounts={dailyCounts} onClose={() => setCurrentModal(null)}/>}
         {currentModal === 'operators' && <OperatorManager operators={OPERATORS_ARRAY} onClose={() => setCurrentModal(null)} onAddOperator={(name) => { /* Logic to be handled by dev */ }} onDeleteOperators={(ids) => { /* Logic to be handled by dev */ }} onImport={(newOperators, strategy) => { /* Logic to be handled by dev */ }}/>}
-        {currentModal === 'backup' && <BackupManager onClose={() => setCurrentModal(null)} onExport={() => { const json = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), data: { dailyCounts, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }}, null, 2); const blob = new Blob([json], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`; link.click(); logAction('EXPORT_BACKUP', 'Exported a full application backup.'); }} onImport={(json) => { if (window.confirm("WARNING: This will overwrite ALL current data. Are you sure?")) { try { const backupData = JSON.parse(json); if (backupData.version === 2 && backupData.data) { setDailyCounts(backupData.data.dailyCounts || {}); setRides(backupData.data.rides || RIDES); setOperators(backupData.data.operators || OPERATORS); setAttendanceData(backupData.data.attendanceData || {}); setTSAssignments(backupData.data.tsAssignments || {}); setHistory(backupData.data.history || []); setPackageSalesData(backupData.data.packageSalesData || {}); setAppLogo(backupData.data.appLogo || null); setOtherSalesCategories(backupData.data.otherSalesCategories || []); setDailyAssignments(backupData.data.dailyAssignments || {}); showNotification('Backup restored successfully!', 'success'); logAction('IMPORT_BACKUP', 'Restored data from a backup file.'); } else { alert("Invalid backup file format."); } } catch (e) { alert("Failed to parse backup file."); } } }} appLogo={appLogo} onLogoChange={setAppLogo} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={Object.values(rides).map((r,i) => ({...r, id: Number(Object.keys(rides)[i])})).filter(r => !RIDES_ARRAY.some(staticRide => staticRide.id === r.id))} onRemoveObsoleteRides={handleRemoveObsoleteRides} estimatedDbSize={estimatedDbSize} onResetDay={handleResetDay} />}
+        {currentModal === 'backup' && <BackupManager onClose={() => setCurrentModal(null)} onExport={() => { const json = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), data: { dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }}, null, 2); const blob = new Blob([json], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`; link.click(); logAction('EXPORT_BACKUP', 'Exported a full application backup.'); }} onImport={(json) => { if (window.confirm("WARNING: This will overwrite ALL current data. Are you sure?")) { try { const backupData = JSON.parse(json); if (backupData.version === 2 && backupData.data) { setDailyCounts(backupData.data.dailyCounts || {}); setDailyRideDetails(backupData.data.dailyRideDetails || {}); setRides(backupData.data.rides || RIDES); setOperators(backupData.data.operators || OPERATORS); setAttendanceData(backupData.data.attendanceData || {}); setTSAssignments(backupData.data.tsAssignments || {}); setHistory(backupData.data.history || []); setPackageSalesData(backupData.data.packageSalesData || {}); setAppLogo(backupData.data.appLogo || null); setOtherSalesCategories(backupData.data.otherSalesCategories || []); setDailyAssignments(backupData.data.dailyAssignments || {}); showNotification('Backup restored successfully!', 'success'); logAction('IMPORT_BACKUP', 'Restored data from a backup file.'); } else { alert("Invalid backup file format."); } } catch (e) { alert("Failed to parse backup file."); } } }} appLogo={appLogo} onLogoChange={setAppLogo} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={Object.values(rides).map((r,i) => ({...r, id: Number(Object.keys(rides)[i])})).filter(r => !RIDES_ARRAY.some(staticRide => staticRide.id === r.id))} onRemoveObsoleteRides={handleRemoveObsoleteRides} estimatedDbSize={estimatedDbSize} onResetDay={handleResetDay} />}
       </div>
     );
 }
