@@ -61,6 +61,7 @@ export interface PackageSalesRecord {
   vipQty: number;
   vipAmount: number;
   otherSales: { category: string; amount: number }[];
+  discountPercentage?: number;
 }
 
 export type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;

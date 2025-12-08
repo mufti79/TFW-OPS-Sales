@@ -34,6 +34,7 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
     const [kiddoQty, setKiddoQty] = useState(0);
     const [vipQty, setVipQty] = useState(0);
     const [otherSales, setOtherSales] = useState<OtherSaleItem[]>([]);
+    const [discountPercentage, setDiscountPercentage] = useState(0);
 
     const datesInRange = useMemo(() => {
         const dates = [];
@@ -51,6 +52,7 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
         setXtremeQty(record?.xtremeQty || 0);
         setKiddoQty(record?.kiddoQty || 0);
         setVipQty(record?.vipQty || 0);
+        setDiscountPercentage(record?.discountPercentage || 0);
         const existingOtherSales = record?.otherSales || [];
         if(record?.otherAmount > 0 && existingOtherSales.length === 0) {
             setOtherSales([{ id: `item-${Date.now()}`, category: 'Uncategorized', amount: record.otherAmount }]);
@@ -80,6 +82,7 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
             kiddoQty, kiddoAmount: kiddoQty * prices.kiddo,
             vipQty, vipAmount: vipQty * prices.vip,
             otherSales: otherSales.map(({ category, amount }) => ({ category, amount })),
+            discountPercentage
         };
         onSave(correctionDate, personnel.id, salesData);
         onClose();
@@ -107,6 +110,10 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
                            <div><label htmlFor="xtreme-qty" className="block text-sm font-medium text-gray-400">Xtreme Qty</label><input id="xtreme-qty" type="number" value={xtremeQty} onChange={e => setXtremeQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
                            <div><label htmlFor="kiddo-qty" className="block text-sm font-medium text-gray-400">Kiddo Qty</label><input id="kiddo-qty" type="number" value={kiddoQty} onChange={e => setKiddoQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
                            <div><label htmlFor="vip-qty" className="block text-sm font-medium text-gray-400">VIP Qty</label><input id="vip-qty" type="number" value={vipQty} onChange={e => setVipQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
+                        </div>
+                        <div>
+                            <label htmlFor="discount-perc" className="block text-sm font-medium text-orange-400">Discount %</label>
+                            <input id="discount-perc" type="number" min="0" max="100" value={discountPercentage} onChange={e => setDiscountPercentage(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" />
                         </div>
                         <div className="p-4 rounded-lg border border-gray-600">
                           <h3 className="text-lg font-bold mb-3">Other Sales</h3>
@@ -148,6 +155,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
         const map = new Map<number, {
             xtremeQty: number; xtremeAmount: number; kiddoQty: number; kiddoAmount: number; vipQty: number; vipAmount: number;
             otherSales: { category: string; amount: number }[];
+            totalDiscount: number;
         }>();
         if (new Date(endDate) < new Date(startDate)) return map;
 
@@ -156,14 +164,19 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                 for (const personnelIdStr in packageSales[date]) {
                     const personnelId = Number(personnelIdStr);
                     const record = packageSales[date][personnelIdStr] as any;
-                    const existing = map.get(personnelId) || { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherSales: [] };
+                    const existing = map.get(personnelId) || { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherSales: [], totalDiscount: 0 };
                     
                     existing.xtremeQty += record.xtremeQty || 0; existing.xtremeAmount += record.xtremeAmount || 0;
                     existing.kiddoQty += record.kiddoQty || 0; existing.kiddoAmount += record.kiddoAmount || 0;
                     existing.vipQty += record.vipQty || 0; existing.vipAmount += record.vipAmount || 0;
                     
                     const recordOtherSales = record.otherSales || (record.otherAmount > 0 ? [{ category: 'Uncategorized', amount: record.otherAmount }] : []);
+                    const otherTotal = recordOtherSales.reduce((s:number, i:{amount:number}) => s + i.amount, 0);
                     existing.otherSales = [...existing.otherSales, ...recordOtherSales];
+                    
+                    const gross = (record.xtremeAmount || 0) + (record.kiddoAmount || 0) + (record.vipAmount || 0) + otherTotal;
+                    const discount = gross * ((record.discountPercentage || 0) / 100);
+                    existing.totalDiscount += discount;
                     
                     map.set(personnelId, existing);
                 }
@@ -173,7 +186,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
     }, [packageSales, startDate, endDate]);
 
     const rangeTotals = useMemo(() => {
-        const totals = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherAmount: 0, totalQty: 0, totalAmount: 0, otherBreakdown: '' };
+        const totals = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherAmount: 0, totalQty: 0, totalAmount: 0, totalDiscount: 0, netAmount: 0, otherBreakdown: '' };
         const otherSalesByCategory = new Map<string, number>();
 
         for(const sales of aggregatedSalesByPersonnel.values()) {
@@ -183,7 +196,11 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
             totals.vipQty += sales.vipQty; totals.vipAmount += sales.vipAmount;
             totals.otherAmount += otherTotalForRow;
             totals.totalQty += sales.xtremeQty + sales.kiddoQty + sales.vipQty;
-            totals.totalAmount += sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotalForRow;
+            
+            const gross = sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotalForRow;
+            totals.totalAmount += gross;
+            totals.totalDiscount += sales.totalDiscount;
+            totals.netAmount += (gross - sales.totalDiscount);
 
             sales.otherSales.forEach(item => {
                 if (item.category && item.amount > 0) {
@@ -208,16 +225,18 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
     const displayDateRange = startDate === endDate ? `for ${formatDisplayDate(startDate)}` : `from ${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`;
 
     const handleDownload = () => {
-        const headers = ["Personnel Name", "Xtreme Qty", "Xtreme Amount", "Kiddo Qty", "Kiddo Amount", "VIP Qty", "VIP Amount", "Other Amount", "Other Sales Breakdown", "Total Qty", "Total Amount (BDT)"];
+        const headers = ["Personnel Name", "Xtreme Qty", "Xtreme Amount", "Kiddo Qty", "Kiddo Amount", "VIP Qty", "VIP Amount", "Other Amount", "Other Sales Breakdown", "Total Qty", "Gross Amount", "Discount", "Net Amount"];
         const rows = ticketSalesPersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => {
             const sales = aggregatedSalesByPersonnel.get(p.id);
             const otherTotal = sales ? sales.otherSales.reduce((s, i) => s + i.amount, 0) : 0;
             const otherBreakdown = sales ? sales.otherSales.map(i => `${i.category}: ${i.amount}`).join('; ') : '';
             const totalQty = sales ? sales.xtremeQty + sales.kiddoQty + sales.vipQty : 0;
-            const totalAmount = sales ? sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotal : 0;
-            return [`"${p.name}"`, sales?.xtremeQty || 0, sales?.xtremeAmount || 0, sales?.kiddoQty || 0, sales?.kiddoAmount || 0, sales?.vipQty || 0, sales?.vipAmount || 0, otherTotal, `"${otherBreakdown}"`, totalQty, totalAmount].join(',');
+            const gross = sales ? sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotal : 0;
+            const discount = sales ? sales.totalDiscount : 0;
+            const net = gross - discount;
+            return [`"${p.name}"`, sales?.xtremeQty || 0, sales?.xtremeAmount || 0, sales?.kiddoQty || 0, sales?.kiddoAmount || 0, sales?.vipQty || 0, sales?.vipAmount || 0, otherTotal, `"${otherBreakdown}"`, totalQty, gross, discount, net].join(',');
         });
-        const totalRow = [`"TOTAL"`, rangeTotals.xtremeQty, rangeTotals.xtremeAmount, rangeTotals.kiddoQty, rangeTotals.kiddoAmount, rangeTotals.vipQty, rangeTotals.vipAmount, rangeTotals.otherAmount, "", rangeTotals.totalQty, rangeTotals.totalAmount].join(',');
+        const totalRow = [`"TOTAL"`, rangeTotals.xtremeQty, rangeTotals.xtremeAmount, rangeTotals.kiddoQty, rangeTotals.kiddoAmount, rangeTotals.vipQty, rangeTotals.vipAmount, rangeTotals.otherAmount, "", rangeTotals.totalQty, rangeTotals.totalAmount, rangeTotals.totalDiscount, rangeTotals.netAmount].join(',');
         const csv = [headers.join(','), ...rows, totalRow].join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -257,7 +276,11 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                             </div>
                         )}
                     </div>
-                    <div className="col-span-2 md:col-span-1 border-t-2 md:border-t-0 md:border-l-2 border-teal-500 pt-4 md:pt-0 md:pl-4"><p className="text-md font-bold text-gray-300">Grand Total</p><p className="text-2xl font-bold text-teal-400">{rangeTotals.totalAmount.toLocaleString()} BDT</p></div>
+                    <div className="col-span-2 md:col-span-1 border-t-2 md:border-t-0 md:border-l-2 border-teal-500 pt-4 md:pt-0 md:pl-4">
+                        <p className="text-md font-bold text-gray-300">Net Total</p>
+                        <p className="text-2xl font-bold text-teal-400">{rangeTotals.netAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} BDT</p>
+                        {rangeTotals.totalDiscount > 0 && <p className="text-xs text-orange-400">Discount: -{rangeTotals.totalDiscount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>}
+                    </div>
                 </div>
             </div>
             <div className="bg-gray-800 rounded-lg shadow-lg overflow-x-auto border border-gray-700">
@@ -268,15 +291,17 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                         <th className="p-3 font-semibold text-right">Kiddo (Qty/Amt)</th>
                         <th className="p-3 font-semibold text-right">VIP (Qty/Amt)</th>
                         <th className="p-3 font-semibold text-right">Other Amt</th>
-                        <th className="p-3 font-semibold text-right">Total (Qty/Amt)</th>
+                        <th className="p-3 font-semibold text-right">Discount</th>
+                        <th className="p-3 font-semibold text-right">Net Amount</th>
                         <th className="p-3 font-semibold text-center">Actions</th>
                     </tr></thead>
                     <tbody>
                         {ticketSalesPersonnel.sort((a,b) => a.name.localeCompare(b.name)).map((personnel, index) => {
                             const sales = aggregatedSalesByPersonnel.get(personnel.id);
                             const otherTotal = sales ? sales.otherSales.reduce((s, i) => s + i.amount, 0) : 0;
-                            const totalQty = sales ? sales.xtremeQty + sales.kiddoQty + sales.vipQty : 0;
-                            const totalAmount = sales ? sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotal : 0;
+                            const gross = sales ? sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotal : 0;
+                            const discount = sales ? sales.totalDiscount : 0;
+                            const net = gross - discount;
                             const isExpanded = expandedPersonnelId === personnel.id;
                             
                             return (
@@ -294,12 +319,13 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                                         <td className="p-3 text-right tabular-nums">{sales ? `${sales.kiddoQty.toLocaleString()} / ${sales.kiddoAmount.toLocaleString()}` : '0 / 0'}</td>
                                         <td className="p-3 text-right tabular-nums">{sales ? `${sales.vipQty.toLocaleString()} / ${sales.vipAmount.toLocaleString()}` : '0 / 0'}</td>
                                         <td className="p-3 text-right tabular-nums">{otherTotal.toLocaleString()}</td>
-                                        <td className="p-3 text-right font-bold text-lg text-teal-400 tabular-nums">{`${totalQty.toLocaleString()} / ${totalAmount.toLocaleString()}`}</td>
+                                        <td className="p-3 text-right tabular-nums text-orange-400">{discount > 0 ? `-${discount.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '0'}</td>
+                                        <td className="p-3 text-right font-bold text-lg text-teal-400 tabular-nums">{net.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                                         <td className="p-3 text-center">{(role === 'admin' || role === 'sales-officer') && <button onClick={() => handleEditClick(personnel)} className="px-3 py-1 bg-blue-600 text-white font-semibold rounded-md text-sm">Edit</button>}</td>
                                     </tr>
                                     {isExpanded && sales && sales.otherSales.length > 0 && otherTotal > 0 && (
                                         <tr className="bg-gray-900/50">
-                                            <td colSpan={7} className="p-4">
+                                            <td colSpan={8} className="p-4">
                                                 <div className="pl-8">
                                                     <h4 className="font-semibold text-gray-300 mb-2">Other Sales Breakdown for {personnel.name}:</h4>
                                                     <ul className="space-y-1 text-sm">
@@ -324,7 +350,8 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                         <td className="p-3 text-right font-bold tabular-nums">{`${rangeTotals.kiddoQty.toLocaleString()} / ${rangeTotals.kiddoAmount.toLocaleString()}`}</td>
                         <td className="p-3 text-right font-bold tabular-nums">{`${rangeTotals.vipQty.toLocaleString()} / ${rangeTotals.vipAmount.toLocaleString()}`}</td>
                         <td className="p-3 text-right font-bold tabular-nums">{rangeTotals.otherAmount.toLocaleString()}</td>
-                        <td className="p-3 text-right font-bold text-xl text-teal-300 tabular-nums">{`${rangeTotals.totalQty.toLocaleString()} / ${rangeTotals.totalAmount.toLocaleString()}`}</td>
+                        <td className="p-3 text-right font-bold tabular-nums text-orange-400">-{rangeTotals.totalDiscount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                        <td className="p-3 text-right font-bold text-xl text-teal-300 tabular-nums">{rangeTotals.netAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
                         <td className="p-3"></td>
                     </tr></tfoot>
                 </table>
