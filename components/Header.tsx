@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { FLOORS } from '../constants';
 import { Role } from '../hooks/useAuth';
 import { Operator } from '../types';
 import ConnectionStatus from './ConnectionStatus';
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'maintenance-dashboard';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
 type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
 type Connection = 'connecting' | 'connected' | 'disconnected';
 
@@ -40,11 +41,9 @@ const Header: React.FC<HeaderProps> = ({
   const isSalesManager = role === 'admin' || role === 'sales-officer';
   const isAdmin = role === 'admin';
   const isSalesRole = role === 'ticket-sales' || role === 'sales-officer';
-  const isMaintenance = role === 'maintenance';
   
   const getHeaderTitle = () => {
     if (isSalesRole) return 'TFW Sales';
-    if (isMaintenance) return 'TFW Maintenance';
     return 'TFW Ops';
   };
   const headerTitle = getHeaderTitle();
@@ -62,9 +61,6 @@ const Header: React.FC<HeaderProps> = ({
       if (isSalesManager) {
           links.push(<button key="ts-roster" onClick={() => onNavigate('ts-roster')} className={navLinkClasses}>Sales Roster</button>);
           links.push(<button key="sales-dashboard" onClick={() => onNavigate('sales-officer-dashboard')} className={navLinkClasses}>Sales Dashboard</button>);
-      }
-      if (isAdmin || isMaintenance) {
-          links.push(<button key="maintenance-dashboard" onClick={() => onNavigate('maintenance-dashboard')} className={navLinkClasses}>Maintenance</button>);
       }
       
       if (isManager || isSalesManager) {
@@ -92,9 +88,6 @@ const Header: React.FC<HeaderProps> = ({
       if (isSalesManager) {
           links.push(<button key="m-ts-roster" onClick={() => closeMenu('ts-roster')} className={`${navLinkClasses} w-full text-left block`}>Sales Roster</button>);
           links.push(<button key="m-sales-dashboard" onClick={() => closeMenu('sales-officer-dashboard')} className={`${navLinkClasses} w-full text-left block`}>Sales Dashboard</button>);
-      }
-      if (isAdmin || isMaintenance) {
-          links.push(<button key="m-maintenance-dashboard" onClick={() => closeMenu('maintenance-dashboard')} className={`${navLinkClasses} w-full text-left block`}>Maintenance</button>);
       }
       
       if (isManager || isSalesManager) {

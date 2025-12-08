@@ -1,9 +1,9 @@
+
 import React, { useState } from 'react';
 import { Operator } from '../types';
-import { MAINTENANCE_PERSONNEL_ARRAY } from '../constants';
 
 interface LoginProps {
-  onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'maintenance', payload?: string | Operator) => boolean;
+  onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator) => boolean;
   operators: Operator[];
   ticketSalesPersonnel: Operator[];
   appLogo: string | null;
@@ -16,8 +16,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   const [officerError, setOfficerError] = useState('');
   const [salesOfficerPin, setSalesOfficerPin] = useState('');
   const [salesOfficerError, setSalesOfficerError] = useState('');
-  const [maintenancePin, setMaintenancePin] = useState('');
-  const [maintenanceError, setMaintenanceError] = useState('');
   
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
   const [selectedTicketSalesId, setSelectedTicketSalesId] = useState<string>('');
@@ -49,16 +47,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
     } else {
       setSalesOfficerError('Incorrect PIN. Please try again.');
       setSalesOfficerPin('');
-    }
-  };
-
-  const handleMaintenanceLogin = () => {
-    if (onLogin('maintenance', maintenancePin)) {
-      setMaintenanceError('');
-      setMaintenancePin('');
-    } else {
-      setMaintenanceError('Incorrect PIN. Please try again.');
-      setMaintenancePin('');
     }
   };
   
@@ -93,11 +81,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
                 <span className="text-gray-600 font-bold">Logo</span>
             </div>
         )}
-        <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-            Toggi Fun World
-        </h1>
-        <p className="text-lg font-semibold text-gray-300 tracking-wider">feel the thrill</p>
-        <p className="text-base text-gray-500">Bashundhara City Development Ltd, Panthapath, Dhaka</p>
+        <div className="flex flex-col items-center">
+            <h1 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                Toggi Fun World
+            </h1>
+            <p className="text-lg font-semibold text-gray-300 tracking-wider -mt-1">feel the thrill</p>
+            <p className="text-base text-gray-500 mt-1">Bashundhara City Development Ltd, Panthapath, Dhaka</p>
+        </div>
       </div>
 
       <div className="w-full max-w-4xl space-y-6">
@@ -204,33 +194,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
                 </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Maintenance Login */}
-                <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                    <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Maintenance Login</h2>
-                    <div className="space-y-3">
-                        <input
-                            type="password"
-                            placeholder="Enter Maintenance PIN"
-                            value={maintenancePin}
-                            onChange={(e) => handlePinChange(setMaintenancePin, setMaintenanceError, e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleMaintenanceLogin()}
-                            className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-center text-xl tracking-widest"
-                            maxLength={4}
-                            aria-label="Maintenance PIN"
-                            autoComplete="off"
-                        />
-                        {maintenanceError && <p className="text-red-400 text-sm text-center">{maintenanceError}</p>}
-                        <button
-                            onClick={handleMaintenanceLogin}
-                            className="w-full px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 active:scale-95 transition-all text-lg"
-                        >
-                            Enter as Maintenance
-                        </button>
-                    </div>
-                </div>
+            <div className="flex justify-center">
                 {/* Admin Login */}
-                <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 w-full md:w-1/2">
                 <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Admin Login</h2>
                 <div className="space-y-3">
                     <input

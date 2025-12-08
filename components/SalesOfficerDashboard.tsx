@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 // FIX: Imported PackageSalesData from types.ts to use the shared type definition.
 import { Operator, PackageSalesRecord, PackageSalesData } from '../types';
@@ -61,7 +62,15 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
     const handleAddOtherSale = () => setOtherSales(prev => [...prev, { id: `item-${Date.now()}`, category: '', amount: 0 }]);
     const handleRemoveOtherSale = (id: string) => setOtherSales(prev => prev.filter(item => item.id !== id));
     const handleOtherSaleChange = (id: string, field: 'category' | 'amount', value: string | number) => {
-        setOtherSales(prev => prev.map(item => item.id === id ? (field === 'amount' ? { ...item, amount: Math.max(0, Number(value) || 0) } : { ...item, [field]: value }) : item));
+        setOtherSales(prev => prev.map(item => {
+            if (item.id === id) {
+                if (field === 'amount') {
+                    return { ...item, amount: Math.max(0, Number(value) || 0) };
+                }
+                return { ...item, category: String(value) };
+            }
+            return item;
+        }));
     };
 
     const handleSaveClick = () => {

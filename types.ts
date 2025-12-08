@@ -59,33 +59,21 @@ export interface PackageSalesRecord {
   otherSales: { category: string; amount: number }[];
 }
 
-// FIX: Define PackageSalesData type for Firebase data structure to resolve import errors.
 export type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;
 
-// FIX: Added the missing MaintenanceRecord interface to resolve import errors.
-export interface MaintenanceRecord {
-  date: string; // YYYY-MM-DD
-  rideName: string;
-  hardwareRepaired: boolean;
-  softwareIssueSolved: boolean;
-  partsReplaced: boolean;
-  isOutOfService: boolean;
-}
-
 export interface MaintenanceTicket {
-  id: string; // Composite key, e.g., YYYY-MM-DD-rideId
-  date: string; // YYYY-MM-DD
+  id: string;
   rideId: number;
   rideName: string;
   problem: string;
   status: 'reported' | 'in-progress' | 'solved';
-  reportedById: number;
+  reportedBy: number;
   reportedByName: string;
+  reportedAt: string;
   assignedToId?: number;
   assignedToName?: string;
-  reportedAt: string; // ISO string
-  inProgressAt?: string; // ISO string
-  solvedAt?: string; // ISO string
   helperIds?: number[];
   helperNames?: string[];
+  inProgressAt?: string;
+  solvedAt?: string;
 }

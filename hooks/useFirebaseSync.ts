@@ -5,12 +5,27 @@ function useFirebaseSync<T>(
   path: string,
   initialValue: T
 ): { data: T; setData: Dispatch<SetStateAction<T>>; isLoading: boolean } {
-  const [storedValue, setStoredValue] = useState<T>(initialValue);
+  const localKey = `tfw_data_${path.replace(/\//g, '_')}`;
+
+  // Initialize state from localStorage if available, otherwise use initialValue
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const item = window.localStorage.getItem(localKey);
+        return item ? JSON.parse(item) : initialValue;
+      }
+    } catch (error) {
+      console.warn(`Error reading localStorage for key "${localKey}":`, error);
+    }
+    return initialValue;
+  });
+
   const [loading, setLoading] = useState(isFirebaseConfigured);
   const initialValueRef = useRef(initialValue);
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
+        setLoading(false);
         return;
     }
     
@@ -18,19 +33,23 @@ function useFirebaseSync<T>(
 
     const timeoutId = setTimeout(() => {
         if (loading) {
-            console.warn(`Firebase listener for path "${path}" timed out after 8 seconds. Proceeding with initial/stale data.`);
+            // If Firebase times out, we assume offline/slow connection and let the app use local data
             setLoading(false);
         }
-    }, 8000);
+    }, 5000);
 
     const listener = dbRef.on('value', (snapshot) => {
       clearTimeout(timeoutId);
       if (snapshot.exists()) {
-        setStoredValue(snapshot.val());
-      } else {
-        dbRef.set(initialValueRef.current).catch(error => console.error(`Firebase initial set error at path "${path}":`, error));
-        setStoredValue(initialValueRef.current);
-      }
+        const val = snapshot.val();
+        setStoredValue(val);
+        // Sync valid data from server to local storage
+        try {
+            window.localStorage.setItem(localKey, JSON.stringify(val));
+        } catch (e) {
+            console.warn("Failed to update localStorage from Firebase sync", e);
+        }
+      } 
       setLoading(false);
     }, (error) => {
         clearTimeout(timeoutId);
@@ -42,38 +61,31 @@ function useFirebaseSync<T>(
       clearTimeout(timeoutId);
       dbRef.off('value', listener);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path]);
+  }, [path, localKey]);
 
   const setValue: Dispatch<SetStateAction<T>> = useCallback((value) => {
-    if (!isFirebaseConfigured) {
-      console.warn(`Firebase is not configured. Data for "${path}" will not be saved.`);
-      setStoredValue(value);
-      return;
-    }
+    setStoredValue((prev) => {
+        // Resolve the new value
+        const valueToStore = value instanceof Function ? value(prev) : value;
 
-    try {
-        const dbRef = database.ref(path);
-        if (value instanceof Function) {
-            // Use a transaction for function-based updates to ensure atomicity and avoid race conditions.
-            dbRef.transaction((currentData) => {
-                // If there's no data in Firebase, the transaction callback receives `null`.
-                // We should use the initial value as the base in that case.
-                const baseData = currentData === null ? initialValueRef.current : currentData;
-                return value(baseData);
-            }).catch(error => {
-                console.error(`Firebase transaction error at path "${path}":`, error);
-            });
-        } else {
-            // For direct value sets, just use `set`. This overwrites all data at the location.
-            dbRef.set(value).catch(error => {
+        // 1. Save to Local Storage (Offline Persistence)
+        try {
+            window.localStorage.setItem(localKey, JSON.stringify(valueToStore));
+        } catch (error) {
+            console.error(`Error saving to localStorage for key "${localKey}":`, error);
+        }
+
+        // 2. Save to Firebase (Online Sync)
+        if (isFirebaseConfigured) {
+            const dbRef = database.ref(path);
+            dbRef.set(valueToStore).catch(error => {
                 console.error(`Firebase write error at path "${path}":`, error);
             });
         }
-    } catch (error) {
-        console.error(`Error setting value for Firebase path "${path}":`, error);
-    }
-  }, [path]);
+        
+        return valueToStore;
+    });
+  }, [path, localKey]);
 
   return { data: storedValue, setData: setValue, isLoading: loading };
 }

@@ -1,23 +1,20 @@
+
 import useLocalStorage from './useLocalStorage';
 import { Operator } from '../types';
 import { useCallback } from 'react';
 
-export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'maintenance' | null;
+export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | null;
 
 export const ADMIN_PIN = '9999';
 export const OPERATION_OFFICER_PIN = '4321';
 export const SALES_OFFICER_PIN = '5678';
-export const MAINTENANCE_PIN = '2468';
-
-
-
 
 export const useAuth = () => {
   const [role, setRole] = useLocalStorage<Role>('authRole', null);
   const [currentUser, setCurrentUser] = useLocalStorage<Operator | null>('authUser', null);
 
   const login = useCallback((
-    newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'maintenance', 
+    newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer', 
     payload?: string | Operator
   ): boolean => {
     switch (newRole) {
@@ -39,14 +36,6 @@ export const useAuth = () => {
         if (payload === SALES_OFFICER_PIN) {
           setRole('sales-officer');
           setCurrentUser({ id: -2, name: 'Sales Officer' });
-          return true;
-        }
-        return false;
-      case 'maintenance':
-        if (payload === MAINTENANCE_PIN) {
-          setRole('maintenance');
-          // Set a generic user for the role. The specific technician will be selected on the dashboard.
-          setCurrentUser({ id: -3, name: 'Maintenance Team' });
           return true;
         }
         return false;

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Counter, Operator, AttendanceRecord } from '../types';
 import { useNotification } from '../imageStore';
@@ -8,7 +9,7 @@ declare var XLSX: any;
 interface TicketSalesAssignmentViewProps {
   counters: Counter[];
   ticketSalesPersonnel: Operator[];
-  dailyAssignments: Record<string, Record<string, number[]>>;
+  dailyAssignments: Record<string, Record<string, number[] | number>>;
   onSave: (date: string, assignments: Record<string, number[]>) => void;
   selectedDate: string;
   attendance: AttendanceRecord[];
@@ -22,12 +23,21 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   const { showNotification } = useNotification();
   
   useEffect(() => {
-    setAssignments(dailyAssignments[selectedDate] || {});
+    const rawAssignments = dailyAssignments[selectedDate] || {};
+    const normalizedAssignments: Record<string, number[]> = {};
+    Object.entries(rawAssignments).forEach(([key, value]) => {
+      normalizedAssignments[key] = Array.isArray(value) ? value : [value];
+    });
+    setAssignments(normalizedAssignments);
   }, [selectedDate, dailyAssignments]);
 
   const isDirty = useMemo(() => {
     const currentRemoteAssignments = dailyAssignments[selectedDate] || {};
-    return JSON.stringify(assignments) !== JSON.stringify(currentRemoteAssignments);
+    const normalizedRemote: Record<string, number[]> = {};
+    Object.entries(currentRemoteAssignments).forEach(([key, value]) => {
+      normalizedRemote[key] = Array.isArray(value) ? value : [value];
+    });
+    return JSON.stringify(assignments) !== JSON.stringify(normalizedRemote);
   }, [assignments, dailyAssignments, selectedDate]);
 
   useEffect(() => {

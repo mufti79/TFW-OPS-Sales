@@ -1,6 +1,7 @@
+
 import React, { useState, useRef } from 'react';
 import { useNotification } from '../imageStore';
-import { Ride, Operator } from '../types';
+import { Ride } from '../types';
 
 interface BackupManagerProps {
   onClose: () => void;
@@ -14,10 +15,7 @@ interface BackupManagerProps {
   onDeleteCategory: (name: string) => void;
   obsoleteRides: Ride[];
   onRemoveObsoleteRides: () => void;
-  maintenancePersonnel: Operator[];
-  onAddMaintenancePersonnel: (name: string) => void;
-  onDeleteMaintenancePersonnel: (id: number) => void;
-  onClearMaintenanceTickets: () => void;
+  estimatedDbSize: number;
 }
 
 const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
@@ -62,7 +60,7 @@ const resizeImage = (file: File, maxWidth: number, maxHeight: number, quality: n
 };
 
 
-const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory, obsoleteRides, onRemoveObsoleteRides, maintenancePersonnel, onAddMaintenancePersonnel, onDeleteMaintenancePersonnel, onClearMaintenanceTickets }) => {
+const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImport, onResetDay, appLogo, onLogoChange, otherSalesCategories, onRenameCategory, onDeleteCategory, obsoleteRides, onRemoveObsoleteRides, estimatedDbSize }) => {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
@@ -71,7 +69,6 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
   const { showNotification } = useNotification();
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [newPersonnelName, setNewPersonnelName] = useState('');
 
   const handleFileImportClick = () => {
     fileInputRef.current?.click();
@@ -153,13 +150,17 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
     }
   };
 
-  const handleAddPersonnel = () => {
-      if (newPersonnelName.trim()) {
-          onAddMaintenancePersonnel(newPersonnelName.trim());
-          setNewPersonnelName('');
-          showNotification('Technician added.', 'success');
-      }
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   };
+
+  const totalDbSize = 1 * 1024 * 1024 * 1024; // 1 GB in bytes
+  const usagePercentage = (estimatedDbSize / totalDbSize) * 100;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
@@ -172,28 +173,22 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
             </button>
           </div>
           
-           <div className="border-t border-gray-600 pt-6">
-                <h3 className="text-xl font-bold text-indigo-400 mb-2">Manage Maintenance Personnel</h3>
-                <p className="text-sm text-gray-400 mb-4">Add or remove engineers and technicians from the maintenance team roster.</p>
-                <div className="space-y-2 max-h-40 overflow-y-auto pr-2 bg-gray-900/50 p-3 rounded-lg border border-gray-700 mb-4">
-                    {maintenancePersonnel.map(p => (
-                        <div key={p.id} className="flex items-center justify-between bg-gray-700 p-2 rounded-md">
-                            <span className="text-gray-300">{p.name}</span>
-                            <button onClick={() => onDeleteMaintenancePersonnel(p.id)} className="px-2 py-1 bg-red-700 text-white rounded-md text-xs">Delete</button>
+           <div className="mb-8">
+                <h3 className="text-xl font-bold text-cyan-400 mb-2">Firebase Usage & Limits (Free Plan)</h3>
+                <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700 space-y-4">
+                    <div>
+                        <div className="flex justify-between items-center text-sm mb-1">
+                            <span className="font-semibold text-gray-300">Estimated Space Occupied</span>
+                            <span><span className="font-bold text-white">{formatBytes(estimatedDbSize)}</span> / 1 GB</span>
                         </div>
-                    ))}
-                    {maintenancePersonnel.length === 0 && <p className="text-gray-500 text-center text-sm">No personnel added yet.</p>}
-                </div>
-                <div className="flex gap-3">
-                    <input
-                        type="text"
-                        placeholder="Enter new technician name"
-                        value={newPersonnelName}
-                        onChange={(e) => setNewPersonnelName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleAddPersonnel()}
-                        className="flex-grow px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    />
-                    <button onClick={handleAddPersonnel} className="px-5 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700">Add</button>
+                        <div className="w-full bg-gray-700 rounded-full h-2.5">
+                            <div className="bg-gradient-to-r from-cyan-500 to-blue-500 h-2.5 rounded-full" style={{ width: `${Math.min(usagePercentage, 100)}%` }}></div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-400">
+                        <p><strong>Data Download:</strong> Limited to 10 GB per month. Your current usage is likely very low.</p>
+                        <p><strong>Simultaneous Connections:</strong> Limited to 100 users at the same time. This is sufficient for your team size.</p>
+                    </div>
                 </div>
             </div>
 
@@ -324,23 +319,6 @@ const BackupManager: React.FC<BackupManagerProps> = ({ onClose, onExport, onImpo
                 </button>
             </div>
           </div>
-          
-          <div className="mt-8 border-t border-gray-600 pt-6 p-4 bg-red-900/50 rounded-lg border border-red-700">
-            <h3 className="text-xl font-bold text-red-300 mb-2">Danger Zone</h3>
-            <div className="flex justify-between items-center">
-                <div>
-                    <p className="font-semibold text-gray-200">Clear All Maintenance Tickets</p>
-                    <p className="text-sm text-red-300">This will permanently delete all maintenance ticket history. This action cannot be undone.</p>
-                </div>
-                <button
-                    onClick={onClearMaintenanceTickets}
-                    className="px-4 py-2 bg-red-800 text-white font-bold rounded-lg hover:bg-red-700 active:scale-95 transition-all"
-                >
-                    Clear All Tickets
-                </button>
-            </div>
-          </div>
-
         </div>
         <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg mt-auto">
           <button onClick={onClose} className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 active:scale-95 transition-all">

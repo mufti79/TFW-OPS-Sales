@@ -11,8 +11,8 @@ interface DashboardProps {
   onNavigate: (view: View) => void;
   selectedDate: string;
   onDateChange: (date: string) => void;
-  // FIX: Corrected the type to expect an array of numbers for assignments.
-  dailyAssignments: Record<string, Record<string, number[]>>;
+  // FIX: Corrected the type to expect an array or a single number for assignments for backward compatibility.
+  dailyAssignments: Record<string, Record<string, number[] | number>>;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, attendance, historyLog, onNavigate, selectedDate, onDateChange, dailyAssignments }) => {
@@ -42,7 +42,9 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
     const ridesAwaitingCount = ridesWithCounts
         .filter(ride => ride.count === 0 && assignmentsToday[ride.id])
         .map(ride => {
-            const operatorIds = assignmentsToday[ride.id] || [];
+            // FIX: Handle both number and number[] for assignments.
+            const operatorIdValue = assignmentsToday[ride.id];
+            const operatorIds = Array.isArray(operatorIdValue) ? operatorIdValue : operatorIdValue ? [operatorIdValue] : [];
             const operatorNames = operatorIds
                 .map(id => operatorMap.get(id))
                 .filter(Boolean) as string[];
@@ -149,7 +151,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-            Operations Dashboard (v2)
+            Operations Dashboard
           </h1>
           <p className="text-gray-400">Showing data for {displayDate.toLocaleDateString()}</p>
         </div>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 // FIX: Imported PackageSalesData from types.ts to use the shared type definition.
 import { Operator, PackageSalesRecord, PackageSalesData } from '../types';
@@ -161,8 +162,10 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     const handleOtherSaleChange = (id: string, field: 'category' | 'amount', value: string | number) => {
         setOtherSales(prev => prev.map(item => {
             if (item.id === id) {
-                if (field === 'amount') return { ...item, amount: Math.max(0, Number(value) || 0) };
-                return { ...item, [field]: value };
+                if (field === 'amount') {
+                    return { ...item, amount: Math.max(0, Number(value) || 0) };
+                }
+                return { ...item, category: String(value) };
             }
             return item;
         }));

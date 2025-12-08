@@ -1,5 +1,4 @@
 
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { Counter, Operator, AttendanceRecord } from '../types';
 import { Role } from '../hooks/useAuth';
@@ -96,7 +95,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
 interface TicketSalesRosterProps {
   counters: Counter[];
   ticketSalesPersonnel: Operator[];
-  dailyAssignments: Record<string, Record<string, number[]>>;
+  dailyAssignments: Record<string, Record<string, number[] | number>>;
   selectedDate: string;
   onDateChange: (date: string) => void;
   role: Exclude<Role, null>;
@@ -228,7 +227,13 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
   
     const handleManageAssignmentsSave = (counterId: number, newPersonnelIds: number[]) => {
         const currentAssignments = dailyAssignments[selectedDate] || {};
-        const updatedAssignments = {...currentAssignments};
+        
+        // Normalize existing assignments to arrays
+        const updatedAssignments: Record<string, number[]> = {};
+        Object.entries(currentAssignments).forEach(([key, val]) => {
+            updatedAssignments[key] = Array.isArray(val) ? val : [val];
+        });
+
         if (newPersonnelIds.length > 0) {
             updatedAssignments[counterId] = newPersonnelIds;
         } else {

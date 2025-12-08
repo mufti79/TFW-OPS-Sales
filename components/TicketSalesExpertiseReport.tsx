@@ -1,9 +1,10 @@
+
 import React, { useMemo, useState } from 'react';
 import { Operator, Counter } from '../types';
 
 interface TicketSalesExpertiseReportProps {
   ticketSalesPersonnel: Operator[];
-  dailyAssignments: Record<string, Record<string, number[]>>;
+  dailyAssignments: Record<string, Record<string, number[] | number>>;
   counters: Counter[];
 }
 

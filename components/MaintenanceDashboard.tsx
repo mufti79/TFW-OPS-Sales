@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { MaintenanceTicket, Operator } from '../types';
 
@@ -13,12 +14,9 @@ interface MaintenanceDashboardProps {
 const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenanceTickets, selectedDate, onDateChange, onUpdateTicketStatus, maintenancePersonnel, onClearSolved }) => {
   const [selectedTechnician, setSelectedTechnician] = useState<Operator | null>(null);
   const [selectedHelpers, setSelectedHelpers] = useState<Operator[]>([]);
-  
-  // 1. New state to toggle helper visibility
-  const [needsHelper, setNeedsHelper] = useState(false);
-  
   const [isHelperDropdownOpen, setIsHelperDropdownOpen] = useState(false);
   const helperDropdownRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -100,14 +98,8 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
   };
   
   const handleTechnicianSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const value = e.target.value;
-      if (!value) {
-        setSelectedTechnician(null);
-        setNeedsHelper(false);
-        setSelectedHelpers([]);
-        return;
-      }
-      const technician = maintenancePersonnel.find(p => String(p.id) === value) || null;
+      const techId = parseInt(e.target.value, 10);
+      const technician = maintenancePersonnel.find(p => p.id === techId) || null;
       setSelectedTechnician(technician);
       // If the newly selected primary technician was also a helper, remove them from the helper list
       if (technician && selectedHelpers.some(h => h.id === technician.id)) {
@@ -121,16 +113,6 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
             ? prev.filter(h => h.id !== helper.id)
             : [...prev, helper]
     );
-  };
-
-  // 2. Logic to handle the "I need a helper" checkbox
-  const handleHelperCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const isChecked = e.target.checked;
-    setNeedsHelper(isChecked);
-    // If unchecked, clear any selected helpers so they aren't submitted
-    if (!isChecked) {
-        setSelectedHelpers([]);
-    }
   };
 
 
@@ -163,71 +145,51 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
         </div>
       </div>
       
-       <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600 flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-            <div className="flex-grow w-full sm:w-auto">
+       <div className="mb-6 p-4 bg-gray-700/50 rounded-lg border border-gray-600 flex flex-col sm:flex-row gap-4 items-end">
+            <div className="flex-grow">
                 <label htmlFor="technician-select" className="block text-lg font-medium text-gray-200 mb-2">Select Your Name</label>
                 <select
                     id="technician-select"
-                    value={selectedTechnician ? String(selectedTechnician.id) : ''}
+                    value={selectedTechnician?.id || ''}
                     onChange={handleTechnicianSelect}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-lg"
+                    className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-lg"
                 >
                     <option value="">-- Select --</option>
                     {maintenancePersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                        <option key={p.id} value={String(p.id)}>{p.name}</option>
+                        <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                 </select>
                 {!selectedTechnician && <p className="text-yellow-400 text-sm mt-2">You must select your name before you can take or solve issues.</p>}
             </div>
-
-            {/* 3. New Checkbox Section to Enable Helpers */}
-            <div className="flex items-center h-[52px] pb-3"> 
-                <label className="flex items-center space-x-2 cursor-pointer select-none">
-                    <input 
-                        type="checkbox" 
-                        checked={needsHelper}
-                        onChange={handleHelperCheckboxChange}
-                        disabled={!selectedTechnician}
-                        className="w-5 h-5 bg-gray-900 border-gray-500 rounded text-indigo-600 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <span className={`text-sm font-medium ${!selectedTechnician ? 'text-gray-500' : 'text-gray-200'}`}>  
-                        I need a helper
-                    </span>
-                </label>
+            <div className="flex-grow relative" ref={helperDropdownRef}>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Select Helper name(s)</label>
+                <button
+                    onClick={() => setIsHelperDropdownOpen(prev => !prev)}
+                    disabled={!selectedTechnician}
+                    className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-left truncate disabled:bg-gray-700 disabled:cursor-not-allowed"
+                >
+                    {selectedHelpers.length > 0 ? selectedHelpers.map(h => h.name).join(', ') : <span className="text-gray-500">-- No Helpers --</span>}
+                </button>
+                {isHelperDropdownOpen && selectedTechnician && (
+                    <div className="absolute z-10 w-full max-w-sm mt-1 bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                        {maintenancePersonnel
+                            .filter(p => p.id !== selectedTechnician?.id)
+                            .sort((a,b) => a.name.localeCompare(b.name))
+                            .map(p => (
+                                <label key={p.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedHelpers.some(h => h.id === p.id)}
+                                        onChange={() => handleToggleHelper(p)}
+                                        className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <span className="ml-3 text-gray-300">{p.name}</span>
+                                </label>
+                            ))
+                        }
+                    </div>
+                )}
             </div>
-
-            {/* 4. Helper Dropdown - Only renders if needsHelper is true */}
-            {needsHelper && (
-                <div className="flex-grow relative w-full sm:w-auto" ref={helperDropdownRef}>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">Select Helper name(s)</label>
-                    <button
-                        onClick={() => setIsHelperDropdownOpen(prev => !prev)}
-                        disabled={!selectedTechnician}
-                        className="w-full px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-left truncate disabled:[object Object]"
-                    >
-                        {selectedHelpers.length > 0 ? selectedHelpers.map(h => h.name).join(', ') : <span className="text-gray-500">-- Select Helpers --</span>}
-                    </button>
-                    {isHelperDropdownOpen && selectedTechnician && (
-                        <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                            {maintenancePersonnel
-                                .filter(p => p.id !== selectedTechnician?.id)
-                                .sort((a,b) => a.name.localeCompare(b.name))
-                                .map(p => (
-                                    <label key={p.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedHelpers.some(h => h.id === p.id)}
-                                            onChange={() => handleToggleHelper(p)}
-                                            className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-indigo-600 focus:ring-indigo-500"
-                                        />
-                                        <span className="ml-3 text-gray-300">{p.name}</span>
-                                    </label>
-                                ))
-                            }
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

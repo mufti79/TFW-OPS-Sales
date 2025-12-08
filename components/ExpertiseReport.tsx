@@ -1,9 +1,10 @@
+
 import React, { useMemo, useState } from 'react';
 import { Operator, Ride } from '../types';
 
 interface ExpertiseReportProps {
   operators: Operator[];
-  dailyAssignments: Record<string, Record<string, number[]>>;
+  dailyAssignments: Record<string, Record<string, number[] | number>>;
   rides: Ride[];
 }
 
