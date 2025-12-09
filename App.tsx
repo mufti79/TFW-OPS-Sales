@@ -318,7 +318,10 @@ const AppComponent: React.FC = () => {
         // Robust null checks to prevent crashes if data hasn't synced or is corrupt
         const counts = dailyCounts || {};
         const details = dailyRideDetails || {};
-        const configRides = rides || {};
+        
+        // Fallback to RIDES constant if rides state is empty or null.
+        // This ensures the ride list populates immediately even if Firebase/LocalStorage has no config yet.
+        const configRides = (rides && Object.keys(rides).length > 0) ? rides : RIDES;
 
         const countsForDay = counts[selectedDate] || {};
         const detailsForDay = details[selectedDate] || {};
