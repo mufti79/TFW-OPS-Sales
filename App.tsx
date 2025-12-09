@@ -382,7 +382,7 @@ const AppComponent: React.FC = () => {
 
     const renderView = () => {
         switch (currentView) {
-            case 'reports': return <Reports dailyCounts={dailyCounts || {}} rides={RIDES_ARRAY} />;
+            case 'reports': return <Reports dailyCounts={dailyCounts || {}} dailyRideDetails={dailyRideDetails || {}} rides={RIDES_ARRAY} />;
             case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={OPERATORS_ARRAY} dailyAssignments={dailyAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
             case 'expertise': return <ExpertiseReport operators={OPERATORS_ARRAY} dailyAssignments={dailyAssignments || {}} rides={RIDES_ARRAY} />;
             case 'roster': return <DailyRoster rides={ridesWithCounts} operators={OPERATORS_ARRAY} dailyAssignments={dailyAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;

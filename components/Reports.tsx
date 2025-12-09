@@ -4,6 +4,7 @@ import { Ride } from '../types';
 
 interface ReportsProps {
   dailyCounts: Record<string, Record<string, number>>;
+  dailyRideDetails: Record<string, Record<string, { tickets: number; packages: number }>>;
   rides: Ride[];
 }
 
@@ -16,7 +17,7 @@ const toLocalDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
+const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedRange, setSelectedRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
 
@@ -140,7 +141,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
 
   // Calculate Breakdown Data for the table below calendar
   const breakdownData = useMemo(() => {
-    const rideCounts: Record<string, number> = {};
+    const rideStats: Record<string, { total: number; tickets: number; packages: number }> = {};
     const rideMap = new Map<string, Ride>(rides.map(r => [r.id.toString(), r]));
 
     const targetYear = currentDate.getFullYear();
@@ -175,11 +176,26 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
 
              if (include) {
                 const dayCounts = dailyCounts[dateKey];
+                const dayDetails = dailyRideDetails[dateKey] || {};
+
                 if (dayCounts && typeof dayCounts === 'object') {
                     Object.entries(dayCounts).forEach(([rideId, count]) => {
                         const val = Number(count) || 0;
                         if (val > 0) {
-                            rideCounts[rideId] = (rideCounts[rideId] || 0) + val;
+                            if (!rideStats[rideId]) {
+                                rideStats[rideId] = { total: 0, tickets: 0, packages: 0 };
+                            }
+                            
+                            rideStats[rideId].total += val;
+                            
+                            const details = dayDetails[rideId];
+                            if (details) {
+                                rideStats[rideId].tickets += (Number(details.tickets) || 0);
+                                rideStats[rideId].packages += (Number(details.packages) || 0);
+                            } else {
+                                // Default to tickets if breakdown is missing (legacy support)
+                                rideStats[rideId].tickets += val;
+                            }
                         }
                     });
                 }
@@ -187,21 +203,21 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
          }
     });
 
-    return Object.entries(rideCounts)
-        .map(([rideId, total]) => {
+    return Object.entries(rideStats)
+        .map(([rideId, stats]) => {
             const ride = rideMap.get(rideId);
             return {
                 name: ride?.name || `Unknown Ride (${rideId})`,
                 floor: ride?.floor || 'N/A',
-                total
+                ...stats
             };
         })
         .sort((a, b) => b.total - a.total);
-  }, [dailyCounts, currentDate, selectedRange, rides]);
+  }, [dailyCounts, dailyRideDetails, currentDate, selectedRange, rides]);
 
 
   const handleDownloadMonthReport = () => {
-    const monthRideData: Record<string, number> = {};
+    const monthRideStats: Record<string, { total: number; tickets: number; packages: number }> = {};
     const targetYear = currentDate.getFullYear();
     const targetMonthIndex = currentDate.getMonth();
 
@@ -213,11 +229,22 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
             
             if (y === targetYear && mIndex === targetMonthIndex) {
                  const dayCounts = dailyCounts[dateKey];
+                 const dayDetails = dailyRideDetails[dateKey] || {};
+
                  if (dayCounts && typeof dayCounts === 'object') {
                      Object.entries(dayCounts).forEach(([rideId, count]) => {
                         const val = Number(count) || 0;
                         if (val > 0) {
-                            monthRideData[rideId] = (monthRideData[rideId] || 0) + val;
+                            if (!monthRideStats[rideId]) monthRideStats[rideId] = { total: 0, tickets: 0, packages: 0 };
+                            
+                            monthRideStats[rideId].total += val;
+                            const details = dayDetails[rideId];
+                            if (details) {
+                                monthRideStats[rideId].tickets += (Number(details.tickets) || 0);
+                                monthRideStats[rideId].packages += (Number(details.packages) || 0);
+                            } else {
+                                monthRideStats[rideId].tickets += val;
+                            }
                         }
                      });
                  }
@@ -226,12 +253,12 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     });
     
     const rideIdMap = new Map<string, Ride>(rides.map(r => [r.id.toString(), r]));
-    const reportData = Object.entries(monthRideData).map(([rideId, total]) => {
+    const reportData = Object.entries(monthRideStats).map(([rideId, stats]) => {
         const ride = rideIdMap.get(rideId);
         return {
             name: ride?.name || 'Unknown Ride',
             floor: ride?.floor || 'N/A',
-            total
+            ...stats
         };
     }).sort((a,b) => b.total - a.total);
 
@@ -240,14 +267,14 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
         return;
     }
 
-    const headers = ['Ride Name', 'Floor', 'Total Guests'];
-    const rows = reportData.map(item => `"${item.name}","${item.floor}",${item.total}`);
+    const headers = ['Ride Name', 'Floor', 'Tickets', 'Packages', 'Total Guests'];
+    const rows = reportData.map(item => `"${item.name}","${item.floor}",${item.tickets},${item.packages},${item.total}`);
     const csvContent = [headers.join(','), ...rows].join('\n');
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `TFW_Monthly_Report_${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}.csv`;
+    link.download = `TFW_Monthly_Breakdown_${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}.csv`;
     link.click();
   };
 
@@ -276,8 +303,29 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `TFW_Range_Report_${toLocalDateString(selectedRange.start)}_to_${toLocalDateString(selectedRange.end)}.csv`;
+    link.download = `TFW_Daily_Totals_${toLocalDateString(selectedRange.start)}_to_${toLocalDateString(selectedRange.end)}.csv`;
     link.click();
+  };
+  
+  // New function to download the breakdown for the selected range/month
+  const handleDownloadBreakdownCSV = () => {
+      if (breakdownData.length === 0) {
+          alert("No data to download.");
+          return;
+      }
+      
+      const headers = ['Ride Name', 'Floor', 'Tickets', 'Packages', 'Total Guests'];
+      const rows = breakdownData.map(item => `"${item.name}","${item.floor}",${item.tickets},${item.packages},${item.total}`);
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      const filename = selectedRange.start && selectedRange.end 
+        ? `TFW_Breakdown_${toLocalDateString(selectedRange.start)}_to_${toLocalDateString(selectedRange.end)}.csv`
+        : `TFW_Breakdown_${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}.csv`;
+      link.download = filename;
+      link.click();
   };
 
 
@@ -347,13 +395,6 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
                 <p className="text-sm text-gray-500 mt-1">
                     {selectedRange.start && selectedRange.end ? `${selectedRange.start.toLocaleDateString()} - ${selectedRange.end.toLocaleDateString()}` : "Select dates to see range total"}
                 </p>
-                <button 
-                    onClick={handleDownloadRangeReport} 
-                    disabled={!selectedRange.start || !selectedRange.end}
-                    className="mt-4 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg text-sm disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed hover:bg-green-700 transition-colors"
-                >
-                    Download Range CSV
-                </button>
             </div>
              <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-md">
                 <h3 className="text-lg font-semibold text-gray-300">Month Total</h3>
@@ -363,35 +404,37 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
                 <p className="text-sm text-gray-500 mt-1">
                     Total guests for {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                 </p>
-                 <button 
-                    onClick={handleDownloadMonthReport}
-                    disabled={monthTotal === 0}
-                    className="mt-4 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg text-sm disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed hover:bg-green-700 transition-colors"
-                 >
-                    Download Month CSV
-                 </button>
             </div>
         </div>
 
         {/* Breakdown Table */}
         <div className="mt-8 bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
-            <div className="p-4 border-b border-gray-700 bg-gray-800/50">
+            <div className="p-4 border-b border-gray-700 bg-gray-800/50 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <h3 className="text-xl font-bold text-gray-200">
                     Ride Breakdown 
                     <span className="text-sm font-normal text-gray-400 ml-2">
                         ({selectedRange.start && selectedRange.end ? 'Selected Range' : 'Current Month'})
                     </span>
                 </h3>
+                <button 
+                    onClick={handleDownloadBreakdownCSV}
+                    disabled={breakdownData.length === 0}
+                    className="px-4 py-2 bg-green-700 text-white font-semibold rounded-lg text-sm hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+                >
+                    Download Breakdown CSV
+                </button>
             </div>
             {breakdownData.length > 0 ? (
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left">
+                    <table className="w-full text-left min-w-[600px]">
                         <thead className="bg-gray-700/50">
                             <tr>
                                 <th className="p-4 font-semibold w-16 text-center text-gray-300">Rank</th>
                                 <th className="p-4 font-semibold text-gray-300">Ride Name</th>
                                 <th className="p-4 font-semibold text-gray-300">Floor</th>
-                                <th className="p-4 font-semibold text-right text-gray-300">Guest Count</th>
+                                <th className="p-4 font-semibold text-right text-purple-300">Tickets</th>
+                                <th className="p-4 font-semibold text-right text-pink-300">Packages</th>
+                                <th className="p-4 font-semibold text-right text-white">Total Guests</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -400,7 +443,9 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, rides }) => {
                                     <td className="p-4 text-center text-gray-500 font-bold">{index + 1}</td>
                                     <td className="p-4 font-medium text-gray-200">{item.name}</td>
                                     <td className="p-4 text-gray-400 text-sm">{item.floor}</td>
-                                    <td className="p-4 text-right font-bold text-pink-400 tabular-nums">{item.total.toLocaleString()}</td>
+                                    <td className="p-4 text-right tabular-nums text-purple-400">{item.tickets.toLocaleString()}</td>
+                                    <td className="p-4 text-right tabular-nums text-pink-400">{item.packages.toLocaleString()}</td>
+                                    <td className="p-4 text-right font-bold text-white tabular-nums">{item.total.toLocaleString()}</td>
                                 </tr>
                             ))}
                         </tbody>
