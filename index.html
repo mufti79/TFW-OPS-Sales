@@ -4,53 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
     <title>Toggi Fun World - Feel The Thrill</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
       /* Custom scrollbar for a better look */
-      ::-webkit-scrollbar {
-        width: 8px;
-      }
-      ::-webkit-scrollbar-track {
-        background: #1a202c; /* dark gray */
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #4a5568; /* medium gray */
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #718096; /* light gray */
-      }
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #1a202c; }
+      ::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #718096; }
       @keyframes fadeInDown {
-        from {
-          opacity: 0;
-          transform: translate3d(0, -20%, 0);
-        }
-        to {
-          opacity: 1;
-          transform: translate3d(0, 0, 0);
-        }
+        from { opacity: 0; transform: translate3d(0, -20%, 0); }
+        to { opacity: 1; transform: translate3d(0, 0, 0); }
       }
-      .animate-fade-in-down {
-        animation: fadeInDown 0.5s ease-out forwards;
-      }
+      .animate-fade-in-down { animation: fadeInDown 0.5s ease-out forwards; }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.1",
-    "marked": "https://aistudiocdn.com/marked@^17.0.0",
-    "p-limit": "https://aistudiocdn.com/p-limit@^5.0.0",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
-  }
-}
-</script>
-</head>
+    <!-- Removed import map to avoid loading a second copy of React/ReactDOM from CDN -->
+  </head>
   <body class="bg-gray-900 text-gray-100 font-sans">
     <div id="root"></div>
     <!-- Firebase SDKs for real-time data sync. Using v9 compat libraries to work with existing v8 code syntax. -->
