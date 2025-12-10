@@ -72,6 +72,35 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
     return total;
   }, [monthData]);
 
+  // Calculate ticket and package totals for the month
+  const monthTicketsAndPackages = useMemo(() => {
+    let totalTickets = 0;
+    let totalPackages = 0;
+    
+    const targetYear = currentDate.getFullYear();
+    const targetMonthIndex = currentDate.getMonth();
+    
+    Object.keys(dailyRideDetails).forEach(dateKey => {
+      const parts = dateKey.split('-');
+      if (parts.length === 3) {
+        const y = parseInt(parts[0], 10);
+        const mIndex = parseInt(parts[1], 10) - 1;
+        
+        if (y === targetYear && mIndex === targetMonthIndex) {
+          const dayDetails = dailyRideDetails[dateKey];
+          if (dayDetails && typeof dayDetails === 'object') {
+            Object.values(dayDetails).forEach(detail => {
+              totalTickets += (Number(detail.tickets) || 0);
+              totalPackages += (Number(detail.packages) || 0);
+            });
+          }
+        }
+      }
+    });
+    
+    return { totalTickets, totalPackages };
+  }, [dailyRideDetails, currentDate]);
+
   const rangeTotal = useMemo(() => {
     if (!selectedRange.start || !selectedRange.end) return 0;
     
@@ -88,6 +117,33 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
     }
     return total;
   }, [selectedRange, monthData]);
+
+  // Calculate ticket and package totals for the selected range
+  const rangeTicketsAndPackages = useMemo(() => {
+    if (!selectedRange.start || !selectedRange.end) return { totalTickets: 0, totalPackages: 0 };
+    
+    let totalTickets = 0;
+    let totalPackages = 0;
+    let current = new Date(selectedRange.start);
+    
+    let safeguard = 0;
+    while (current <= selectedRange.end && safeguard < 366) {
+      const dateStr = toLocalDateString(current);
+      const dayDetails = dailyRideDetails[dateStr];
+      
+      if (dayDetails && typeof dayDetails === 'object') {
+        Object.values(dayDetails).forEach(detail => {
+          totalTickets += (Number(detail.tickets) || 0);
+          totalPackages += (Number(detail.packages) || 0);
+        });
+      }
+      
+      current.setDate(current.getDate() + 1);
+      safeguard++;
+    }
+    
+    return { totalTickets, totalPackages };
+  }, [selectedRange, dailyRideDetails]);
 
 
   const handleDateClick = (day: Date) => {
@@ -386,7 +442,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
             </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-md">
                 <h3 className="text-lg font-semibold text-gray-300">Selected Range Total</h3>
                 <p className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
@@ -395,6 +451,18 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
                 <p className="text-sm text-gray-500 mt-1">
                     {selectedRange.start && selectedRange.end ? `${selectedRange.start.toLocaleDateString()} - ${selectedRange.end.toLocaleDateString()}` : "Select dates to see range total"}
                 </p>
+                {selectedRange.start && selectedRange.end && (
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-purple-300 uppercase">Tickets:</span>
+                      <span className="text-lg font-bold text-purple-400">{rangeTicketsAndPackages.totalTickets.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-pink-300 uppercase">Packages:</span>
+                      <span className="text-lg font-bold text-pink-400">{rangeTicketsAndPackages.totalPackages.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
             </div>
              <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-md">
                 <h3 className="text-lg font-semibold text-gray-300">Month Total</h3>
@@ -404,6 +472,16 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
                 <p className="text-sm text-gray-500 mt-1">
                     Total guests for {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
                 </p>
+                <div className="flex items-center gap-3 mt-3">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-purple-300 uppercase">Tickets:</span>
+                    <span className="text-lg font-bold text-purple-400">{monthTicketsAndPackages.totalTickets.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-pink-300 uppercase">Packages:</span>
+                    <span className="text-lg font-bold text-pink-400">{monthTicketsAndPackages.totalPackages.toLocaleString()}</span>
+                  </div>
+                </div>
             </div>
         </div>
 

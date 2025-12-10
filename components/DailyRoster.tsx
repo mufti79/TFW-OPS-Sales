@@ -227,10 +227,25 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     const myAssignedRides = assignmentsByOperator.get(currentUser.id) || [];
     const myAttendance = attendance.find(a => a.operatorId === currentUser.id && a.date === selectedDate);
     
+    // Calculate total tickets and packages for operator's assigned rides
+    const myTotals = useMemo(() => {
+      let totalTickets = 0;
+      let totalPackages = 0;
+      let total = 0;
+      
+      myAssignedRides.forEach(ride => {
+        total += ride.count;
+        totalTickets += ride.details?.tickets || 0;
+        totalPackages += ride.details?.packages || 0;
+      });
+      
+      return { total, totalTickets, totalPackages };
+    }, [myAssignedRides]);
+    
     return (
         <div className="flex flex-col">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                <div>
+                <div className="flex-1">
                     <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
                         My Roster for {displayDate.toLocaleDateString()}
                     </h1>
@@ -243,6 +258,20 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                             </span>
                        </div>
                     )}
+                    <div className="flex items-center gap-4 mt-3 flex-wrap">
+                        <div className="bg-gray-700/50 px-3 py-2 rounded-lg">
+                            <span className="text-xs text-gray-400 uppercase block">Total Guests</span>
+                            <span className="text-xl font-bold text-white">{myTotals.total.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-purple-900/30 px-3 py-2 rounded-lg border border-purple-500/30">
+                            <span className="text-xs text-purple-300 uppercase block">Tickets</span>
+                            <span className="text-xl font-bold text-purple-400">{myTotals.totalTickets.toLocaleString()}</span>
+                        </div>
+                        <div className="bg-pink-900/30 px-3 py-2 rounded-lg border border-pink-500/30">
+                            <span className="text-xs text-pink-300 uppercase block">Packages</span>
+                            <span className="text-xl font-bold text-pink-400">{myTotals.totalPackages.toLocaleString()}</span>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg">
                     <label htmlFor="roster-date" className="text-sm font-medium text-gray-300">View Date:</label>
@@ -319,14 +348,33 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     );
   }
 
+  // Calculate overall totals for manager view across all assigned rides
+  const overallTotals = useMemo(() => {
+    let totalTickets = 0;
+    let totalPackages = 0;
+    let total = 0;
+    
+    // Iterate through all operators' assigned rides
+    assignmentsByOperator.forEach(assignedRides => {
+      assignedRides.forEach(ride => {
+        total += ride.count;
+        totalTickets += ride.details?.tickets || 0;
+        totalPackages += ride.details?.packages || 0;
+      });
+    });
+    
+    return { total, totalTickets, totalPackages };
+  }, [assignmentsByOperator]);
+
   return (
     <div className="flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-        <div>
+        <div className="flex-1">
             <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
               Daily Roster for {displayDate.toLocaleDateString()}
             </h1>
             {isManager && (
+            <>
             <div className="flex items-center gap-6 mt-2 text-lg">
                 <div className="flex items-center gap-2">
                     <span className="font-semibold text-green-400">Present:</span>
@@ -337,6 +385,21 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                     <span className="font-bold text-2xl text-gray-100">{absentCount}</span>
                 </div>
             </div>
+            <div className="flex items-center gap-4 mt-3 flex-wrap">
+                <div className="bg-gray-700/50 px-3 py-2 rounded-lg">
+                    <span className="text-xs text-gray-400 uppercase block">Total Guests</span>
+                    <span className="text-xl font-bold text-white">{overallTotals.total.toLocaleString()}</span>
+                </div>
+                <div className="bg-purple-900/30 px-3 py-2 rounded-lg border border-purple-500/30">
+                    <span className="text-xs text-purple-300 uppercase block">Tickets</span>
+                    <span className="text-xl font-bold text-purple-400">{overallTotals.totalTickets.toLocaleString()}</span>
+                </div>
+                <div className="bg-pink-900/30 px-3 py-2 rounded-lg border border-pink-500/30">
+                    <span className="text-xs text-pink-300 uppercase block">Packages</span>
+                    <span className="text-xl font-bold text-pink-400">{overallTotals.totalPackages.toLocaleString()}</span>
+                </div>
+            </div>
+            </>
         )}
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
