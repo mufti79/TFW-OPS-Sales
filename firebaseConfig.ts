@@ -39,11 +39,21 @@ export const isFirebaseConfigured =
 
 // Initialize Firebase only if it's configured and not already initialized.
 // It uses the global `firebase` object from the script tags in index.html.
-if (isFirebaseConfigured && !firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+// Use a try-catch to handle cases where the firebase global might not be loaded yet
+let database: any = null;
+
+try {
+  if (isFirebaseConfigured && typeof firebase !== 'undefined' && !firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  
+  // Export the database instance.
+  // If not configured, this will be null. App.tsx handles this by showing an error screen
+  // and preventing the execution of code that would use `database`.
+  database = (isFirebaseConfigured && typeof firebase !== 'undefined') ? firebase.database() : null;
+} catch (error) {
+  console.error('Error initializing Firebase:', error);
+  database = null;
 }
 
-// Export the database instance.
-// If not configured, this will be null. App.tsx handles this by showing an error screen
-// and preventing the execution of code that would use `database`.
-export const database = isFirebaseConfigured ? firebase.database() : null;
+export { database };
