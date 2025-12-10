@@ -111,6 +111,12 @@ const AppComponent: React.FC = () => {
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
     
     useEffect(() => {
+        // Safety timeout to ensure we never stay in loading state indefinitely
+        const safetyTimeout = setTimeout(() => {
+            console.warn("Safety timeout triggered - forcing initial loading to complete");
+            setInitialLoading(false);
+        }, 6000); // 6 seconds maximum wait time
+
         if (isFirebaseConfigured && database) {
             const connectedRef = database.ref('.info/connected');
             const listener = connectedRef.on('value', (snap) => {
@@ -123,15 +129,23 @@ const AppComponent: React.FC = () => {
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Initial data load timed out")), 4000));
 
             Promise.race([Promise.all(promises), timeoutPromise])
-                .then(() => setInitialLoading(false))
+                .then(() => {
+                    clearTimeout(safetyTimeout);
+                    setInitialLoading(false);
+                })
                 .catch(error => {
                     console.warn("Firebase load issue:", error.message);
+                    clearTimeout(safetyTimeout);
                     setInitialLoading(false);
                 });
 
-            return () => connectedRef.off('value', listener);
+            return () => {
+                clearTimeout(safetyTimeout);
+                connectedRef.off('value', listener);
+            };
         } else {
             // Offline mode / Not configured
+            clearTimeout(safetyTimeout);
             setInitialLoading(false);
             setConnectionStatus('disconnected');
         }
