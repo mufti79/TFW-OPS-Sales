@@ -25,13 +25,17 @@ const firebaseConfig = {
   projectId: "toggifunworld-app",
   storageBucket: "toggifunworld-app.firebasestorage.app",
   messagingSenderId: "718439883778",
-  appId: "1:718439883778:web:6f3ad4977156ab37e7f31b"
+  appId: "1:718439883778:web:6f3ad4977156ab37e7f31b",
+  // Realtime Database URL (ensure it matches your Firebase console value)
+  databaseURL: "https://toggifunworld-app-default-rtdb.firebaseio.com"
 };
-
 
 // Check if the config has been filled out. This logic is used in App.tsx
 // to show a configuration help screen.
-export const isFirebaseConfigured = firebaseConfig.projectId !== "YOUR_PROJECT_ID" && firebaseConfig.apiKey !== "YOUR_API_KEY";
+export const isFirebaseConfigured =
+  !!firebaseConfig.projectId &&
+  !!firebaseConfig.apiKey &&
+  !!firebaseConfig.databaseURL;
 
 // Initialize Firebase only if it's configured and not already initialized.
 // It uses the global `firebase` object from the script tags in index.html.
@@ -42,4 +46,4 @@ if (isFirebaseConfigured && !firebase.apps.length) {
 // Export the database instance.
 // If not configured, this will be null. App.tsx handles this by showing an error screen
 // and preventing the execution of code that would use `database`.
-export const database = isFirebaseConfigured ? firebase.database() : null;
+export const database = isFirebaseConfigured ? firebase.database() : null.
