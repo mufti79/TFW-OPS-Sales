@@ -46,4 +46,4 @@ if (isFirebaseConfigured && !firebase.apps.length) {
 // Export the database instance.
 // If not configured, this will be null. App.tsx handles this by showing an error screen
 // and preventing the execution of code that would use `database`.
-export const database = isFirebaseConfigured ? firebase.database() : null.
+export const database = isFirebaseConfigured ? firebase.database() : null;
