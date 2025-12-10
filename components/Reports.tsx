@@ -17,6 +17,9 @@ const toLocalDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Maximum number of days to iterate when calculating date ranges (safety limit)
+const MAX_DATE_RANGE_DAYS = 366;
+
 const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedRange, setSelectedRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
@@ -108,12 +111,12 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
     let current = new Date(selectedRange.start);
     
     // Safety break to prevent infinite loops if dates are invalid
-    let safegaurd = 0;
-    while (current <= selectedRange.end && safegaurd < 366) {
+    let safeguard = 0;
+    while (current <= selectedRange.end && safeguard < MAX_DATE_RANGE_DAYS) {
         const dateStr = toLocalDateString(current);
         total += monthData.get(dateStr) || 0;
         current.setDate(current.getDate() + 1);
-        safegaurd++;
+        safeguard++;
     }
     return total;
   }, [selectedRange, monthData]);
@@ -127,7 +130,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
     let current = new Date(selectedRange.start);
     
     let safeguard = 0;
-    while (current <= selectedRange.end && safeguard < 366) {
+    while (current <= selectedRange.end && safeguard < MAX_DATE_RANGE_DAYS) {
       const dateStr = toLocalDateString(current);
       const dayDetails = dailyRideDetails[dateStr];
       
@@ -341,7 +344,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
     let current = new Date(selectedRange.start);
     // Safety limiter
     let i = 0;
-    while (current <= selectedRange.end && i < 366) {
+    while (current <= selectedRange.end && i < MAX_DATE_RANGE_DAYS) {
         const dateStr = toLocalDateString(current);
         const count = monthData.get(dateStr) || 0;
         reportData.push({
@@ -442,7 +445,7 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
             </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 shadow-md">
                 <h3 className="text-lg font-semibold text-gray-300">Selected Range Total</h3>
                 <p className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
