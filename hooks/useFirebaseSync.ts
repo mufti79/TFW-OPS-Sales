@@ -24,7 +24,7 @@ function useFirebaseSync<T>(
   const initialValueRef = useRef(initialValue);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseConfigured || !database) {
         setLoading(false);
         return;
     }
@@ -76,7 +76,7 @@ function useFirebaseSync<T>(
         }
 
         // 2. Save to Firebase (Online Sync)
-        if (isFirebaseConfigured) {
+        if (isFirebaseConfigured && database) {
             const dbRef = database.ref(path);
             dbRef.set(valueToStore).catch(error => {
                 console.error(`Firebase write error at path "${path}":`, error);
