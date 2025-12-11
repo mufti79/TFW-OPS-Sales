@@ -263,6 +263,7 @@ export const FLOORS = [...uniqueFloors].sort((a, b) => {
 
 export const SECURITY_FLOORS = ['1st', '8th', '9th', '10th', '11th', '12th', '13th', '14th', '15th', '16th', '17th'];
 
-// NOTE: large inline base64 was removed to prevent build/tooling parse failures.
-// Place the logo PNG at public/logo.png and reference it via LOGO_URL.
+// NOTE: Large inline base64 was removed to prevent build/tooling parse failures.
+// The logo is now served as a static asset from public/logo.png.
+// To update the logo: replace public/logo.png with your desired image file.
 export const LOGO_URL = '/logo.png';
