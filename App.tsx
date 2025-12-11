@@ -369,9 +369,15 @@ const AppComponent: React.FC = () => {
     
     if (initialLoading) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-900">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-purple-400">Loading Toggi Fun World...</h1>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+          <div className="text-center animate-fade-in-down">
+            <div className="mb-8 flex justify-center">
+              <div className="w-16 h-16 border-4 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600 mb-2">
+              Toggi Fun World
+            </h1>
+            <p className="text-xl text-purple-300 mb-4">Feel The Thrill</p>
             <p className="text-gray-400 mt-2">Initializing data sync...</p>
           </div>
         </div>
