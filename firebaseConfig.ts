@@ -2,18 +2,6 @@
 // IMPORTANT:
 // To get this app working, you need to create your own Firebase project and
 // replace the configuration object below with your project's credentials.
-// 1. Go to https://console.firebase.google.com/ and create a new project.
-// 2. In your project, create a new Web App.
-// 3. Copy the firebaseConfig object provided by Firebase.
-// 4. Paste it here, replacing the placeholder object.
-// 5. In your Firebase project, go to "Realtime Database" and create one.
-//    - Make sure to set the security rules to allow read/write for development:
-//      {
-//        "rules": {
-//          ".read": "true",
-//          ".write": "true"
-//        }
-//      }
 
 // Explicitly define firebase on window to satisfy TypeScript
 declare global {
@@ -51,6 +39,8 @@ if (isFirebaseConfigured) {
     // Initialize Realtime Database
     try {
       dbInstance = window.firebase.database();
+      // Optional: Explicitly request to go online to trigger connection attempts immediately
+      dbInstance.goOnline();
     } catch (e) {
       console.error("Error getting Firebase Database instance. Ensure firebase-database script is loaded.", e);
     }

@@ -24,7 +24,7 @@ function useFirebaseSync<T>(
   const [loading, setLoading] = useState(isFirebaseConfigured);
 
   useEffect(() => {
-    // Safety check: if firebase is not configured OR if database failed to initialize (e.g. script load error)
+    // Safety check: if firebase is not configured OR if database failed to initialize
     if (!isFirebaseConfigured || !database) {
         setLoading(false);
         return;
@@ -32,25 +32,34 @@ function useFirebaseSync<T>(
     
     const dbRef = database.ref(path);
 
+    // Reduced timeout to 2.5s to let offline users start working faster
     const timeoutId = setTimeout(() => {
         if (loading) {
-            // If Firebase times out, we assume offline/slow connection and let the app use local data
+            console.log(`Firebase load timed out for ${path}, using local data.`);
             setLoading(false);
         }
-    }, 5000);
+    }, 2500);
 
     const listener = dbRef.on('value', (snapshot) => {
       clearTimeout(timeoutId);
       if (snapshot.exists()) {
         const val = snapshot.val();
         setStoredValue(val);
-        // Sync valid data from server to local storage
         try {
             window.localStorage.setItem(localKey, JSON.stringify(val));
         } catch (e) {
             console.warn("Failed to update localStorage from Firebase sync", e);
         }
-      } 
+      } else {
+        // IMPORTANT: If snapshot doesn't exist (e.g. data was deleted/reset on server),
+        // we must revert to initialValue to ensure clients sync the deletion.
+        setStoredValue(initialValue);
+        try {
+            window.localStorage.removeItem(localKey);
+        } catch (e) {
+            console.warn("Failed to clear localStorage from Firebase sync", e);
+        }
+      }
       setLoading(false);
     }, (error) => {
         clearTimeout(timeoutId);
@@ -62,7 +71,7 @@ function useFirebaseSync<T>(
       clearTimeout(timeoutId);
       dbRef.off('value', listener);
     };
-  }, [path, localKey, loading]);
+  }, [path, localKey, loading, initialValue]);
 
   const setValue: Dispatch<SetStateAction<T>> = useCallback((value) => {
     setStoredValue((prev) => {
@@ -78,6 +87,8 @@ function useFirebaseSync<T>(
 
         // 2. Save to Firebase (Online Sync)
         if (isFirebaseConfigured && database) {
+            // We use .set() which handles queuing if the network is temporarily flaky,
+            // but assumes the app stays open long enough to reconnect.
             const dbRef = database.ref(path);
             dbRef.set(valueToStore).catch(error => {
                 console.error(`Firebase write error at path "${path}":`, error);
