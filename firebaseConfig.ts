@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 // This comment is to suppress TypeScript errors in a file that uses a global `firebase` object.
 
@@ -22,38 +23,25 @@
 const firebaseConfig = {
   apiKey: "AIzaSyAqOf6utAgmO-NXqbPTnBO3BdD7yCUBbW8",
   authDomain: "toggifunworld-app.firebaseapp.com",
+  databaseURL: "https://toggifunworld-app-default-rtdb.firebaseio.com",
   projectId: "toggifunworld-app",
   storageBucket: "toggifunworld-app.firebasestorage.app",
   messagingSenderId: "718439883778",
-  appId: "1:718439883778:web:6f3ad4977156ab37e7f31b",
-  // Realtime Database URL (ensure it matches your Firebase console value)
-  databaseURL: "https://toggifunworld-app-default-rtdb.firebaseio.com"
+  appId: "1:718439883778:web:6f3ad4977156ab37e7f31b"
 };
+
 
 // Check if the config has been filled out. This logic is used in App.tsx
 // to show a configuration help screen.
-export const isFirebaseConfigured =
-  !!firebaseConfig.projectId &&
-  !!firebaseConfig.apiKey &&
-  !!firebaseConfig.databaseURL;
+export const isFirebaseConfigured = firebaseConfig.projectId !== "YOUR_PROJECT_ID" && firebaseConfig.apiKey !== "YOUR_API_KEY";
 
 // Initialize Firebase only if it's configured and not already initialized.
 // It uses the global `firebase` object from the script tags in index.html.
-// Use a try-catch to handle cases where the firebase global might not be loaded yet
-let database: any = null;
-
-try {
-  if (isFirebaseConfigured && typeof firebase !== 'undefined' && !firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-  }
-  
-  // Export the database instance.
-  // If not configured, this will be null. App.tsx handles this by showing an error screen
-  // and preventing the execution of code that would use `database`.
-  database = (isFirebaseConfigured && typeof firebase !== 'undefined') ? firebase.database() : null;
-} catch (error) {
-  console.error('Error initializing Firebase:', error);
-  database = null;
+if (isFirebaseConfigured && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
 }
 
-export { database };
+// Export the database instance.
+// If not configured, this will be null. App.tsx handles this by showing an error screen
+// and preventing the execution of code that would use `database`.
+export const database = isFirebaseConfigured ? firebase.database() : null;

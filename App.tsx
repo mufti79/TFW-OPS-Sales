@@ -31,10 +31,6 @@ import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import Dashboard from './components/Dashboard';
 
-// Firebase loading timeout constants
-const FIREBASE_DATA_LOAD_TIMEOUT_MS = 4000; // Time to wait for initial Firebase data load
-const SAFETY_TIMEOUT_MS = 6000; // Maximum time to wait before showing UI (should be > FIREBASE_DATA_LOAD_TIMEOUT_MS)
-
 // Notification System Implementation
 interface NotificationState {
   message: string;
@@ -115,12 +111,6 @@ const AppComponent: React.FC = () => {
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
     
     useEffect(() => {
-        // Safety timeout to ensure we never stay in loading state indefinitely
-        const safetyTimeout = setTimeout(() => {
-            console.warn("Safety timeout triggered - forcing initial loading to complete");
-            setInitialLoading(false);
-        }, SAFETY_TIMEOUT_MS);
-
         if (isFirebaseConfigured && database) {
             const connectedRef = database.ref('.info/connected');
             const listener = connectedRef.on('value', (snap) => {
@@ -130,28 +120,18 @@ const AppComponent: React.FC = () => {
             // Wait for initial data load or timeout
             const initialDataPaths = ['config/appLogo', 'config/rides', 'config/operators'];
             const promises = initialDataPaths.map(path => database.ref(path).once('value'));
-            const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error("Initial data load timed out")), FIREBASE_DATA_LOAD_TIMEOUT_MS)
-            );
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Initial data load timed out")), 4000));
 
             Promise.race([Promise.all(promises), timeoutPromise])
-                .then(() => {
-                    clearTimeout(safetyTimeout);
-                    setInitialLoading(false);
-                })
+                .then(() => setInitialLoading(false))
                 .catch(error => {
                     console.warn("Firebase load issue:", error.message);
-                    clearTimeout(safetyTimeout);
                     setInitialLoading(false);
                 });
 
-            return () => {
-                clearTimeout(safetyTimeout);
-                connectedRef.off('value', listener);
-            };
+            return () => connectedRef.off('value', listener);
         } else {
             // Offline mode / Not configured
-            clearTimeout(safetyTimeout);
             setInitialLoading(false);
             setConnectionStatus('disconnected');
         }
