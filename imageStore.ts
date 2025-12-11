@@ -6,12 +6,16 @@ export interface NotificationContextType {
   showNotification: (message: string, type?: NotificationType, duration?: number) => void;
 }
 
-export const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+// Provide a default no-op implementation to prevent crashes if context is missing
+const defaultNotificationContext: NotificationContextType = {
+  showNotification: () => {
+    console.warn('showNotification called outside NotificationProvider');
+  }
+};
+
+export const NotificationContext = createContext<NotificationContextType>(defaultNotificationContext);
 
 export const useNotification = (): NotificationContextType => {
   const context = useContext(NotificationContext);
-  if (context === undefined) {
-    throw new Error('useNotification must be used within a NotificationProvider');
-  }
   return context;
 };
