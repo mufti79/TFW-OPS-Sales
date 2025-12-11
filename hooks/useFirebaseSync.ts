@@ -71,7 +71,7 @@ function useFirebaseSync<T>(
       clearTimeout(timeoutId);
       dbRef.off('value', listener);
     };
-  }, [path]); // Removed localKey, loading, and initialValue from dependencies to prevent re-runs
+  }, [path]); // Only depend on path - localKey and initialValue cause unnecessary re-runs since they're derived from path and props
 
   const setValue: Dispatch<SetStateAction<T>> = useCallback((value) => {
     setStoredValue((prev) => {
