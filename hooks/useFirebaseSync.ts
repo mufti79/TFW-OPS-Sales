@@ -1,3 +1,4 @@
+
 import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } from 'react';
 import { database, isFirebaseConfigured } from '../firebaseConfig';
 
@@ -21,10 +22,10 @@ function useFirebaseSync<T>(
   });
 
   const [loading, setLoading] = useState(isFirebaseConfigured);
-  const initialValueRef = useRef(initialValue);
 
   useEffect(() => {
-    if (!isFirebaseConfigured) {
+    // Safety check: if firebase is not configured OR if database failed to initialize (e.g. script load error)
+    if (!isFirebaseConfigured || !database) {
         setLoading(false);
         return;
     }
@@ -61,7 +62,7 @@ function useFirebaseSync<T>(
       clearTimeout(timeoutId);
       dbRef.off('value', listener);
     };
-  }, [path, localKey]);
+  }, [path, localKey, loading]);
 
   const setValue: Dispatch<SetStateAction<T>> = useCallback((value) => {
     setStoredValue((prev) => {
@@ -76,7 +77,7 @@ function useFirebaseSync<T>(
         }
 
         // 2. Save to Firebase (Online Sync)
-        if (isFirebaseConfigured) {
+        if (isFirebaseConfigured && database) {
             const dbRef = database.ref(path);
             dbRef.set(valueToStore).catch(error => {
                 console.error(`Firebase write error at path "${path}":`, error);
