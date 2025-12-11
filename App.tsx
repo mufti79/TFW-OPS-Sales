@@ -363,6 +363,8 @@ const AppComponent: React.FC = () => {
     
     const isCheckinAllowed = useMemo(() => new Date().getHours() < 22, []);
 
+    const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
+
     const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }).length, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments]);
 
     // Note: We deliberately allow the app to run even if not configured to support offline mode.
@@ -412,7 +414,6 @@ const AppComponent: React.FC = () => {
         }
     };
     
-    const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
     const [year, month, day] = selectedDate.split('-').map(s => parseInt(s, 10));
     const displayDate = new Date(year, month - 1, day);
 
