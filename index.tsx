@@ -1,10 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { injectSpeedInsights } from '@vercel/speed-insights';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import App from './App';
-
-// Initialize Vercel Speed Insights for monitoring web performance
-injectSpeedInsights();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -15,5 +12,6 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <App />
+    <SpeedInsights />
   </React.StrictMode>
 );
