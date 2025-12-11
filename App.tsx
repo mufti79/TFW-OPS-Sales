@@ -95,7 +95,7 @@ const AppComponent: React.FC = () => {
     const [mySalesStartDate, setMySalesStartDate] = useState(today);
     const [mySalesEndDate, setMySalesEndDate] = useState(today);
     
-    const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+    const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'sdk-error'>('connecting');
     const [initialLoading, setInitialLoading] = useState(true);
 
     const { data: dailyCounts, setData: setDailyCounts } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
@@ -131,9 +131,13 @@ const AppComponent: React.FC = () => {
 
             return () => connectedRef.off('value', listener);
         } else {
-            // Offline mode / Not configured
+            // Offline mode / Not configured / SDK Error
             setInitialLoading(false);
-            setConnectionStatus('disconnected');
+            if (!database && typeof window !== 'undefined') {
+                setConnectionStatus('sdk-error');
+            } else {
+                setConnectionStatus('disconnected');
+            }
         }
     }, []);
     

@@ -7,7 +7,7 @@ import ConnectionStatus from './ConnectionStatus';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
 type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
-type Connection = 'connecting' | 'connected' | 'disconnected';
+type Connection = 'connecting' | 'connected' | 'disconnected' | 'sdk-error';
 
 interface HeaderProps {
   onSearch: (term: string) => void;
