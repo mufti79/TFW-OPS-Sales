@@ -10,6 +10,7 @@ This deployment adds ticket and package counters to the Operator Panel (My Roste
 - [x] Security scan passed (CodeQL - 0 vulnerabilities)
 - [x] No breaking changes
 - [x] Backward compatible with existing data
+- [x] Vercel configuration file (`vercel.json`) added for proper SPA routing
 
 ## Deployment Steps
 
@@ -49,10 +50,23 @@ vercel --prod
 **No new environment variables required.**
 
 Existing configuration remains unchanged:
-- `GEMINI_API_KEY` - Already configured
-- Firebase configuration - Already configured
+- `GEMINI_API_KEY` - Already configured (optional, for AI assistant feature)
+- Firebase configuration - Already configured in `firebaseConfig.ts`
 
-### 3. Database/Data Migration
+### 3. Vercel Configuration
+
+A `vercel.json` file has been added to ensure proper SPA routing. This configuration:
+- Specifies the build command and output directory
+- Configures rewrites to handle client-side routing
+- Sets up caching headers for optimal performance
+
+**Important**: If deploying for the first time, ensure your Vercel project is set up with:
+- Framework Preset: Vite
+- Build Command: `npm run build`
+- Output Directory: `dist`
+- Install Command: `npm install`
+
+### 4. Database/Data Migration
 
 **No migrations required.**
 
@@ -61,30 +75,36 @@ The feature uses existing data structures:
 - No schema changes
 - Backward compatible - if old data doesn't have details, defaults to tickets=count, packages=0
 
-### 4. Post-Deployment Verification
+### 5. Post-Deployment Verification
 
 After deployment, verify the following:
 
-#### 4.1 G&R Counter View
+#### 5.1 App Loads Correctly (Black Screen Fix Verification)
+- [ ] Navigate to the deployed URL
+- [ ] Verify the app loads without a black screen
+- [ ] Check that Firebase connection status is displayed in the header
+- [ ] Verify the login screen appears correctly
+
+#### 5.2 G&R Counter View
 - [ ] Navigate to G&R section
 - [ ] Verify "Total Guests Today" displays correctly
 - [ ] Add guest counts using the ride cards
 - [ ] Verify Footer shows correct total
 
-#### 4.2 My Roster - Operator View
+#### 5.3 My Roster - Operator View
 - [ ] Log in as an operator
 - [ ] Check that three counters are displayed: Total Guests, Tickets, Packages
 - [ ] Verify counters show correct aggregated values from assigned rides
 - [ ] Change date selector and verify counters update
 
-#### 4.3 My Roster - Manager View
+#### 5.4 My Roster - Manager View
 - [ ] Log in as admin or operation-officer
 - [ ] Navigate to My Roster
 - [ ] Verify three counters displayed below Present/Absent counts
 - [ ] Verify counters aggregate across all operators
 - [ ] Test with different dates
 
-#### 4.4 Operational Report
+#### 5.5 Operational Report
 - [ ] Navigate to Reports section
 - [ ] Verify "Month Total" card shows Tickets and Packages breakdown
 - [ ] Select a date range
@@ -113,7 +133,7 @@ git push origin main
 
 1. **Manual Testing**: Screenshots and UI testing were not possible in the development environment. First deployment should be to a staging environment for thorough UI testing.
 
-2. **Large Bundle Size**: The build warning about chunk size (645 KB) existed before these changes. Consider code-splitting in a future update.
+2. **Large Bundle Size**: The build warning about chunk size (595 KB) existed before these changes. Consider code-splitting in a future update.
 
 3. **Historical Data**: Old ride counts that don't have ticket/package breakdown will default to showing all count as "tickets" and 0 "packages". This maintains accuracy for total counts.
 

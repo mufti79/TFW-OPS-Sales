@@ -43,14 +43,20 @@ export const isFirebaseConfigured =
 let database: any = null;
 
 try {
-  if (isFirebaseConfigured && typeof firebase !== 'undefined' && !firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+  if (typeof firebase === 'undefined') {
+    console.warn('Firebase SDK not loaded yet. This may cause initialization issues.');
+  } else if (isFirebaseConfigured) {
+    if (!firebase.apps.length) {
+      console.log('Initializing Firebase...');
+      firebase.initializeApp(firebaseConfig);
+      console.log('Firebase initialized successfully');
+    } else {
+      console.log('Firebase already initialized');
+    }
+    database = firebase.database();
+  } else {
+    console.warn('Firebase not configured - running in offline mode');
   }
-  
-  // Export the database instance.
-  // If not configured, this will be null. App.tsx handles this by showing an error screen
-  // and preventing the execution of code that would use `database`.
-  database = (isFirebaseConfigured && typeof firebase !== 'undefined') ? firebase.database() : null;
 } catch (error) {
   console.error('Error initializing Firebase:', error);
   database = null;

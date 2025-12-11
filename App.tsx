@@ -115,6 +115,8 @@ const AppComponent: React.FC = () => {
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
     
     useEffect(() => {
+        console.log('App initialization effect running', { isFirebaseConfigured, database, initialLoading });
+        
         // Safety timeout to ensure we never stay in loading state indefinitely
         const safetyTimeout = setTimeout(() => {
             console.warn("Safety timeout triggered - forcing initial loading to complete");
@@ -122,9 +124,12 @@ const AppComponent: React.FC = () => {
         }, SAFETY_TIMEOUT_MS);
 
         if (isFirebaseConfigured && database) {
+            console.log('Starting Firebase data load...');
             const connectedRef = database.ref('.info/connected');
             const listener = connectedRef.on('value', (snap) => {
-                setConnectionStatus(snap.val() ? 'connected' : 'disconnected');
+                const connected = snap.val();
+                console.log('Firebase connection status:', connected);
+                setConnectionStatus(connected ? 'connected' : 'disconnected');
             });
             
             // Wait for initial data load or timeout
@@ -136,6 +141,7 @@ const AppComponent: React.FC = () => {
 
             Promise.race([Promise.all(promises), timeoutPromise])
                 .then(() => {
+                    console.log('Firebase data loaded successfully');
                     clearTimeout(safetyTimeout);
                     setInitialLoading(false);
                 })
@@ -151,6 +157,7 @@ const AppComponent: React.FC = () => {
             };
         } else {
             // Offline mode / Not configured
+            console.log('Running in offline mode or Firebase not configured');
             clearTimeout(safetyTimeout);
             setInitialLoading(false);
             setConnectionStatus('disconnected');
