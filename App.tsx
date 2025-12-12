@@ -118,7 +118,15 @@ const AppComponent: React.FC = () => {
             });
             
             // Check if user is returning (has auth data in localStorage) to reduce wait time
-            const hasStoredAuth = localStorage.getItem('authRole') !== null && localStorage.getItem('authUser') !== null;
+            let hasStoredAuth = false;
+            try {
+                if (typeof window !== 'undefined') {
+                    hasStoredAuth = localStorage.getItem('authRole') !== null && localStorage.getItem('authUser') !== null;
+                }
+            } catch (error) {
+                console.warn('Unable to access localStorage:', error);
+            }
+            
             const initialDataPaths = ['config/appLogo', 'config/rides', 'config/operators'];
             const promises = initialDataPaths.map(path => database.ref(path).once('value'));
             const timeoutDuration = hasStoredAuth ? 1000 : 4000; // 1s for returning users, 4s for new users

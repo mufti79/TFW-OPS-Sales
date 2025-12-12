@@ -21,12 +21,17 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
       setStoredValue(prevValue => {
         const valueToStore = value instanceof Function ? value(prevValue) : value;
         if (typeof window !== 'undefined') {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+          try {
+            window.localStorage.setItem(key, JSON.stringify(valueToStore));
+          } catch (storageError) {
+            // Handle storage quota exceeded or other localStorage errors
+            console.error('Failed to save to localStorage:', storageError);
+          }
         }
         return valueToStore;
       });
     } catch (error) {
-      console.error(error);
+      console.error('Error in setValue:', error);
     }
   }, [key]);
 
