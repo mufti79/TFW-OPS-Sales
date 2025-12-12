@@ -21,6 +21,11 @@ interface ManageAssignmentsModalProps {
 const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter, allPersonnel, assignedPersonnelIds, onClose, onSave, attendance, selectedDate }) => {
     const [selectedIds, setSelectedIds] = useState<number[]>(assignedPersonnelIds);
     
+    // Sync selectedIds when assignedPersonnelIds prop changes
+    useEffect(() => {
+        setSelectedIds(assignedPersonnelIds);
+    }, [assignedPersonnelIds]);
+    
     const attendanceStatusMap = useMemo(() => {
         const statusMap = new Map<number, boolean>();
         attendance
