@@ -117,10 +117,20 @@ const AppComponent: React.FC = () => {
                 setConnectionStatus(snap.val() ? 'connected' : 'disconnected');
             });
             
-            // Wait for initial data load or timeout
+            // Check if user is returning (has auth data in localStorage) to reduce wait time
+            let hasStoredAuth = false;
+            try {
+                if (typeof window !== 'undefined') {
+                    hasStoredAuth = localStorage.getItem('authRole') !== null && localStorage.getItem('authUser') !== null;
+                }
+            } catch (error) {
+                console.warn('Unable to access localStorage:', error);
+            }
+            
             const initialDataPaths = ['config/appLogo', 'config/rides', 'config/operators'];
             const promises = initialDataPaths.map(path => database.ref(path).once('value'));
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Initial data load timed out")), 4000));
+            const timeoutDuration = hasStoredAuth ? 1000 : 4000; // 1s for returning users, 4s for new users
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Initial data load timed out")), timeoutDuration));
 
             Promise.race([Promise.all(promises), timeoutPromise])
                 .then(() => setInitialLoading(false))
@@ -371,6 +381,9 @@ const AppComponent: React.FC = () => {
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-900">
           <div className="text-center">
+            <div className="mb-4">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-400 mx-auto"></div>
+            </div>
             <h1 className="text-3xl font-bold text-purple-400">Loading Toggi Fun World...</h1>
             <p className="text-gray-400 mt-2">Initializing data sync...</p>
           </div>
