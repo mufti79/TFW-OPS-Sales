@@ -33,9 +33,23 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     
     // Compare before updating to avoid unnecessary re-renders and overwriting unsaved changes
     setAssignments(prev => {
-      const prevNormalized = JSON.stringify(prev);
-      const newNormalized = JSON.stringify(normalizedAssignments);
-      return prevNormalized === newNormalized ? prev : normalizedAssignments;
+      // Shallow comparison: check if keys are the same
+      const prevKeys = Object.keys(prev).sort();
+      const newKeys = Object.keys(normalizedAssignments).sort();
+      if (prevKeys.length !== newKeys.length || !prevKeys.every((key, i) => key === newKeys[i])) {
+        return normalizedAssignments;
+      }
+      
+      // Deep comparison: check if values are the same
+      for (const key of prevKeys) {
+        const prevVal = prev[key];
+        const newVal = normalizedAssignments[key];
+        if (prevVal.length !== newVal.length || !prevVal.every((id, i) => id === newVal[i])) {
+          return normalizedAssignments;
+        }
+      }
+      
+      return prev; // No changes, keep previous state
     });
   }, [selectedDate, dailyAssignments]);
 
