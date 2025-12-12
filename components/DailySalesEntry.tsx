@@ -83,15 +83,31 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
         vip: 2500,
     });
     const [xtremeQty, setXtremeQty] = useState(0);
-    const [xtremeAmount, setXtremeAmount] = useState(0);
     const [xtremeDiscount, setXtremeDiscount] = useState(0);
     const [kiddoQty, setKiddoQty] = useState(0);
-    const [kiddoAmount, setKiddoAmount] = useState(0);
     const [kiddoDiscount, setKiddoDiscount] = useState(0);
     const [vipQty, setVipQty] = useState(0);
-    const [vipAmount, setVipAmount] = useState(0);
     const [vipDiscount, setVipDiscount] = useState(0);
     const [otherSales, setOtherSales] = useState<OtherSaleItem[]>([]);
+
+    // Calculate amounts as derived values instead of state
+    const xtremeAmount = useMemo(() => {
+        const gross = xtremeQty * packagePrices.xtreme;
+        const discount = gross * (xtremeDiscount / 100);
+        return gross - discount;
+    }, [xtremeQty, packagePrices.xtreme, xtremeDiscount]);
+
+    const kiddoAmount = useMemo(() => {
+        const gross = kiddoQty * packagePrices.kiddo;
+        const discount = gross * (kiddoDiscount / 100);
+        return gross - discount;
+    }, [kiddoQty, packagePrices.kiddo, kiddoDiscount]);
+
+    const vipAmount = useMemo(() => {
+        const gross = vipQty * packagePrices.vip;
+        const discount = gross * (vipDiscount / 100);
+        return gross - discount;
+    }, [vipQty, packagePrices.vip, vipDiscount]);
 
     const originalRecord = useMemo(() => {
         return packageSales[selectedDate]?.[currentUser.id];
@@ -134,13 +150,10 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     useEffect(() => {
         if (originalRecord) {
             setXtremeQty(originalRecord.xtremeQty || 0);
-            setXtremeAmount(originalRecord.xtremeAmount || 0);
             setXtremeDiscount(originalRecord.xtremeDiscountPercentage || 0);
             setKiddoQty(originalRecord.kiddoQty || 0);
-            setKiddoAmount(originalRecord.kiddoAmount || 0);
             setKiddoDiscount(originalRecord.kiddoDiscountPercentage || 0);
             setVipQty(originalRecord.vipQty || 0);
-            setVipAmount(originalRecord.vipAmount || 0);
             setVipDiscount(originalRecord.vipDiscountPercentage || 0);
             
             const existingOtherSales = originalRecord.otherSales || [];
@@ -153,25 +166,10 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             }
         } else {
             setXtremeQty(0); setKiddoQty(0); setVipQty(0);
-            setXtremeAmount(0); setKiddoAmount(0); setVipAmount(0);
             setXtremeDiscount(0); setKiddoDiscount(0); setVipDiscount(0);
             setOtherSales([]);
         }
     }, [selectedDate, originalRecord]);
-    
-    useEffect(() => {
-        const xtremeGross = xtremeQty * packagePrices.xtreme;
-        const xtremeDiscountAmount = xtremeGross * (xtremeDiscount / 100);
-        setXtremeAmount(xtremeGross - xtremeDiscountAmount);
-        
-        const kiddoGross = kiddoQty * packagePrices.kiddo;
-        const kiddoDiscountAmount = kiddoGross * (kiddoDiscount / 100);
-        setKiddoAmount(kiddoGross - kiddoDiscountAmount);
-        
-        const vipGross = vipQty * packagePrices.vip;
-        const vipDiscountAmount = vipGross * (vipDiscount / 100);
-        setVipAmount(vipGross - vipDiscountAmount);
-    }, [packagePrices, xtremeQty, kiddoQty, vipQty, xtremeDiscount, kiddoDiscount, vipDiscount]);
 
     const handleQtyChange = (packageType: 'xtreme' | 'kiddo' | 'vip', qty: number) => {
         const newQty = Math.max(0, qty || 0);
