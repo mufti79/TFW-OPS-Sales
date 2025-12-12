@@ -1,6 +1,6 @@
 // FIX: Implemented the useLocalStorage custom hook to persist state to browser's local storage.
 // This resolves the module not found errors in useAuth.ts and DailySalesEntry.tsx.
-import { useState, Dispatch, SetStateAction } from 'react';
+import { useState, useCallback, Dispatch, SetStateAction } from 'react';
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -16,17 +16,19 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
     }
   });
 
-  const setValue: Dispatch<SetStateAction<T>> = (value) => {
+  const setValue: Dispatch<SetStateAction<T>> = useCallback((value) => {
     try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem(key, JSON.stringify(valueToStore));
-      }
+      setStoredValue(prevValue => {
+        const valueToStore = value instanceof Function ? value(prevValue) : value;
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        }
+        return valueToStore;
+      });
     } catch (error) {
       console.error(error);
     }
-  };
+  }, [key]);
 
   return [storedValue, setValue];
 }
