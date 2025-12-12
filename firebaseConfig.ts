@@ -41,13 +41,14 @@ if (isFirebaseConfigured) {
       dbInstance = window.firebase.database();
       // Optional: Explicitly request to go online to trigger connection attempts immediately
       dbInstance.goOnline();
+      console.log("Firebase Database instance ready");
     } catch (e) {
       console.error("Error getting Firebase Database instance. Ensure firebase-database script is loaded.", e);
     }
   } else {
     // Only log error if in browser environment
     if (typeof window !== 'undefined') {
-        console.error("Firebase SDK not found on window object. Check index.html script tags.");
+        console.error("Firebase SDK not found on window object. Ensure Firebase scripts are loaded in index.html head section before the app module.");
     }
   }
 }
