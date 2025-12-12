@@ -59,7 +59,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (event.target && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdownId(null);
       }
     };
