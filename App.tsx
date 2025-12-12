@@ -5,8 +5,10 @@ import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
+import { ref, onValue, get } from 'firebase/database';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
 import NotificationComponent from './components/AttendanceCheckin';
+
 
 
 import Login from './components/Login';
@@ -112,8 +114,8 @@ const AppComponent: React.FC = () => {
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
-            const connectedRef = database.ref('.info/connected');
-            const listener = connectedRef.on('value', (snap) => {
+            const connectedRef = ref(database, '.info/connected');
+            const unsubscribe = onValue(connectedRef, (snap) => {
                 setConnectionStatus(snap.val() ? 'connected' : 'disconnected');
             });
             
@@ -128,7 +130,7 @@ const AppComponent: React.FC = () => {
             }
             
             const initialDataPaths = ['config/appLogo', 'config/rides', 'config/operators'];
-            const promises = initialDataPaths.map(path => database.ref(path).once('value'));
+            const promises = initialDataPaths.map(path => get(ref(database, path)));
             const timeoutDuration = hasStoredAuth ? 1000 : 4000; // 1s for returning users, 4s for new users
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Initial data load timed out")), timeoutDuration));
 
@@ -139,7 +141,7 @@ const AppComponent: React.FC = () => {
                     setInitialLoading(false);
                 });
 
-            return () => connectedRef.off('value', listener);
+            return () => unsubscribe();
         } else {
             // Offline mode / Not configured / SDK Error
             setInitialLoading(false);
@@ -375,6 +377,8 @@ const AppComponent: React.FC = () => {
 
     const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }).length, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments]);
 
+    const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
+
     // Note: We deliberately allow the app to run even if not configured to support offline mode.
     
     if (initialLoading) {
@@ -425,7 +429,6 @@ const AppComponent: React.FC = () => {
         }
     };
     
-    const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
     const [year, month, day] = selectedDate.split('-').map(s => parseInt(s, 10));
     const displayDate = new Date(year, month - 1, day);
 

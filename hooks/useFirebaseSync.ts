@@ -1,6 +1,7 @@
 
 import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } from 'react';
 import { database, isFirebaseConfigured } from '../firebaseConfig';
+import { ref, onValue, set, off } from 'firebase/database';
 
 function useFirebaseSync<T>(
   path: string,
@@ -30,7 +31,7 @@ function useFirebaseSync<T>(
         return;
     }
     
-    const dbRef = database.ref(path);
+    const dbRef = ref(database, path);
 
     // Reduced timeout to 2.5s to let offline users start working faster
     const timeoutId = setTimeout(() => {
@@ -40,7 +41,7 @@ function useFirebaseSync<T>(
         }
     }, 2500);
 
-    const listener = dbRef.on('value', (snapshot) => {
+    const unsubscribe = onValue(dbRef, (snapshot) => {
       clearTimeout(timeoutId);
       if (snapshot.exists()) {
         const val = snapshot.val();
@@ -69,7 +70,7 @@ function useFirebaseSync<T>(
 
     return () => {
       clearTimeout(timeoutId);
-      dbRef.off('value', listener);
+      unsubscribe();
     };
   }, [path, localKey, loading, initialValue]);
 
@@ -87,10 +88,10 @@ function useFirebaseSync<T>(
 
         // 2. Save to Firebase (Online Sync)
         if (isFirebaseConfigured && database) {
-            // We use .set() which handles queuing if the network is temporarily flaky,
+            // We use set() which handles queuing if the network is temporarily flaky,
             // but assumes the app stays open long enough to reconnect.
-            const dbRef = database.ref(path);
-            dbRef.set(valueToStore).catch(error => {
+            const dbRef = ref(database, path);
+            set(dbRef, valueToStore).catch(error => {
                 console.error(`Firebase write error at path "${path}":`, error);
             });
         }

@@ -3,12 +3,8 @@
 // To get this app working, you need to create your own Firebase project and
 // replace the configuration object below with your project's credentials.
 
-// Explicitly define firebase on window to satisfy TypeScript
-declare global {
-  interface Window {
-    firebase: any;
-  }
-}
+import { initializeApp, getApps } from 'firebase/app';
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -27,29 +23,16 @@ export const isFirebaseConfigured = firebaseConfig.projectId !== "YOUR_PROJECT_I
 let dbInstance = null;
 
 if (isFirebaseConfigured) {
-  if (typeof window !== 'undefined' && window.firebase) {
-    if (!window.firebase.apps.length) {
-      try {
-        window.firebase.initializeApp(firebaseConfig);
-        console.log("Firebase initialized successfully");
-      } catch (e) {
-        console.error("Error initializing Firebase:", e);
-      }
-    }
+  try {
+    // Initialize Firebase only once
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    console.log("Firebase initialized successfully");
+    
     // Initialize Realtime Database
-    try {
-      dbInstance = window.firebase.database();
-      // Optional: Explicitly request to go online to trigger connection attempts immediately
-      dbInstance.goOnline();
-      console.log("Firebase Database instance ready");
-    } catch (e) {
-      console.error("Error getting Firebase Database instance. Ensure firebase-database script is loaded.", e);
-    }
-  } else {
-    // Only log error if in browser environment
-    if (typeof window !== 'undefined') {
-        console.error("Firebase SDK not found on window object. Ensure Firebase scripts are loaded in index.html head section before the app module.");
-    }
+    dbInstance = getDatabase(app);
+    console.log("Firebase Database instance ready");
+  } catch (e) {
+    console.error("Error initializing Firebase:", e);
   }
 }
 
