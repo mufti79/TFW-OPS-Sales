@@ -29,7 +29,27 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
     Object.entries(rawAssignments).forEach(([key, value]) => {
       normalizedAssignments[key] = Array.isArray(value) ? value : [value];
     });
-    setAssignments(normalizedAssignments);
+    
+    // Compare before updating to avoid unnecessary re-renders and overwriting unsaved changes
+    setAssignments(prev => {
+      // Shallow comparison: check if keys are the same
+      const prevKeys = Object.keys(prev).sort();
+      const newKeys = Object.keys(normalizedAssignments).sort();
+      if (prevKeys.length !== newKeys.length || !prevKeys.every((key, i) => key === newKeys[i])) {
+        return normalizedAssignments;
+      }
+      
+      // Deep comparison: check if values are the same
+      for (const key of prevKeys) {
+        const prevVal = prev[key];
+        const newVal = normalizedAssignments[key];
+        if (prevVal.length !== newVal.length || !prevVal.every((id, i) => id === newVal[i])) {
+          return normalizedAssignments;
+        }
+      }
+      
+      return prev; // No changes, keep previous state
+    });
   }, [selectedDate, dailyAssignments]);
 
   const isDirty = useMemo(() => {
