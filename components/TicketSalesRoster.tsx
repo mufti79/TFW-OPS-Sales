@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Counter, Operator, AttendanceRecord } from '../types';
 import { Role } from '../hooks/useAuth';
 import BriefingCheckin from './BriefingCheckin';
+import DeveloperAttribution from './DeveloperAttribution';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster';
 
@@ -262,6 +263,7 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
                     <p className="text-lg text-gray-400 mt-2">
                         Check-in for the next day will be available after 12:00 AM.
                     </p>
+                    <DeveloperAttribution />
                 </div>
             );
         }
@@ -449,6 +451,8 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
                 selectedDate={selectedDate}
             />
         )}
+        
+        <DeveloperAttribution />
     </div>
   );
 };

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Operator, PackageSalesRecord, PackageSalesData } from '../types';
 import useLocalStorage from '../hooks/useLocalStorage';
+import DeveloperAttribution from './DeveloperAttribution';
 
 type OtherSaleItem = { id: string; category: string; amount: number };
 
@@ -444,6 +445,8 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                     </div>
                 </div>
             </div>
+            
+            <DeveloperAttribution />
         </div>
     );
 };

@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 // FIX: Imported PackageSalesData from types.ts to use the shared type definition.
 import { Operator, PackageSalesRecord, PackageSalesData } from '../types';
 import { Role } from '../hooks/useAuth';
+import DeveloperAttribution from './DeveloperAttribution';
 
 type OtherSaleItem = { id: string; category: string; amount: number };
 
@@ -397,6 +398,8 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                 </table>
             </div>
             {isEditModalOpen && editingPersonnel && <EditSalesModal personnel={editingPersonnel} onClose={() => setIsEditModalOpen(false)} onSave={onEditSales} startDate={startDate} endDate={endDate} existingSalesData={packageSales} otherSalesCategories={otherSalesCategories} />}
+            
+            <DeveloperAttribution />
         </div>
     );
 };
