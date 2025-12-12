@@ -235,10 +235,11 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
             updatedAssignments[key] = Array.isArray(val) ? val : [val];
         });
 
+        const counterKey = String(counterId);
         if (newPersonnelIds.length > 0) {
-            updatedAssignments[counterId] = newPersonnelIds;
+            updatedAssignments[counterKey] = newPersonnelIds;
         } else {
-            delete updatedAssignments[counterId];
+            delete updatedAssignments[counterKey];
         }
         onSaveAssignments(selectedDate, updatedAssignments);
     };

@@ -104,7 +104,8 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   const handleAssignmentChange = (rideId: number, operatorId: number) => {
     setAssignments(prev => {
         const newAssignments = {...prev};
-        const currentAssignedValue = newAssignments[rideId];
+        const rideKey = String(rideId);
+        const currentAssignedValue = newAssignments[rideKey];
         const currentAssigned = Array.isArray(currentAssignedValue) ? currentAssignedValue : currentAssignedValue ? [currentAssignedValue] : [];
         
         const isAssigned = currentAssigned.includes(operatorId);
@@ -117,9 +118,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         }
 
         if (updatedAssigned.length > 0) {
-            newAssignments[rideId] = updatedAssigned;
+            newAssignments[rideKey] = updatedAssigned;
         } else {
-            delete newAssignments[rideId];
+            delete newAssignments[rideKey];
         }
         return newAssignments;
     });
@@ -274,7 +275,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">
                 {rides.map((ride) => {
-                    const rawAssignment = assignments[ride.id];
+                    const rawAssignment = assignments[String(ride.id)];
                     const assignedOperatorIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
                     const operatorIdMap = new Map(operators.map(op => [op.id, op.name]));
                     const assignedNames = assignedOperatorIds.map(id => operatorIdMap.get(id)).filter(Boolean).join(', ');
