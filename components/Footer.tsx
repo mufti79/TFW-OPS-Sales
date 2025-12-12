@@ -17,6 +17,11 @@ const Footer: React.FC<FooterProps> = ({ title, count, onReset, showReset, gradi
           <p className={`text-3xl font-bold text-transparent bg-clip-text ${gradient}`}>
             {count.toLocaleString()}
           </p>
+          <div className="mt-3 pt-3 border-t border-gray-700/50">
+            <p className="text-xs text-gray-400">Developed By</p>
+            <p className="text-sm font-medium text-gray-300">Mufti Mahmud Mollah</p>
+            <p className="text-xs text-gray-400">AGM (Maintenance & SCD, FP, TFW)</p>
+          </div>
         </div>
         {showReset && onReset && (
            <div className="absolute right-4 top-1/2 -translate-y-1/2">
