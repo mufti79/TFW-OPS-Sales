@@ -29,7 +29,13 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
     Object.entries(rawAssignments).forEach(([key, value]) => {
       normalizedAssignments[key] = Array.isArray(value) ? value : [value];
     });
-    setAssignments(normalizedAssignments);
+    
+    // Compare before updating to avoid unnecessary re-renders and overwriting unsaved changes
+    setAssignments(prev => {
+      const prevNormalized = JSON.stringify(prev);
+      const newNormalized = JSON.stringify(normalizedAssignments);
+      return prevNormalized === newNormalized ? prev : normalizedAssignments;
+    });
   }, [selectedDate, dailyAssignments]);
 
   const isDirty = useMemo(() => {
