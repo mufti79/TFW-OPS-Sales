@@ -100,7 +100,8 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   const handleAssignmentChange = (counterId: number, personnelId: number) => {
     setAssignments(prev => {
         const newAssignments = {...prev};
-        const currentAssignedValue = newAssignments[counterId];
+        const counterKey = String(counterId);
+        const currentAssignedValue = newAssignments[counterKey];
         const currentAssigned = Array.isArray(currentAssignedValue) ? currentAssignedValue : currentAssignedValue ? [currentAssignedValue] : [];
         
         const isAssigned = currentAssigned.includes(personnelId);
@@ -113,9 +114,9 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
         }
 
         if (updatedAssigned.length > 0) {
-            newAssignments[counterId] = updatedAssigned;
+            newAssignments[counterKey] = updatedAssigned;
         } else {
-            delete newAssignments[counterId];
+            delete newAssignments[counterKey];
         }
         return newAssignments;
     });
@@ -270,7 +271,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">
                 {counters.map((counter) => {
-                    const rawAssignment = assignments[counter.id];
+                    const rawAssignment = assignments[String(counter.id)];
                     const assignedPersonnelIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
                     const personnelIdMap = new Map(ticketSalesPersonnel.map(op => [op.id, op.name]));
                     const assignedNames = assignedPersonnelIds.map(id => personnelIdMap.get(id)).filter(Boolean).join(', ');
