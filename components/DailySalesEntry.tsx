@@ -19,28 +19,86 @@ interface DailySalesEntryProps {
   otherSalesCategories: string[];
 }
 
-const SalesInput: React.FC<{ label: string; qty: number; onQtyChange: (val: number) => void; amount: number; color: string; }> = ({ label, qty, onQtyChange, amount, color }) => {
+const SalesInput: React.FC<{ 
+    label: string; 
+    qtyNoDiscount: number; 
+    onQtyNoDiscountChange: (val: number) => void;
+    qtyWithDiscount: number; 
+    onQtyWithDiscountChange: (val: number) => void; 
+    discount: number; 
+    onDiscountChange: (val: number) => void; 
+    amountNoDiscount: number;
+    amountWithDiscount: number;
+    color: string; 
+}> = ({ label, qtyNoDiscount, onQtyNoDiscountChange, qtyWithDiscount, onQtyWithDiscountChange, discount, onDiscountChange, amountNoDiscount, amountWithDiscount, color }) => {
     return (
         <div className={`p-4 rounded-lg border ${color}`}>
             <h3 className="text-xl font-bold mb-3">{label} Package</h3>
-            <div className="grid grid-cols-2 gap-3">
+            
+            {/* Row 1: Without Discount */}
+            <div className="grid grid-cols-3 gap-3 mb-3">
                 <div>
-                    <label htmlFor={`${label}-qty`} className="block text-sm font-medium text-gray-400">Quantity Sold</label>
+                    <label htmlFor={`${label}-qty-no-discount`} className="block text-sm font-medium text-gray-400">Quantity Sold</label>
                     <input
-                        id={`${label}-qty`}
+                        id={`${label}-qty-no-discount`}
                         type="number"
-                        value={qty}
-                        onChange={e => onQtyChange(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        value={qtyNoDiscount}
+                        onChange={e => onQtyNoDiscountChange(Math.max(0, parseInt(e.target.value, 10) || 0))}
                         className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
                         min="0"
                     />
                 </div>
                 <div>
-                    <label htmlFor={`${label}-amount`} className="block text-sm font-medium text-gray-400">Total Amount (BDT)</label>
+                    <label className="block text-sm font-medium text-gray-400">Discount (%)</label>
+                    <div className="mt-1 w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg text-gray-500 flex items-center justify-center">
+                        No Discount
+                    </div>
+                </div>
+                <div>
+                    <label htmlFor={`${label}-amount-no-discount`} className="block text-sm font-medium text-gray-400">Total Amount (BDT)</label>
                     <input
-                        id={`${label}-amount`}
+                        id={`${label}-amount-no-discount`}
                         type="number"
-                        value={amount}
+                        value={amountNoDiscount}
+                        readOnly
+                        className="mt-1 w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none cursor-not-allowed text-gray-300"
+                        min="0"
+                    />
+                </div>
+            </div>
+            
+            {/* Row 2: With Discount */}
+            <div className="grid grid-cols-3 gap-3">
+                <div>
+                    <label htmlFor={`${label}-qty-discount`} className="block text-sm font-medium text-gray-400">Quantity Sold</label>
+                    <input
+                        id={`${label}-qty-discount`}
+                        type="number"
+                        value={qtyWithDiscount}
+                        onChange={e => onQtyWithDiscountChange(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        min="0"
+                    />
+                </div>
+                <div>
+                    <label htmlFor={`${label}-discount`} className="block text-sm font-medium text-orange-400">Discount (%)</label>
+                    <input
+                        id={`${label}-discount`}
+                        type="number"
+                        value={discount}
+                        onChange={e => onDiscountChange(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))}
+                        className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                    />
+                </div>
+                <div>
+                    <label htmlFor={`${label}-amount-discount`} className="block text-sm font-medium text-gray-400">Total Amount (BDT)</label>
+                    <input
+                        id={`${label}-amount-discount`}
+                        type="number"
+                        value={amountWithDiscount}
                         readOnly
                         className="mt-1 w-full px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg focus:outline-none cursor-not-allowed text-gray-300"
                         min="0"
@@ -69,17 +127,52 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
         kiddo: 800,
         vip: 2500,
     });
-    const [xtremeQty, setXtremeQty] = useState(0);
-    const [xtremeAmount, setXtremeAmount] = useState(0);
-    const [kiddoQty, setKiddoQty] = useState(0);
-    const [kiddoAmount, setKiddoAmount] = useState(0);
-    const [vipQty, setVipQty] = useState(0);
-    const [vipAmount, setVipAmount] = useState(0);
+    const [xtremeQty, setXtremeQty] = useState(0); // No discount
+    const [xtremeQtyWithDiscount, setXtremeQtyWithDiscount] = useState(0); // With discount
+    const [xtremeDiscount, setXtremeDiscount] = useState(0);
+    const [kiddoQty, setKiddoQty] = useState(0); // No discount
+    const [kiddoQtyWithDiscount, setKiddoQtyWithDiscount] = useState(0); // With discount
+    const [kiddoDiscount, setKiddoDiscount] = useState(0);
+    const [vipQty, setVipQty] = useState(0); // No discount
+    const [vipQtyWithDiscount, setVipQtyWithDiscount] = useState(0); // With discount
+    const [vipDiscount, setVipDiscount] = useState(0);
     const [otherSales, setOtherSales] = useState<OtherSaleItem[]>([]);
-    
-    // Discount State
-    const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
-    const [discountValue, setDiscountValue] = useState(0);
+
+    // Calculate amounts as derived values instead of state
+    const xtremeAmountNoDiscount = useMemo(() => {
+        return xtremeQty * packagePrices.xtreme;
+    }, [xtremeQty, packagePrices.xtreme]);
+
+    const xtremeAmountWithDiscount = useMemo(() => {
+        const gross = xtremeQtyWithDiscount * packagePrices.xtreme;
+        const discount = gross * (xtremeDiscount / 100);
+        return gross - discount;
+    }, [xtremeQtyWithDiscount, packagePrices.xtreme, xtremeDiscount]);
+
+    const kiddoAmountNoDiscount = useMemo(() => {
+        return kiddoQty * packagePrices.kiddo;
+    }, [kiddoQty, packagePrices.kiddo]);
+
+    const kiddoAmountWithDiscount = useMemo(() => {
+        const gross = kiddoQtyWithDiscount * packagePrices.kiddo;
+        const discount = gross * (kiddoDiscount / 100);
+        return gross - discount;
+    }, [kiddoQtyWithDiscount, packagePrices.kiddo, kiddoDiscount]);
+
+    const vipAmountNoDiscount = useMemo(() => {
+        return vipQty * packagePrices.vip;
+    }, [vipQty, packagePrices.vip]);
+
+    const vipAmountWithDiscount = useMemo(() => {
+        const gross = vipQtyWithDiscount * packagePrices.vip;
+        const discount = gross * (vipDiscount / 100);
+        return gross - discount;
+    }, [vipQtyWithDiscount, packagePrices.vip, vipDiscount]);
+
+    // Total amounts per package (sum of both rows)
+    const xtremeAmount = useMemo(() => xtremeAmountNoDiscount + xtremeAmountWithDiscount, [xtremeAmountNoDiscount, xtremeAmountWithDiscount]);
+    const kiddoAmount = useMemo(() => kiddoAmountNoDiscount + kiddoAmountWithDiscount, [kiddoAmountNoDiscount, kiddoAmountWithDiscount]);
+    const vipAmount = useMemo(() => vipAmountNoDiscount + vipAmountWithDiscount, [vipAmountNoDiscount, vipAmountWithDiscount]);
 
     const originalRecord = useMemo(() => {
         return packageSales[selectedDate]?.[currentUser.id];
@@ -88,9 +181,11 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     const isDirty = useMemo(() => {
         const currentRecord = {
             xtremeQty, kiddoQty, vipQty,
-            otherSales: otherSales.map(({ category, amount }) => ({ category, amount })),
-            discountPercentage: discountType === 'percent' ? discountValue : 0,
-            discountFixed: discountType === 'fixed' ? discountValue : 0
+            xtremeQtyWithDiscount, kiddoQtyWithDiscount, vipQtyWithDiscount,
+            xtremeDiscountPercentage: xtremeDiscount,
+            kiddoDiscountPercentage: kiddoDiscount,
+            vipDiscountPercentage: vipDiscount,
+            otherSales: otherSales.map(({ category, amount }) => ({ category, amount }))
         };
         
         const savedOtherSales = originalRecord?.otherSales || ((originalRecord as any)?.otherAmount ? [{ category: 'Uncategorized', amount: (originalRecord as any).otherAmount }] : []);
@@ -99,24 +194,17 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             xtremeQty: originalRecord?.xtremeQty || 0,
             kiddoQty: originalRecord?.kiddoQty || 0,
             vipQty: originalRecord?.vipQty || 0,
-            otherSales: savedOtherSales,
-            discountPercentage: originalRecord?.discountPercentage || 0,
-            discountFixed: originalRecord?.discountFixed || 0
+            xtremeQtyWithDiscount: originalRecord?.xtremeQtyWithDiscount || 0,
+            kiddoQtyWithDiscount: originalRecord?.kiddoQtyWithDiscount || 0,
+            vipQtyWithDiscount: originalRecord?.vipQtyWithDiscount || 0,
+            xtremeDiscountPercentage: originalRecord?.xtremeDiscountPercentage || 0,
+            kiddoDiscountPercentage: originalRecord?.kiddoDiscountPercentage || 0,
+            vipDiscountPercentage: originalRecord?.vipDiscountPercentage || 0,
+            otherSales: savedOtherSales
         };
-        
-        // Normalize for comparison: check effective values if type switched but value is 0
-        const isCurrentDiscountZero = discountValue === 0;
-        const isSavedDiscountZero = (savedRecord.discountPercentage || 0) === 0 && (savedRecord.discountFixed || 0) === 0;
-        
-        if (isCurrentDiscountZero && isSavedDiscountZero) {
-             // If both are effectively zero, ignore the type/value distinction
-             const { discountPercentage: d1, discountFixed: d2, ...restCurrent } = currentRecord;
-             const { discountPercentage: d3, discountFixed: d4, ...restSaved } = savedRecord;
-             return JSON.stringify(restCurrent) !== JSON.stringify(restSaved);
-        }
 
         return JSON.stringify(currentRecord) !== JSON.stringify(savedRecord);
-    }, [xtremeQty, kiddoQty, vipQty, otherSales, discountType, discountValue, originalRecord]);
+    }, [xtremeQty, kiddoQty, vipQty, xtremeQtyWithDiscount, kiddoQtyWithDiscount, vipQtyWithDiscount, xtremeDiscount, kiddoDiscount, vipDiscount, otherSales, originalRecord]);
     
     useEffect(() => {
         if (!isDirty) return;
@@ -131,20 +219,14 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     useEffect(() => {
         if (originalRecord) {
             setXtremeQty(originalRecord.xtremeQty || 0);
-            setXtremeAmount(originalRecord.xtremeAmount || 0);
+            setXtremeQtyWithDiscount(originalRecord.xtremeQtyWithDiscount || 0);
+            setXtremeDiscount(originalRecord.xtremeDiscountPercentage || 0);
             setKiddoQty(originalRecord.kiddoQty || 0);
-            setKiddoAmount(originalRecord.kiddoAmount || 0);
+            setKiddoQtyWithDiscount(originalRecord.kiddoQtyWithDiscount || 0);
+            setKiddoDiscount(originalRecord.kiddoDiscountPercentage || 0);
             setVipQty(originalRecord.vipQty || 0);
-            setVipAmount(originalRecord.vipAmount || 0);
-            
-            // Handle Discount Loading
-            if (originalRecord.discountFixed && originalRecord.discountFixed > 0) {
-                setDiscountType('fixed');
-                setDiscountValue(originalRecord.discountFixed);
-            } else {
-                setDiscountType('percent');
-                setDiscountValue(originalRecord.discountPercentage || 0);
-            }
+            setVipQtyWithDiscount(originalRecord.vipQtyWithDiscount || 0);
+            setVipDiscount(originalRecord.vipDiscountPercentage || 0);
             
             const existingOtherSales = originalRecord.otherSales || [];
             // Backward compatibility for old `otherAmount`
@@ -156,27 +238,11 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             }
         } else {
             setXtremeQty(0); setKiddoQty(0); setVipQty(0);
-            setXtremeAmount(0); setKiddoAmount(0); setVipAmount(0);
+            setXtremeQtyWithDiscount(0); setKiddoQtyWithDiscount(0); setVipQtyWithDiscount(0);
+            setXtremeDiscount(0); setKiddoDiscount(0); setVipDiscount(0);
             setOtherSales([]);
-            setDiscountType('percent');
-            setDiscountValue(0);
         }
     }, [selectedDate, originalRecord]);
-    
-    useEffect(() => {
-        setXtremeAmount(xtremeQty * packagePrices.xtreme);
-        setKiddoAmount(kiddoQty * packagePrices.kiddo);
-        setVipAmount(vipQty * packagePrices.vip);
-    }, [packagePrices, xtremeQty, kiddoQty, vipQty]);
-
-    const handleQtyChange = (packageType: 'xtreme' | 'kiddo' | 'vip', qty: number) => {
-        const newQty = Math.max(0, qty || 0);
-        switch(packageType) {
-            case 'xtreme': setXtremeQty(newQty); setXtremeAmount(newQty * packagePrices.xtreme); break;
-            case 'kiddo': setKiddoQty(newQty); setKiddoAmount(newQty * packagePrices.kiddo); break;
-            case 'vip': setVipQty(newQty); setVipAmount(newQty * packagePrices.vip); break;
-        }
-    };
     
     const handlePriceChange = (packageType: 'xtreme' | 'kiddo' | 'vip', price: number) => {
         const newPrice = Math.max(0, price || 0);
@@ -203,33 +269,25 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
 
     const otherAmountTotal = useMemo(() => otherSales.reduce((sum, item) => sum + item.amount, 0), [otherSales]);
     const grossTotalAmount = useMemo(() => xtremeAmount + kiddoAmount + vipAmount + otherAmountTotal, [xtremeAmount, kiddoAmount, vipAmount, otherAmountTotal]);
-    const totalQty = useMemo(() => xtremeQty + kiddoQty + vipQty, [xtremeQty, kiddoQty, vipQty]);
-    
-    const discountAmount = useMemo(() => {
-        if (discountType === 'percent') {
-            return grossTotalAmount * (discountValue / 100);
-        } else {
-            return discountValue;
-        }
-    }, [grossTotalAmount, discountType, discountValue]);
-    
-    const netTotalAmount = useMemo(() => {
-        return Math.max(0, grossTotalAmount - discountAmount);
-    }, [grossTotalAmount, discountAmount]);
+    const totalQty = useMemo(() => xtremeQty + xtremeQtyWithDiscount + kiddoQty + kiddoQtyWithDiscount + vipQty + vipQtyWithDiscount, [xtremeQty, xtremeQtyWithDiscount, kiddoQty, kiddoQtyWithDiscount, vipQty, vipQtyWithDiscount]);
 
     const handleSave = () => {
         onSave({
             xtremeQty, xtremeAmount,
+            xtremeQtyWithDiscount,
+            xtremeDiscountPercentage: xtremeDiscount,
             kiddoQty, kiddoAmount,
+            kiddoQtyWithDiscount,
+            kiddoDiscountPercentage: kiddoDiscount,
             vipQty, vipAmount,
-            otherSales: otherSales.map(({ category, amount }) => ({ category, amount })),
-            discountPercentage: discountType === 'percent' ? discountValue : 0,
-            discountFixed: discountType === 'fixed' ? discountValue : 0
+            vipQtyWithDiscount,
+            vipDiscountPercentage: vipDiscount,
+            otherSales: otherSales.map(({ category, amount }) => ({ category, amount }))
         });
     };
 
     const salesSummary = useMemo(() => {
-        const summary = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherAmount: 0, totalQty: 0, totalAmount: 0, totalDiscount: 0, netTotal: 0 };
+        const summary = { xtremeQty: 0, xtremeAmount: 0, kiddoQty: 0, kiddoAmount: 0, vipQty: 0, vipAmount: 0, otherAmount: 0, totalQty: 0, totalAmount: 0 };
         if (new Date(mySalesEndDate) < new Date(mySalesStartDate)) return summary;
 
         for (const date in packageSales) {
@@ -237,30 +295,26 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                 const daySales = packageSales[date];
                 const userRecord = daySales[currentUser.id] as any;
                 if (userRecord) {
-                    summary.xtremeQty += userRecord.xtremeQty || 0;
+                    const xtremeTotal = (userRecord.xtremeQty || 0) + (userRecord.xtremeQtyWithDiscount || 0);
+                    summary.xtremeQty += xtremeTotal;
                     summary.xtremeAmount += userRecord.xtremeAmount || 0;
-                    summary.kiddoQty += userRecord.kiddoQty || 0;
+                    
+                    const kiddoTotal = (userRecord.kiddoQty || 0) + (userRecord.kiddoQtyWithDiscount || 0);
+                    summary.kiddoQty += kiddoTotal;
                     summary.kiddoAmount += userRecord.kiddoAmount || 0;
-                    summary.vipQty += userRecord.vipQty || 0;
+                    
+                    const vipTotal = (userRecord.vipQty || 0) + (userRecord.vipQtyWithDiscount || 0);
+                    summary.vipQty += vipTotal;
                     summary.vipAmount += userRecord.vipAmount || 0;
 
                     const otherTotal = userRecord.otherSales ? userRecord.otherSales.reduce((s:number, i:{amount:number}) => s + i.amount, 0) : (userRecord.otherAmount || 0);
                     summary.otherAmount += otherTotal;
                     
-                    summary.totalQty += (userRecord.xtremeQty || 0) + (userRecord.kiddoQty || 0) + (userRecord.vipQty || 0);
+                    summary.totalQty += xtremeTotal + kiddoTotal + vipTotal;
                     
-                    const gross = (userRecord.xtremeAmount || 0) + (userRecord.kiddoAmount || 0) + (userRecord.vipAmount || 0) + otherTotal;
-                    summary.totalAmount += gross;
-                    
-                    let discount = 0;
-                    if (userRecord.discountFixed && userRecord.discountFixed > 0) {
-                        discount = userRecord.discountFixed;
-                    } else if (userRecord.discountPercentage && userRecord.discountPercentage > 0) {
-                        discount = gross * (userRecord.discountPercentage / 100);
-                    }
-                    
-                    summary.totalDiscount += discount;
-                    summary.netTotal += (gross - discount);
+                    // Amounts already include discounts in the new structure
+                    const total = (userRecord.xtremeAmount || 0) + (userRecord.kiddoAmount || 0) + (userRecord.vipAmount || 0) + otherTotal;
+                    summary.totalAmount += total;
                 }
             }
         }
@@ -304,9 +358,42 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                  <p className="text-xs text-gray-500 mt-3">Note: Prices are saved on this device for future use.</p>
             </div>
             <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-6 space-y-6">
-                <SalesInput label="Xtreme" qty={xtremeQty} onQtyChange={(val) => handleQtyChange('xtreme', val)} amount={xtremeAmount} color="border-purple-500" />
-                <SalesInput label="Kiddo" qty={kiddoQty} onQtyChange={(val) => handleQtyChange('kiddo', val)} amount={kiddoAmount} color="border-pink-500" />
-                <SalesInput label="VIP" qty={vipQty} onQtyChange={(val) => handleQtyChange('vip', val)} amount={vipAmount} color="border-yellow-500" />
+                <SalesInput 
+                    label="Xtreme" 
+                    qtyNoDiscount={xtremeQty} 
+                    onQtyNoDiscountChange={setXtremeQty} 
+                    qtyWithDiscount={xtremeQtyWithDiscount} 
+                    onQtyWithDiscountChange={setXtremeQtyWithDiscount} 
+                    discount={xtremeDiscount} 
+                    onDiscountChange={setXtremeDiscount} 
+                    amountNoDiscount={xtremeAmountNoDiscount} 
+                    amountWithDiscount={xtremeAmountWithDiscount} 
+                    color="border-purple-500" 
+                />
+                <SalesInput 
+                    label="Kiddo" 
+                    qtyNoDiscount={kiddoQty} 
+                    onQtyNoDiscountChange={setKiddoQty} 
+                    qtyWithDiscount={kiddoQtyWithDiscount} 
+                    onQtyWithDiscountChange={setKiddoQtyWithDiscount} 
+                    discount={kiddoDiscount} 
+                    onDiscountChange={setKiddoDiscount} 
+                    amountNoDiscount={kiddoAmountNoDiscount} 
+                    amountWithDiscount={kiddoAmountWithDiscount} 
+                    color="border-pink-500" 
+                />
+                <SalesInput 
+                    label="VIP" 
+                    qtyNoDiscount={vipQty} 
+                    onQtyNoDiscountChange={setVipQty} 
+                    qtyWithDiscount={vipQtyWithDiscount} 
+                    onQtyWithDiscountChange={setVipQtyWithDiscount} 
+                    discount={vipDiscount} 
+                    onDiscountChange={setVipDiscount} 
+                    amountNoDiscount={vipAmountNoDiscount} 
+                    amountWithDiscount={vipAmountWithDiscount} 
+                    color="border-yellow-500" 
+                />
                 <div className="p-4 rounded-lg border border-gray-500">
                     <h3 className="text-xl font-bold mb-3">Other Sales</h3>
                     <div className="space-y-4">
@@ -334,56 +421,16 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
             </div>
             
             <div className="mt-8 bg-gray-800/50 rounded-lg border border-gray-700 p-6">
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-6 mb-4 border-b border-gray-600 pb-4">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
                      <div className="text-center sm:text-left">
                         <p className="text-lg font-semibold text-gray-300">Total Packages Sold</p>
                         <p className="text-2xl font-bold text-gray-100">{totalQty.toLocaleString()}</p>
                     </div>
                     <div className="text-center sm:text-right">
                         <p className="text-lg font-semibold text-gray-300">Gross Amount</p>
-                        <p className="text-2xl font-bold text-gray-100">{grossTotalAmount.toLocaleString()} BDT</p>
-                    </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row justify-end items-center gap-4 bg-gray-900/50 p-4 rounded-lg">
-                    <div className="flex items-center gap-4">
-                        <div className="flex gap-2 p-1 bg-gray-800 rounded-lg">
-                             <button
-                                onClick={() => { setDiscountType('percent'); setDiscountValue(0); }}
-                                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${discountType === 'percent' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                             >
-                                Percent %
-                             </button>
-                             <button
-                                onClick={() => { setDiscountType('fixed'); setDiscountValue(0); }}
-                                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${discountType === 'fixed' ? 'bg-orange-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                             >
-                                Fixed BDT
-                             </button>
-                        </div>
-                        <div className="flex flex-col sm:flex-row items-center gap-2">
-                            <label htmlFor="discount-input" className="text-lg font-semibold text-orange-400">Discount</label>
-                            <div className="relative">
-                                <input 
-                                    id="discount-input" 
-                                    type="number" 
-                                    min="0" 
-                                    max={discountType === 'percent' ? 100 : undefined} 
-                                    value={discountValue} 
-                                    onChange={(e) => setDiscountValue(Math.max(0, Number(e.target.value)))} 
-                                    className="w-32 px-3 py-2 bg-gray-900 border border-gray-500 rounded-lg text-right font-bold focus:outline-none focus:ring-2 focus:ring-orange-500" 
-                                />
-                                <span className="absolute right-8 top-2 text-gray-400">{discountType === 'percent' ? '%' : '৳'}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="text-center sm:text-right ml-4 border-l border-gray-600 pl-4">
-                        <p className="text-lg font-semibold text-gray-300">Net Payable</p>
                         <p className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-500">
-                            {netTotalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} BDT
+                            {grossTotalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} BDT
                         </p>
-                        {discountAmount > 0 && <p className="text-sm text-gray-400">(-{discountAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} BDT)</p>}
                     </div>
                 </div>
             </div>
@@ -423,23 +470,15 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
                         <span className="font-semibold text-green-400">Other Sales</span>
                         <span className="font-bold text-gray-200 tabular-nums">{salesSummary.otherAmount.toLocaleString()} BDT</span>
                     </div>
-                    <div className="flex justify-between items-center pb-2 border-b border-gray-600">
-                        <span className="font-semibold text-gray-300">Gross Total</span>
-                        <span className="font-bold text-gray-200 tabular-nums">{salesSummary.totalAmount.toLocaleString()} BDT</span>
-                    </div>
-                    <div className="flex justify-between items-center pb-2 border-b border-gray-600">
-                         <span className="font-semibold text-orange-400">Total Discount Given</span>
-                        <span className="font-bold text-gray-200 tabular-nums">-{salesSummary.totalDiscount.toLocaleString(undefined, { maximumFractionDigits: 0 })} BDT</span>
-                    </div>
                     <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t-2 border-teal-500 gap-4">
                         <div className="text-center sm:text-left">
-                            <p className="text-lg font-semibold text-gray-300">Total Packages</p>
+                            <p className="text-lg font-semibold text-gray-300">Total Packages Sold</p>
                             <p className="text-3xl font-bold text-gray-100">{salesSummary.totalQty.toLocaleString()}</p>
                         </div>
                         <div className="text-center sm:text-right">
-                            <p className="text-lg font-semibold text-gray-300">Net Sales Amount</p>
+                            <p className="text-lg font-semibold text-gray-300">Gross Amount</p>
                             <p className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-teal-500">
-                                {salesSummary.netTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })} BDT
+                                {salesSummary.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })} BDT
                             </p>
                         </div>
                     </div>
