@@ -4,6 +4,7 @@ import { Ride, Operator, AttendanceRecord, RideWithCount } from '../types';
 import { Role } from '../hooks/useAuth';
 import BriefingCheckin from './BriefingCheckin';
 import SplitCounter from './SplitCounter';
+import DeveloperAttribution from './DeveloperAttribution';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
@@ -219,6 +220,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                     <p className="text-lg text-gray-400 mt-2">
                         Check-in for the next day will be available after 12:00 AM.
                     </p>
+                    <DeveloperAttribution />
                 </div>
             );
         }
@@ -315,6 +317,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                     </div>
                 </div>
             )}
+            
+            <DeveloperAttribution />
         </div>
     );
   }
@@ -455,6 +459,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
           )}
         </>
       )}
+      
+      <DeveloperAttribution />
     </div>
   );
 };

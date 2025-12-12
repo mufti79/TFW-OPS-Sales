@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import DeveloperAttribution from './DeveloperAttribution';
 
 interface BriefingCheckinProps {
   operatorName: string;
@@ -55,6 +56,8 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
         </div>
       </div>
        <p className="text-sm text-gray-500 mt-8">After selecting an option, you will be automatically logged out.</p>
+       
+       <DeveloperAttribution />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Operator } from '../types';
+import DeveloperAttribution from './DeveloperAttribution';
 
 interface LoginProps {
   onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator) => boolean;
@@ -222,6 +223,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
             </div>
         </div>
       </div>
+      
+      <DeveloperAttribution />
     </div>
   );
 };
