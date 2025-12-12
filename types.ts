@@ -56,13 +56,17 @@ export interface PackageSalesRecord {
   personnelId: number;
   xtremeQty: number;
   xtremeAmount: number;
+  xtremeDiscountPercentage?: number;
   kiddoQty: number;
   kiddoAmount: number;
+  kiddoDiscountPercentage?: number;
   vipQty: number;
   vipAmount: number;
+  vipDiscountPercentage?: number;
   otherSales: { category: string; amount: number }[];
+  // Legacy fields for backward compatibility
   discountPercentage?: number;
-  discountFixed?: number; // New field for fixed amount discount
+  discountFixed?: number;
 }
 
 export type PackageSalesData = Record<string, Record<string, Omit<PackageSalesRecord, 'date' | 'personnelId'>>>;
