@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Ride, Operator, AttendanceRecord, RideWithCount } from '../types';
 import { Role } from '../hooks/useAuth';
 import BriefingCheckin from './BriefingCheckin';
@@ -8,6 +8,99 @@ import DeveloperAttribution from './DeveloperAttribution';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
+
+// Manage Assignments Modal Component
+interface ManageAssignmentsModalProps {
+    ride: RideWithCount;
+    allOperators: Operator[];
+    assignedOperatorIds: number[];
+    onClose: () => void;
+    onSave: (rideId: number, newOperatorIds: number[]) => void;
+    attendance: AttendanceRecord[];
+    selectedDate: string;
+}
+
+const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, allOperators, assignedOperatorIds, onClose, onSave, attendance, selectedDate }) => {
+    const [selectedIds, setSelectedIds] = useState<number[]>(assignedOperatorIds);
+    
+    // Sync selectedIds when assignedOperatorIds prop changes
+    useEffect(() => {
+        setSelectedIds(assignedOperatorIds);
+    }, [assignedOperatorIds]);
+    
+    const attendanceStatusMap = useMemo(() => {
+        const statusMap = new Map<number, boolean>();
+        attendance
+          .filter(record => record.date === selectedDate)
+          .forEach(record => statusMap.set(record.operatorId, true));
+        return statusMap;
+    }, [attendance, selectedDate]);
+      
+    const handleToggle = (operatorId: number) => {
+        setSelectedIds(prev => 
+            prev.includes(operatorId) 
+            ? prev.filter(id => id !== operatorId) 
+            : [...prev, operatorId]
+        );
+    };
+
+    const handleConfirm = () => {
+        onSave(ride.id, selectedIds);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 animate-fade-in-up flex flex-col">
+                <div className="p-6">
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-100">Manage Assignments</h2>
+                            <p className="text-purple-400 font-semibold">{ride.name}</p>
+                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                        <label className="block text-sm font-medium text-gray-300 mb-2">Select operators to assign:</label>
+                        {allOperators.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
+                            const isPresent = attendanceStatusMap.get(op.id);
+                            const statusLabel = isPresent ? '(P)' : '(A)';
+                            return (
+                                <label key={op.id} className="flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer" onMouseDown={(e) => e.stopPropagation()}>
+                                    <input 
+                                        type="checkbox"
+                                        checked={selectedIds.includes(op.id)}
+                                        onChange={(e) => {
+                                            e.stopPropagation();
+                                            handleToggle(op.id);
+                                        }}
+                                        className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
+                                </label>
+                            );
+                        })}
+                    </div>
+                </div>
+                
+                <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg mt-auto">
+                    <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 active:scale-95 transition-all">
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleConfirm} 
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all"
+                    >
+                        Save Assignments
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 interface DailyRosterProps {
   rides: RideWithCount[];
@@ -21,6 +114,7 @@ interface DailyRosterProps {
   onNavigate: (view: View) => void;
   onCountChange: (rideId: number, newCount: number, details?: { tickets: number; packages: number }) => void;
   onShowModal: (modal: Modal, ride?: Ride) => void;
+  onSaveAssignments: (date: string, assignments: Record<string, number[]>) => void;
   hasCheckedInToday: boolean;
   onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
   isCheckinAllowed: boolean;
@@ -34,7 +128,9 @@ interface RosterData {
   absentCount: number;
 }
 
-const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal, hasCheckedInToday, onClockIn, isCheckinAllowed }) => {
+const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal, onSaveAssignments, hasCheckedInToday, onClockIn, isCheckinAllowed }) => {
+  const [manageModalInfo, setManageModalInfo] = useState<RideWithCount | null>(null);
+  
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
       const [hours, minutes] = timeStr.split(':');
@@ -198,6 +294,30 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleManageAssignmentsSave = (rideId: number, newOperatorIds: number[]) => {
+    const currentAssignments = dailyAssignments[selectedDate] || {};
+    
+    // Normalize existing assignments to arrays
+    const updatedAssignments: Record<string, number[]> = {};
+    Object.entries(currentAssignments).forEach(([key, val]) => {
+        updatedAssignments[key] = Array.isArray(val) ? val : [val];
+    });
+
+    const rideKey = String(rideId);
+    if (newOperatorIds.length > 0) {
+        updatedAssignments[rideKey] = newOperatorIds;
+    } else {
+        delete updatedAssignments[rideKey];
+    }
+    onSaveAssignments(selectedDate, updatedAssignments);
+  };
+
+  const getAssignedOperatorIds = (rideId: number): number[] => {
+    const assignmentsToday = dailyAssignments[selectedDate] || {};
+    const val = assignmentsToday[rideId.toString()];
+    return Array.isArray(val) ? val : val ? [val] : [];
   };
 
   const isRosterEmpty = operatorsWithAttendance.length === 0;
@@ -432,7 +552,19 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                       {operatorAssignments && operatorAssignments.length > 0 ? (
                         operatorAssignments.map(ride => (
                           <li key={ride.id} className="text-gray-300 bg-gray-700/50 p-2 rounded-md">
-                            {ride.name} <span className="text-xs text-gray-500">({ride.floor} Fl)</span>
+                            <div className="flex justify-between items-center">
+                              <div>
+                                {ride.name} <span className="text-xs text-gray-500">({ride.floor} Fl)</span>
+                              </div>
+                              {isManager && (
+                                <button 
+                                  onClick={() => setManageModalInfo(ride)}
+                                  className="px-2 py-1 text-xs bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 active:scale-95 transition-all"
+                                >
+                                  Manage
+                                </button>
+                              )}
+                            </div>
                           </li>
                         ))
                       ) : (
@@ -458,6 +590,18 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             </div>
           )}
         </>
+      )}
+      
+      {manageModalInfo && (
+        <ManageAssignmentsModal
+          ride={manageModalInfo}
+          allOperators={operators}
+          assignedOperatorIds={getAssignedOperatorIds(manageModalInfo.id)}
+          onClose={() => setManageModalInfo(null)}
+          onSave={handleManageAssignmentsSave}
+          attendance={attendance}
+          selectedDate={selectedDate}
+        />
       )}
       
       <DeveloperAttribution />
