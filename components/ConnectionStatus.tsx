@@ -39,6 +39,9 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       setShowTooltip(!showTooltip);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setShowTooltip(false);
     }
   };
 
@@ -52,7 +55,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
         onKeyDown={handleKeyDown}
         tabIndex={0}
         aria-label="Connection status"
-        aria-expanded={showTooltip}
+        aria-expanded={showTooltip ? 'true' : 'false'}
         aria-describedby="connection-status-tooltip"
       >
         <span className={`w-3 h-3 rounded-full ${config.color} ${status === 'connecting' ? 'animate-pulse' : ''}`} />
