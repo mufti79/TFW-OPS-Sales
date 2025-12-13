@@ -248,12 +248,15 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         });
 
         setAssignments(newAssignments);
+        
+        // Automatically save imported assignments to Firebase
+        onSave(selectedDate, newAssignments);
 
         if (errors.length > 0) {
-          showNotification(`${successCount} assignments imported, but with errors. Check console.`, 'warning', 8000);
+          showNotification(`${successCount} assignments imported and saved, but with errors. Check console.`, 'warning', 8000);
           console.warn("Import errors:", errors);
         } else {
-          showNotification(`${successCount} assignment rows processed successfully!`, 'success');
+          showNotification(`${successCount} assignment rows imported and saved successfully!`, 'success');
         }
 
       } catch (error) {
