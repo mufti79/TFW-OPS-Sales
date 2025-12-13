@@ -1,6 +1,7 @@
 
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { MaintenanceTicket, Operator } from '../types';
+import { OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY } from '../constants';
 
 interface MaintenanceDashboardProps {
   maintenanceTickets: Record<string, Record<string, MaintenanceTicket>>;
@@ -16,6 +17,17 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
   const [selectedHelpers, setSelectedHelpers] = useState<Operator[]>([]);
   const [isHelperDropdownOpen, setIsHelperDropdownOpen] = useState(false);
   const helperDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Helper function to determine personnel category
+  const getPersonnelCategory = (personnelId: number): 'Operator' | 'Ticket Sales' => {
+    if (OPERATORS_ARRAY.some(op => op.id === personnelId)) {
+      return 'Operator';
+    }
+    if (TICKET_SALES_PERSONNEL_ARRAY.some(ts => ts.id === personnelId)) {
+      return 'Ticket Sales';
+    }
+    return 'Operator'; // Default fallback
+  };
 
 
   useEffect(() => {
@@ -155,9 +167,13 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                     className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-lg"
                 >
                     <option value="">-- Select --</option>
-                    {maintenancePersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
+                    {maintenancePersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => {
+                        const category = getPersonnelCategory(p.id);
+                        const categoryTag = category === 'Operator' ? '[Ops]' : '[Sales]';
+                        return (
+                            <option key={p.id} value={p.id}>{p.name} {categoryTag}</option>
+                        );
+                    })}
                 </select>
                 {!selectedTechnician && <p className="text-yellow-400 text-sm mt-2">You must select your name before you can take or solve issues.</p>}
             </div>
@@ -175,17 +191,21 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                         {maintenancePersonnel
                             .filter(p => p.id !== selectedTechnician?.id)
                             .sort((a,b) => a.name.localeCompare(b.name))
-                            .map(p => (
-                                <label key={p.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedHelpers.some(h => h.id === p.id)}
-                                        onChange={() => handleToggleHelper(p)}
-                                        className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-indigo-600 focus:ring-indigo-500"
-                                    />
-                                    <span className="ml-3 text-gray-300">{p.name}</span>
-                                </label>
-                            ))
+                            .map(p => {
+                                const category = getPersonnelCategory(p.id);
+                                const categoryTag = category === 'Operator' ? '[Ops]' : '[Sales]';
+                                return (
+                                    <label key={p.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedHelpers.some(h => h.id === p.id)}
+                                            onChange={() => handleToggleHelper(p)}
+                                            className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-indigo-600 focus:ring-indigo-500"
+                                        />
+                                        <span className="ml-3 text-gray-300">{p.name} <span className="text-gray-500 text-xs">{categoryTag}</span></span>
+                                    </label>
+                                );
+                            })
                         }
                     </div>
                 )}
