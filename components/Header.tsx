@@ -5,7 +5,7 @@ import { Role } from '../hooks/useAuth';
 import { Operator } from '../types';
 import ConnectionStatus from './ConnectionStatus';
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
 type Connection = 'connecting' | 'connected' | 'disconnected' | 'sdk-error';
 
@@ -57,6 +57,7 @@ const Header: React.FC<HeaderProps> = ({
           links.push(<button key="counter" onClick={() => onNavigate('counter')} className={navLinkClasses}>G&R</button>);
           links.push(<button key="roster" onClick={() => onNavigate('roster')} className={navLinkClasses}>Ops Roster</button>);
           links.push(<button key="reports" onClick={() => onNavigate('reports')} className={navLinkClasses}>Ops Reports</button>);
+          links.push(<button key="management-hub" onClick={() => onNavigate('management-hub')} className={navLinkClasses}>Management</button>);
       }
       if (isSalesManager) {
           links.push(<button key="ts-roster" onClick={() => onNavigate('ts-roster')} className={navLinkClasses}>Sales Roster</button>);
@@ -73,6 +74,9 @@ const Header: React.FC<HeaderProps> = ({
           links.push(<button key="my-ts-roster" onClick={() => onNavigate('ts-roster')} className={navLinkClasses}>My Roster</button>);
           links.push(<button key="my-sales" onClick={() => onNavigate('my-sales')} className={navLinkClasses}>My Sales</button>);
       }
+      if (role === 'security') {
+          links.push(<button key="security-entry" onClick={() => onNavigate('security-entry')} className={navLinkClasses}>Floor Guest Entry</button>);
+      }
       return links;
   }
    const renderMobileNavLinks = () => {
@@ -84,6 +88,7 @@ const Header: React.FC<HeaderProps> = ({
           links.push(<button key="m-counter" onClick={() => closeMenu('counter')} className={`${navLinkClasses} w-full text-left block`}>G&R</button>);
           links.push(<button key="m-roster" onClick={() => closeMenu('roster')} className={`${navLinkClasses} w-full text-left block`}>Ops Roster</button>);
           links.push(<button key="m-reports" onClick={() => closeMenu('reports')} className={`${navLinkClasses} w-full text-left block`}>Ops Reports</button>);
+          links.push(<button key="m-management-hub" onClick={() => closeMenu('management-hub')} className={`${navLinkClasses} w-full text-left block`}>Management</button>);
       }
       if (isSalesManager) {
           links.push(<button key="m-ts-roster" onClick={() => closeMenu('ts-roster')} className={`${navLinkClasses} w-full text-left block`}>Sales Roster</button>);
@@ -99,6 +104,9 @@ const Header: React.FC<HeaderProps> = ({
       if (role === 'ticket-sales') {
           links.push(<button key="m-my-ts-roster" onClick={() => closeMenu('ts-roster')} className={`${navLinkClasses} w-full text-left block`}>My Roster</button>);
           links.push(<button key="m-my-sales" onClick={() => closeMenu('my-sales')} className={`${navLinkClasses} w-full text-left block`}>My Sales</button>);
+      }
+      if (role === 'security') {
+          links.push(<button key="m-security-entry" onClick={() => closeMenu('security-entry')} className={`${navLinkClasses} w-full text-left block`}>Floor Guest Entry</button>);
       }
       return links;
   }

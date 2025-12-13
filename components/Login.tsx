@@ -4,7 +4,7 @@ import { Operator } from '../types';
 import DeveloperAttribution from './DeveloperAttribution';
 
 interface LoginProps {
-  onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer', payload?: string | Operator) => boolean;
+  onLogin: (role: 'operator' | 'admin' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'security', payload?: string | Operator) => boolean;
   operators: Operator[];
   ticketSalesPersonnel: Operator[];
   appLogo: string | null;
@@ -17,6 +17,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   const [officerError, setOfficerError] = useState('');
   const [salesOfficerPin, setSalesOfficerPin] = useState('');
   const [salesOfficerError, setSalesOfficerError] = useState('');
+  const [securityPin, setSecurityPin] = useState('');
+  const [securityError, setSecurityError] = useState('');
   
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
   const [selectedTicketSalesId, setSelectedTicketSalesId] = useState<string>('');
@@ -48,6 +50,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
     } else {
       setSalesOfficerError('Incorrect PIN. Please try again.');
       setSalesOfficerPin('');
+    }
+  };
+  
+  const handleSecurityLogin = () => {
+    if (onLogin('security', securityPin)) {
+      setSecurityError('');
+      setSecurityPin('');
+    } else {
+      setSecurityError('Incorrect PIN. Please try again.');
+      setSecurityPin('');
     }
   };
   
@@ -196,29 +208,55 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
             </div>
             
             <div className="flex justify-center">
-                {/* Admin Login */}
-                <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 w-full md:w-1/2">
-                <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Admin Login</h2>
-                <div className="space-y-3">
-                    <input
-                    type="password"
-                    placeholder="Enter Admin PIN"
-                    value={adminPin}
-                    onChange={(e) => handlePinChange(setAdminPin, setAdminError, e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
-                    className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all text-center text-xl tracking-widest"
-                    maxLength={4}
-                    aria-label="Admin PIN"
-                    autoComplete="off"
-                    />
-                    {adminError && <p className="text-red-400 text-sm text-center">{adminError}</p>}
-                    <button
-                    onClick={handleAdminLogin}
-                    className="w-full px-6 py-3 bg-pink-600 text-white font-bold rounded-lg hover:bg-pink-700 active:scale-95 transition-all text-lg"
-                    >
-                    Enter as Admin
-                    </button>
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                    {/* Admin Login */}
+                    <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                    <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Admin Login</h2>
+                    <div className="space-y-3">
+                        <input
+                        type="password"
+                        placeholder="Enter Admin PIN"
+                        value={adminPin}
+                        onChange={(e) => handlePinChange(setAdminPin, setAdminError, e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAdminLogin()}
+                        className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all text-center text-xl tracking-widest"
+                        maxLength={4}
+                        aria-label="Admin PIN"
+                        autoComplete="off"
+                        />
+                        {adminError && <p className="text-red-400 text-sm text-center">{adminError}</p>}
+                        <button
+                        onClick={handleAdminLogin}
+                        className="w-full px-6 py-3 bg-pink-600 text-white font-bold rounded-lg hover:bg-pink-700 active:scale-95 transition-all text-lg"
+                        >
+                        Enter as Admin
+                        </button>
+                    </div>
+                    </div>
+                    {/* Security Login */}
+                    <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+                        <h2 className="text-2xl font-bold text-center text-gray-100 mb-4">Security Login</h2>
+                        <div className="space-y-3">
+                            <input
+                                type="password"
+                                placeholder="Enter Security PIN"
+                                value={securityPin}
+                                onChange={(e) => handlePinChange(setSecurityPin, setSecurityError, e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSecurityLogin()}
+                                className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-all text-center text-xl tracking-widest"
+                                maxLength={4}
+                                aria-label="Security PIN"
+                                autoComplete="off"
+                            />
+                            {securityError && <p className="text-red-400 text-sm text-center">{securityError}</p>}
+                            <button
+                                onClick={handleSecurityLogin}
+                                className="w-full px-6 py-3 bg-yellow-600 text-white font-bold rounded-lg hover:bg-yellow-700 active:scale-95 transition-all text-lg"
+                            >
+                                Enter as Security
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

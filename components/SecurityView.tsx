@@ -24,8 +24,8 @@ const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCou
 
   const isDirty = useMemo(() => {
     for (const hour of hours) {
-        const local = localCounts[hour] || 0;
-        const remote = remoteCounts[hour] || 0;
+        const local = localCounts[hour.toString()] || 0;
+        const remote = remoteCounts[hour.toString()] || 0;
         if (local !== remote) {
             return true;
         }
@@ -38,7 +38,7 @@ const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCou
     const newCount = !isNaN(count) && count >= 0 ? count : 0;
     setLocalCounts(prev => ({
         ...prev,
-        [hour]: newCount
+        [hour.toString()]: newCount
     }));
   };
 
@@ -91,7 +91,7 @@ const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCou
                           id={`count-${hour}`}
                           type="number"
                           placeholder="Total Guests"
-                          value={localCounts[hour] || ''}
+                          value={localCounts[hour.toString()] || ''}
                           onChange={e => handleCountChange(hour, e.target.value)}
                           className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           min="0"

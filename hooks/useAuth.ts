@@ -3,18 +3,19 @@ import useLocalStorage from './useLocalStorage';
 import { Operator } from '../types';
 import { useCallback } from 'react';
 
-export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | null;
+export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'security' | null;
 
 export const ADMIN_PIN = '9999';
 export const OPERATION_OFFICER_PIN = '4321';
 export const SALES_OFFICER_PIN = '5678';
+export const SECURITY_PIN = '1234';
 
 export const useAuth = () => {
   const [role, setRole] = useLocalStorage<Role>('authRole', null);
   const [currentUser, setCurrentUser] = useLocalStorage<Operator | null>('authUser', null);
 
   const login = useCallback((
-    newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer', 
+    newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'security', 
     payload?: string | Operator
   ): boolean => {
     switch (newRole) {
@@ -36,6 +37,13 @@ export const useAuth = () => {
         if (payload === SALES_OFFICER_PIN) {
           setRole('sales-officer');
           setCurrentUser({ id: -2, name: 'Sales Officer' });
+          return true;
+        }
+        return false;
+      case 'security':
+        if (payload === SECURITY_PIN) {
+          setRole('security');
+          setCurrentUser({ id: -3, name: 'Security' });
           return true;
         }
         return false;
