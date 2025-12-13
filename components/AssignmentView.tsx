@@ -33,12 +33,20 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
       normalizedAssignments[key] = Array.isArray(value) ? value : [value];
     });
     
+    // Debug logging to help diagnose sync issues
+    if (import.meta.env.DEV) {
+      console.log('📅 AssignmentView - Selected date:', selectedDate);
+      console.log('📦 AssignmentView - Raw assignments for date:', rawAssignments);
+      console.log('✨ AssignmentView - Normalized assignments:', normalizedAssignments);
+    }
+    
     // Compare before updating to avoid unnecessary re-renders and overwriting unsaved changes
     setAssignments(prev => {
       // Shallow comparison: check if keys are the same
       const prevKeys = Object.keys(prev).sort();
       const newKeys = Object.keys(normalizedAssignments).sort();
       if (prevKeys.length !== newKeys.length || !prevKeys.every((key, i) => key === newKeys[i])) {
+        console.log('🔄 AssignmentView - Updating state (keys changed)');
         return normalizedAssignments;
       }
       
@@ -47,10 +55,14 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         const prevVal = prev[key];
         const newVal = normalizedAssignments[key];
         if (prevVal.length !== newVal.length || !prevVal.every((id, i) => id === newVal[i])) {
+          console.log('🔄 AssignmentView - Updating state (values changed for key:', key, ')');
           return normalizedAssignments;
         }
       }
       
+      if (import.meta.env.DEV && Object.keys(prev).length > 0) {
+        console.log('⏭️  AssignmentView - State unchanged, keeping previous');
+      }
       return prev; // No changes, keep previous state
     });
   }, [selectedDate, dailyAssignments]);

@@ -334,7 +334,13 @@ const AppComponent: React.FC = () => {
             // Merge operator assignments from TFW-NEW (opsAssignments) into dailyAssignments
             const opsData = opsSnapshot.exists() ? opsSnapshot.val() : {};
             const dailyData = dailySnapshot.exists() ? dailySnapshot.val() : {};
+            
+            // Log what was fetched for debugging
+            console.log('🔄 Sync - Fetched from data/opsAssignments:', opsData);
+            console.log('📋 Sync - Fetched from data/dailyAssignments:', dailyData);
+            
             const mergedDailyAssignments = mergeAssignments(dailyData, opsData);
+            console.log('✅ Sync - Merged operator assignments:', mergedDailyAssignments);
             
             // Save merged operator assignments to local state
             setDailyAssignments(mergedDailyAssignments);
@@ -347,8 +353,18 @@ const AppComponent: React.FC = () => {
             // Save merged ticket sales assignments to local state
             setTSAssignments(mergedTSAssignments);
 
-            showNotification('✓ Assignments synced successfully!', 'success');
-            logAction('SYNC_ASSIGNMENTS', 'Manually synced assignments from TFW-NEW app');
+            // Provide more detailed feedback
+            const opsCount = Object.keys(opsData).length;
+            const dailyCount = Object.keys(dailyData).length;
+            const totalDates = Object.keys(mergedDailyAssignments).length;
+            
+            if (opsCount > 0 || dailyCount > 0) {
+                showNotification(`✓ Synced ${totalDates} date(s) of assignments from TFW-NEW app!`, 'success');
+            } else {
+                showNotification('No assignments found in TFW-NEW app to sync.', 'warning');
+            }
+            
+            logAction('SYNC_ASSIGNMENTS', `Manually synced assignments from TFW-NEW app (${totalDates} dates total)`);
         } catch (error) {
             console.error('Error syncing assignments:', error);
             showNotification('Failed to sync assignments. Check your connection.', 'error');
