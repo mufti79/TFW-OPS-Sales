@@ -5,7 +5,7 @@ import { Role } from '../hooks/useAuth';
 import { Operator } from '../types';
 import ConnectionStatus from './ConnectionStatus';
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'maintenance';
 type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
 type Connection = 'connecting' | 'connected' | 'disconnected' | 'sdk-error';
 
@@ -57,6 +57,7 @@ const Header: React.FC<HeaderProps> = ({
           links.push(<button key="counter" onClick={() => onNavigate('counter')} className={navLinkClasses}>G&R</button>);
           links.push(<button key="roster" onClick={() => onNavigate('roster')} className={navLinkClasses}>Ops Roster</button>);
           links.push(<button key="reports" onClick={() => onNavigate('reports')} className={navLinkClasses}>Ops Reports</button>);
+          links.push(<button key="maintenance" onClick={() => onNavigate('maintenance')} className={navLinkClasses}>Maintenance</button>);
       }
       if (isSalesManager) {
           links.push(<button key="ts-roster" onClick={() => onNavigate('ts-roster')} className={navLinkClasses}>Sales Roster</button>);
@@ -84,6 +85,7 @@ const Header: React.FC<HeaderProps> = ({
           links.push(<button key="m-counter" onClick={() => closeMenu('counter')} className={`${navLinkClasses} w-full text-left block`}>G&R</button>);
           links.push(<button key="m-roster" onClick={() => closeMenu('roster')} className={`${navLinkClasses} w-full text-left block`}>Ops Roster</button>);
           links.push(<button key="m-reports" onClick={() => closeMenu('reports')} className={`${navLinkClasses} w-full text-left block`}>Ops Reports</button>);
+          links.push(<button key="m-maintenance" onClick={() => closeMenu('maintenance')} className={`${navLinkClasses} w-full text-left block`}>Maintenance</button>);
       }
       if (isSalesManager) {
           links.push(<button key="m-ts-roster" onClick={() => closeMenu('ts-roster')} className={`${navLinkClasses} w-full text-left block`}>Sales Roster</button>);

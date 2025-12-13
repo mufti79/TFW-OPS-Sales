@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
-import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
-import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
+import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, MAINTENANCE_PERSONNEL_ARRAY, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
+import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData, MaintenanceTicket } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
@@ -32,6 +32,7 @@ import DailySalesEntry from './components/DailySalesEntry';
 import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import Dashboard from './components/Dashboard';
+import MaintenanceDashboard from './components/MaintenanceDashboard';
 
 // Notification System Implementation
 interface NotificationState {
@@ -68,7 +69,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 };
 
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'maintenance';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
 const toLocalDateString = (date: Date): string => {
@@ -111,6 +112,7 @@ const AppComponent: React.FC = () => {
     const { data: appLogo, setData: setAppLogo } = useFirebaseSync<string | null>('config/appLogo', null);
     const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
+    const { data: maintenanceTickets, setData: setMaintenanceTickets } = useFirebaseSync<Record<string, Record<string, MaintenanceTicket>>>('data/maintenanceTickets', {});
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
@@ -300,6 +302,51 @@ const AppComponent: React.FC = () => {
       logAction('DELETE_CATEGORY', `Removed category "${name}" from suggestions.`);
     };
 
+    const handleUpdateMaintenanceTicketStatus = (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator, helpers?: Operator[]) => {
+        const updatedTicket: MaintenanceTicket = {
+            ...ticket,
+            status: newStatus,
+            assignedToId: technician.id,
+            assignedToName: technician.name,
+            helperIds: helpers?.map(h => h.id),
+            helperNames: helpers?.map(h => h.name),
+        };
+        
+        if (newStatus === 'in-progress') {
+            updatedTicket.inProgressAt = new Date().toISOString();
+        } else if (newStatus === 'solved') {
+            updatedTicket.solvedAt = new Date().toISOString();
+        }
+        
+        setMaintenanceTickets(prev => ({
+            ...prev,
+            [ticket.reportedAt.split('T')[0]]: {
+                ...(prev?.[ticket.reportedAt.split('T')[0]] || {}),
+                [ticket.id]: updatedTicket
+            }
+        }));
+        
+        logAction('UPDATE_MAINTENANCE', `${technician.name} updated maintenance ticket for ${ticket.rideName} to ${newStatus}.`);
+        showNotification(`Ticket updated to ${newStatus}!`, 'success');
+    };
+
+    const handleClearSolvedMaintenanceTickets = (date: string) => {
+        if (window.confirm(`Are you sure you want to clear all solved tickets for ${date}?`)) {
+            const ticketsForDate = maintenanceTickets?.[date] || {};
+            const updatedTickets = Object.fromEntries(
+                Object.entries(ticketsForDate).filter(([_, ticket]) => ticket.status !== 'solved')
+            );
+            
+            setMaintenanceTickets(prev => ({
+                ...prev,
+                [date]: updatedTickets
+            }));
+            
+            logAction('CLEAR_SOLVED_TICKETS', `Cleared solved maintenance tickets for ${date}.`);
+            showNotification('Solved tickets cleared!', 'success');
+        }
+    };
+
     const handleRemoveObsoleteRides = () => {
         const ridesFromCode = new Set(RIDES_ARRAY.map(r => r.id.toString()));
         const ridesInDb = Object.keys(rides || {});
@@ -414,6 +461,7 @@ const AppComponent: React.FC = () => {
             case 'my-sales': return <DailySalesEntry currentUser={currentUser} selectedDate={selectedDate} onDateChange={handleDateChange} packageSales={packageSalesData || {}} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} packageSales={packageSalesData || {}} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
             case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={OPERATORS_ARRAY} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={dailyAssignments || {}} />;
+            case 'maintenance': return <MaintenanceDashboard maintenanceTickets={maintenanceTickets || {}} selectedDate={selectedDate} onDateChange={handleDateChange} onUpdateTicketStatus={handleUpdateMaintenanceTicketStatus} maintenancePersonnel={MAINTENANCE_PERSONNEL_ARRAY} onClearSolved={handleClearSolvedMaintenanceTickets} />;
             // Explicitly handle 'counter' to avoid any confusion with default
             case 'counter':
             default: return filteredRides.length > 0 ? (
