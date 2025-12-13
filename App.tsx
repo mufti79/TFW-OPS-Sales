@@ -335,12 +335,17 @@ const AppComponent: React.FC = () => {
             const opsData = opsSnapshot.exists() ? opsSnapshot.val() : {};
             const dailyData = dailySnapshot.exists() ? dailySnapshot.val() : {};
             
-            // Log what was fetched for debugging
-            console.log('🔄 Sync - Fetched from data/opsAssignments:', opsData);
-            console.log('📋 Sync - Fetched from data/dailyAssignments:', dailyData);
+            // Log what was fetched for debugging (development only)
+            if (import.meta.env.DEV) {
+                console.log('🔄 Sync - Fetched from data/opsAssignments:', opsData);
+                console.log('📋 Sync - Fetched from data/dailyAssignments:', dailyData);
+            }
             
             const mergedDailyAssignments = mergeAssignments(dailyData, opsData);
-            console.log('✅ Sync - Merged operator assignments:', mergedDailyAssignments);
+            
+            if (import.meta.env.DEV) {
+                console.log('✅ Sync - Merged operator assignments:', mergedDailyAssignments);
+            }
             
             // Save merged operator assignments to local state
             setDailyAssignments(mergedDailyAssignments);

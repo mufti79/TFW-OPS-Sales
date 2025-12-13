@@ -46,7 +46,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
       const prevKeys = Object.keys(prev).sort();
       const newKeys = Object.keys(normalizedAssignments).sort();
       if (prevKeys.length !== newKeys.length || !prevKeys.every((key, i) => key === newKeys[i])) {
-        console.log('🔄 AssignmentView - Updating state (keys changed)');
+        if (import.meta.env.DEV) {
+          console.log('🔄 AssignmentView - Updating state (keys changed)');
+        }
         return normalizedAssignments;
       }
       
@@ -55,7 +57,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         const prevVal = prev[key];
         const newVal = normalizedAssignments[key];
         if (prevVal.length !== newVal.length || !prevVal.every((id, i) => id === newVal[i])) {
-          console.log('🔄 AssignmentView - Updating state (values changed for key:', key, ')');
+          if (import.meta.env.DEV) {
+            console.log('🔄 AssignmentView - Updating state (values changed for key:', key, ')');
+          }
           return normalizedAssignments;
         }
       }
