@@ -65,7 +65,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                     
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         <label className="block text-sm font-medium text-gray-300 mb-2">Select operators to assign:</label>
-                        {allOperators.sort((a,b) => a.name.localeCompare(b.name)).map(op => {
+                        {allOperators.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
                             const isPresent = attendanceStatusMap.get(op.id);
                             const statusLabel = isPresent ? '(P)' : '(A)';
                             return (
@@ -312,6 +312,12 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
         delete updatedAssignments[rideKey];
     }
     onSaveAssignments(selectedDate, updatedAssignments);
+  };
+
+  const getAssignedOperatorIds = (rideId: number): number[] => {
+    const assignmentsToday = dailyAssignments[selectedDate] || {};
+    const val = assignmentsToday[rideId.toString()];
+    return Array.isArray(val) ? val : val ? [val] : [];
   };
 
   const isRosterEmpty = operatorsWithAttendance.length === 0;
@@ -590,13 +596,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
         <ManageAssignmentsModal
           ride={manageModalInfo}
           allOperators={operators}
-          assignedOperatorIds={
-            (() => {
-              const assignmentsToday = dailyAssignments[selectedDate] || {};
-              const val = assignmentsToday[manageModalInfo.id.toString()];
-              return Array.isArray(val) ? val : val ? [val] : [];
-            })()
-          }
+          assignedOperatorIds={getAssignedOperatorIds(manageModalInfo.id)}
           onClose={() => setManageModalInfo(null)}
           onSave={handleManageAssignmentsSave}
           attendance={attendance}
