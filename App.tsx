@@ -336,37 +336,63 @@ const AppComponent: React.FC = () => {
                 get(ref(database, 'data/tsAssignments'))
             ]);
 
-            // Update local state with fetched data
-            if (opsSnapshot.exists()) {
-                const data = opsSnapshot.val();
-                // Force update localStorage and state
-                const localKey = 'tfw_data_data_opsAssignments';
-                try {
-                    window.localStorage.setItem(localKey, JSON.stringify(data));
-                } catch (e) {
-                    console.warn('Failed to update localStorage for opsAssignments', e);
+            // Merge operator assignments from TFW-NEW (opsAssignments) into dailyAssignments
+            const opsData = opsSnapshot.exists() ? opsSnapshot.val() : {};
+            const dailyData = dailySnapshot.exists() ? dailySnapshot.val() : {};
+            
+            // Merge both sources: combine assignments from both paths
+            const mergedDailyAssignments: Record<string, Record<string, number[] | number>> = { ...dailyData };
+            
+            Object.keys(opsData).forEach(date => {
+                if (mergedDailyAssignments[date]) {
+                    // Merge ride assignments for the same date
+                    Object.keys(opsData[date]).forEach(rideId => {
+                        if (!mergedDailyAssignments[date][rideId]) {
+                            mergedDailyAssignments[date][rideId] = opsData[date][rideId];
+                        } else {
+                            // Combine operator arrays if both exist
+                            const existing = normalizeAssignmentToArray(mergedDailyAssignments[date][rideId]);
+                            const incoming = normalizeAssignmentToArray(opsData[date][rideId]);
+                            // Merge and deduplicate
+                            mergedDailyAssignments[date][rideId] = Array.from(new Set([...existing, ...incoming]));
+                        }
+                    });
+                } else {
+                    mergedDailyAssignments[date] = { ...opsData[date] };
                 }
-            }
+            });
+            
+            // Save merged operator assignments to local state
+            setDailyAssignments(mergedDailyAssignments);
 
-            if (dailySnapshot.exists()) {
-                const data = dailySnapshot.val();
-                setDailyAssignments(data);
-            }
-
-            if (salesSnapshot.exists()) {
-                const data = salesSnapshot.val();
-                const localKey = 'tfw_data_data_salesAssignments';
-                try {
-                    window.localStorage.setItem(localKey, JSON.stringify(data));
-                } catch (e) {
-                    console.warn('Failed to update localStorage for salesAssignments', e);
+            // Merge ticket sales assignments from TFW-NEW (salesAssignments) into tsAssignments
+            const salesData = salesSnapshot.exists() ? salesSnapshot.val() : {};
+            const tsData = tsSnapshot.exists() ? tsSnapshot.val() : {};
+            
+            // Merge both sources: combine assignments from both paths
+            const mergedTSAssignments: Record<string, Record<string, number[] | number>> = { ...tsData };
+            
+            Object.keys(salesData).forEach(date => {
+                if (mergedTSAssignments[date]) {
+                    // Merge counter assignments for the same date
+                    Object.keys(salesData[date]).forEach(counterId => {
+                        if (!mergedTSAssignments[date][counterId]) {
+                            mergedTSAssignments[date][counterId] = salesData[date][counterId];
+                        } else {
+                            // Combine personnel arrays if both exist
+                            const existing = normalizeAssignmentToArray(mergedTSAssignments[date][counterId]);
+                            const incoming = normalizeAssignmentToArray(salesData[date][counterId]);
+                            // Merge and deduplicate
+                            mergedTSAssignments[date][counterId] = Array.from(new Set([...existing, ...incoming]));
+                        }
+                    });
+                } else {
+                    mergedTSAssignments[date] = { ...salesData[date] };
                 }
-            }
-
-            if (tsSnapshot.exists()) {
-                const data = tsSnapshot.val();
-                setTSAssignments(data);
-            }
+            });
+            
+            // Save merged ticket sales assignments to local state
+            setTSAssignments(mergedTSAssignments);
 
             showNotification('✓ Assignments synced successfully!', 'success');
             logAction('SYNC_ASSIGNMENTS', 'Manually synced assignments from TFW-NEW app');
