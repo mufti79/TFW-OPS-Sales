@@ -78,12 +78,32 @@ const toLocalDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-// Helper function to normalize assignment values to arrays
+/**
+ * Normalizes assignment values to arrays for consistent processing.
+ * Legacy data may store single assignments as a number, while new data uses arrays.
+ * This ensures all assignment values are treated as arrays.
+ * @param value - Assignment value that could be a single number or array of numbers
+ * @returns Array of operator/personnel IDs
+ */
 const normalizeAssignmentToArray = (value: number | number[]): number[] => {
     return Array.isArray(value) ? value : [value];
 };
 
-// Helper function to merge two assignment objects
+/**
+ * Merges two assignment objects from different Firebase paths.
+ * Used to combine assignments from TFW-NEW app (opsAssignments/salesAssignments) 
+ * with TFW-OPS-Sales app (dailyAssignments/tsAssignments).
+ * 
+ * Merge behavior:
+ * - Assignments are organized by date, then by ride/counter ID
+ * - When both sources have assignments for the same item, operator/personnel IDs are combined
+ * - Duplicate IDs are removed (assumes IDs are primitive numbers for Set deduplication)
+ * - If only one source has an assignment, it's used as-is
+ * 
+ * @param baseData - Base assignment data (e.g., dailyAssignments or tsAssignments)
+ * @param incomingData - Incoming assignment data (e.g., opsAssignments or salesAssignments)
+ * @returns Merged assignment object with deduplicated operator/personnel IDs
+ */
 const mergeAssignments = (
     baseData: Record<string, Record<string, number[] | number>>,
     incomingData: Record<string, Record<string, number[] | number>>
@@ -97,10 +117,10 @@ const mergeAssignments = (
                 if (!merged[date][itemId]) {
                     merged[date][itemId] = incomingData[date][itemId];
                 } else {
-                    // Combine arrays if both exist
+                    // Combine arrays if both exist and deduplicate IDs
+                    // Note: Assumes operator/personnel IDs are primitive numbers for Set deduplication
                     const existing = normalizeAssignmentToArray(merged[date][itemId]);
                     const incoming = normalizeAssignmentToArray(incomingData[date][itemId]);
-                    // Merge and deduplicate
                     merged[date][itemId] = Array.from(new Set([...existing, ...incoming]));
                 }
             });
