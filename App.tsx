@@ -139,7 +139,7 @@ const AppComponent: React.FC = () => {
                         // Combine operator arrays if both exist
                         const existing = normalizeAssignmentToArray(merged[date][rideId]);
                         const incoming = normalizeAssignmentToArray(opsAssignments[date][rideId]);
-                        // Merge and deduplicate
+                        // Merge and deduplicate (assumes operator IDs are primitive numbers)
                         merged[date][rideId] = Array.from(new Set([...existing, ...incoming]));
                     }
                 });
@@ -171,7 +171,7 @@ const AppComponent: React.FC = () => {
                         // Combine personnel arrays if both exist
                         const existing = normalizeAssignmentToArray(merged[date][counterId]);
                         const incoming = normalizeAssignmentToArray(salesAssignments[date][counterId]);
-                        // Merge and deduplicate
+                        // Merge and deduplicate (assumes personnel IDs are primitive numbers)
                         merged[date][counterId] = Array.from(new Set([...existing, ...incoming]));
                     }
                 });
