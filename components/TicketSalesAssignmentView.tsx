@@ -78,7 +78,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
       return;
     }
 
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: PointerEvent) => {
       const dropdownElement = dropdownRefs.current.get(openDropdownId);
       if (dropdownElement && event.target && !dropdownElement.contains(event.target as Node)) {
         setOpenDropdownId(null);
