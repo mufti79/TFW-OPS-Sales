@@ -159,11 +159,8 @@ const AppComponent: React.FC = () => {
             if (Object.keys(dailyAssignments).length > 0) {
                 console.log('📋 Local assignments (data/dailyAssignments):', dailyAssignments);
             }
-            if (Object.keys(mergedAssignments).length > 0) {
-                console.log('✅ Merged assignments (visible to users):', mergedAssignments);
-            }
         }
-    }, [opsAssignments, dailyAssignments, mergedAssignments]);
+    }, [opsAssignments, dailyAssignments]);
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
@@ -297,6 +294,9 @@ const AppComponent: React.FC = () => {
     }, [selectedDate, setDailyCounts, setDailyRideDetails, logAction, dailyCounts]);
 
     const handleSaveAssignments = (date: string, newAssignments: Record<string, number[]>) => {
+        // Note: We write assignments only to the primary path (data/dailyAssignments) to maintain
+        // a single source of truth for TFW-OPS-Sales edits. The app reads from both paths
+        // (dailyAssignments and opsAssignments) for full compatibility with TFW-NEW.
         setDailyAssignments(prev => ({ ...prev, [date]: newAssignments }));
         logAction('SAVE_ASSIGNMENTS', `Operator assignments updated for ${date}.`);
         showNotification(`Assignments for ${date} saved successfully!`, 'success');
