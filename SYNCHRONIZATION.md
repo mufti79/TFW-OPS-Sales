@@ -33,11 +33,15 @@ Both applications connect to the same Firebase project (`toggifunworld-app`), en
   }
   ```
 
-### 2. Ticket Sales Assignments (`data/tsAssignments`)
+### 2. Ticket Sales Assignments (`data/tsAssignments` and `data/salesAssignments`)
 - **Updated by**: Sales Officers in TFW-NEW app
 - **Consumed by**: 
   - Sales Officers in TFW-OPS-Sales app (view/edit)
   - Ticket Sales Personnel in TFW-OPS-Sales app (view their daily assignments)
+- **Firebase Paths**: 
+  - `data/tsAssignments` - Primary path used by TFW-OPS-Sales
+  - `data/salesAssignments` - Path used by TFW-NEW app
+  - **Note**: TFW-OPS-Sales automatically reads from both paths and merges the data for full compatibility
 - **Structure**: 
   ```json
   {
@@ -113,7 +117,8 @@ Both apps display a connection status indicator:
 - **Delayed Updates**: May occur during poor network conditions. Data will sync when connection improves.
 - **Conflicting Changes**: Last write wins. If two officers update the same assignment simultaneously, the most recent change will be preserved.
 - **Missing Data**: Ensure both apps are deployed with the latest code and same Firebase configuration.
-- **Assignments not appearing from TFW-NEW**: TFW-OPS-Sales now reads from both `data/dailyAssignments` and `data/opsAssignments` paths to ensure compatibility. This allows assignments created in TFW-NEW (which uses `data/opsAssignments`) to appear automatically in TFW-OPS-Sales.
+- **Operator assignments not appearing from TFW-NEW**: TFW-OPS-Sales now reads from both `data/dailyAssignments` and `data/opsAssignments` paths to ensure compatibility. This allows operator assignments created in TFW-NEW (which uses `data/opsAssignments`) to appear automatically in TFW-OPS-Sales.
+- **Ticket Sales assignments not appearing from TFW-NEW**: TFW-OPS-Sales now reads from both `data/tsAssignments` and `data/salesAssignments` paths to ensure compatibility. This allows ticket sales assignments created in TFW-NEW (which uses `data/salesAssignments`) to appear automatically in TFW-OPS-Sales.
 
 ## Development Notes
 
