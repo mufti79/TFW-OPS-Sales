@@ -35,6 +35,13 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
 
   const config = statusConfig[status] || statusConfig.disconnected;
 
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setShowTooltip(!showTooltip);
+    }
+  };
+
   return (
     <div className="relative">
       <div 
@@ -42,13 +49,23 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
         onClick={() => setShowTooltip(!showTooltip)}
+        onKeyDown={handleKeyPress}
+        tabIndex={0}
+        role="button"
+        aria-label="Connection status"
+        aria-expanded={showTooltip}
+        aria-describedby="connection-status-tooltip"
       >
         <span className={`w-3 h-3 rounded-full ${config.color} ${status === 'connecting' ? 'animate-pulse' : ''}`} />
         <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">{config.text}</span>
       </div>
       
       {showTooltip && (
-        <div className="absolute top-full mt-2 right-0 z-50 w-72 p-3 bg-gray-900 border border-gray-700 rounded-lg shadow-xl text-xs text-gray-300">
+        <div 
+          id="connection-status-tooltip"
+          role="tooltip"
+          className="absolute top-full mt-2 right-0 z-50 w-72 p-3 bg-gray-900 border border-gray-700 rounded-lg shadow-xl text-xs text-gray-300"
+        >
           <p className="mb-2">{config.tooltip}</p>
           {status === 'connected' && (
             <p className="text-green-400 text-[11px]">

@@ -51,21 +51,20 @@ Both applications connect to the same Firebase project (`toggifunworld-app`), en
 
 ## Firebase Configuration
 
-Both applications use the following Firebase configuration:
+Both applications must use the same Firebase project configuration for synchronization to work.
 
-```javascript
-{
-  apiKey: "AIzaSyAqOf6utAgmO-NXqbPTnBO3BdD7yCUBbW8",
-  authDomain: "toggifunworld-app.firebaseapp.com",
-  databaseURL: "https://toggifunworld-app-default-rtdb.firebaseio.com",
-  projectId: "toggifunworld-app",
-  storageBucket: "toggifunworld-app.firebasestorage.app",
-  messagingSenderId: "718439883778",
-  appId: "1:718439883778:web:6f3ad4977156ab37e7f31b"
-}
-```
+The Firebase configuration is stored in `firebaseConfig.ts` in each application. This includes:
+- API Key
+- Auth Domain
+- Database URL
+- Project ID
+- Storage Bucket
+- Messaging Sender ID
+- App ID
 
-**IMPORTANT**: For synchronization to work, both apps must use the exact same Firebase configuration.
+**IMPORTANT**: For synchronization to work, both apps must point to the same Firebase project. The configuration is already set up in both repositories.
+
+**Note**: Firebase API keys are designed to be used in client-side code and are not secret. Access control is enforced through Firebase Security Rules, not by keeping the API key private.
 
 ## User Workflow
 
