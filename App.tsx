@@ -150,66 +150,12 @@ const AppComponent: React.FC = () => {
     
     // Merge assignments from both paths for compatibility with TFW-NEW app
     const mergedAssignments = useMemo(() => {
-        const merged: Record<string, Record<string, number[] | number>> = {};
-        
-        // First, add all dailyAssignments
-        Object.keys(dailyAssignments).forEach(date => {
-            merged[date] = { ...dailyAssignments[date] };
-        });
-        
-        // Then, merge in opsAssignments (TFW-NEW path)
-        Object.keys(opsAssignments).forEach(date => {
-            if (merged[date]) {
-                // Merge ride assignments for the same date
-                Object.keys(opsAssignments[date]).forEach(rideId => {
-                    if (!merged[date][rideId]) {
-                        merged[date][rideId] = opsAssignments[date][rideId];
-                    } else {
-                        // Combine operator arrays if both exist
-                        const existing = normalizeAssignmentToArray(merged[date][rideId]);
-                        const incoming = normalizeAssignmentToArray(opsAssignments[date][rideId]);
-                        // Merge and deduplicate (assumes operator IDs are primitive numbers)
-                        merged[date][rideId] = Array.from(new Set([...existing, ...incoming]));
-                    }
-                });
-            } else {
-                merged[date] = { ...opsAssignments[date] };
-            }
-        });
-        
-        return merged;
+        return mergeAssignments(dailyAssignments, opsAssignments);
     }, [dailyAssignments, opsAssignments]);
     
     // Merge ticket sales assignments from both paths for compatibility with TFW-NEW app
     const mergedTSAssignments = useMemo(() => {
-        const merged: Record<string, Record<string, number[] | number>> = {};
-        
-        // First, add all tsAssignments
-        Object.keys(tsAssignments).forEach(date => {
-            merged[date] = { ...tsAssignments[date] };
-        });
-        
-        // Then, merge in salesAssignments (TFW-NEW path)
-        Object.keys(salesAssignments).forEach(date => {
-            if (merged[date]) {
-                // Merge counter assignments for the same date
-                Object.keys(salesAssignments[date]).forEach(counterId => {
-                    if (!merged[date][counterId]) {
-                        merged[date][counterId] = salesAssignments[date][counterId];
-                    } else {
-                        // Combine personnel arrays if both exist
-                        const existing = normalizeAssignmentToArray(merged[date][counterId]);
-                        const incoming = normalizeAssignmentToArray(salesAssignments[date][counterId]);
-                        // Merge and deduplicate (assumes personnel IDs are primitive numbers)
-                        merged[date][counterId] = Array.from(new Set([...existing, ...incoming]));
-                    }
-                });
-            } else {
-                merged[date] = { ...salesAssignments[date] };
-            }
-        });
-        
-        return merged;
+        return mergeAssignments(tsAssignments, salesAssignments);
     }, [tsAssignments, salesAssignments]);
     
     // Debug logging for assignment sync (development only)
