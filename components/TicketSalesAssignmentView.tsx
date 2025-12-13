@@ -85,7 +85,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
       }
     };
 
-    // Add listener on next tick to ensure dropdown is rendered
+    // Add listener after dropdown is opened
     document.addEventListener('mousedown', handleClickOutside);
     
     return () => {

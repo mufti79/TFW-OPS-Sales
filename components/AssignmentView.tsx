@@ -89,7 +89,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
       }
     };
 
-    // Add listener on next tick to ensure dropdown is rendered
+    // Add listener after dropdown is opened
     document.addEventListener('mousedown', handleClickOutside);
     
     return () => {
