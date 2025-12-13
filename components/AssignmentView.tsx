@@ -296,7 +296,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                 ref={(el) => {
                                     if (el && openDropdownId === ride.id) {
                                         dropdownRefs.current.set(ride.id, el);
-                                    } else if (!el && openDropdownId !== ride.id) {
+                                    } else if (!el) {
                                         dropdownRefs.current.delete(ride.id);
                                     }
                                 }}
