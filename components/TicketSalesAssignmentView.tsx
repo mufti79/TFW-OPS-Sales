@@ -20,7 +20,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<'up' | 'down'>('down');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const { showNotification } = useNotification();
   
   useEffect(() => {
@@ -75,15 +75,23 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (event.target && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdownId(null);
+      if (openDropdownId !== null) {
+        const dropdownElement = dropdownRefs.current.get(openDropdownId);
+        if (dropdownElement && event.target && !dropdownElement.contains(event.target as Node)) {
+          setOpenDropdownId(null);
+        }
       }
     };
 
     if (openDropdownId !== null) {
-      document.addEventListener('click', handleClickOutside);
+      // Use a small delay to ensure the dropdown is rendered before adding the listener
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+      
       return () => {
-        document.removeEventListener('click', handleClickOutside);
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
       };
     }
   }, [openDropdownId]);
@@ -280,7 +288,14 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                         <div key={counter.id} className="p-4 bg-gray-800">
                             <h3 className="font-bold text-lg">{counter.name}</h3>
                             <p className="text-sm text-gray-400 mb-2">{counter.location}</p>
-                            <div className="relative" ref={openDropdownId === counter.id ? dropdownRef : null}>
+                            <div 
+                                className="relative" 
+                                ref={(el) => {
+                                    if (el && openDropdownId === counter.id) {
+                                        dropdownRefs.current.set(counter.id, el);
+                                    }
+                                }}
+                            >
                                 <button
                                     onClick={(e) => handleToggleDropdown(e, counter.id)}
                                     className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-left truncate"
@@ -290,7 +305,6 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                                 {openDropdownId === counter.id && (
                                     <div 
                                         className={`absolute z-10 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto ${dropdownPosition === 'up' ? 'bottom-full mb-1' : 'mt-1'}`}
-                                        onClick={(e) => e.stopPropagation()}
                                     >
                                         {ticketSalesPersonnel.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
                                             const isPresent = attendanceStatusMap.get(op.id);

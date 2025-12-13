@@ -20,7 +20,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<'up' | 'down'>('down');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const { showNotification } = useNotification();
   
   // Sync local state with prop from Firebase
@@ -79,15 +79,23 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (event.target && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setOpenDropdownId(null);
+      if (openDropdownId !== null) {
+        const dropdownElement = dropdownRefs.current.get(openDropdownId);
+        if (dropdownElement && event.target && !dropdownElement.contains(event.target as Node)) {
+          setOpenDropdownId(null);
+        }
       }
     };
 
     if (openDropdownId !== null) {
-      document.addEventListener('click', handleClickOutside);
+      // Use a small delay to ensure the dropdown is rendered before adding the listener
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+      
       return () => {
-        document.removeEventListener('click', handleClickOutside);
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
       };
     }
   }, [openDropdownId]);
@@ -284,7 +292,14 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                         <div key={ride.id} className="p-4 bg-gray-800">
                             <h3 className="font-bold text-lg">{ride.name}</h3>
                             <p className="text-sm text-gray-400 mb-2">{ride.floor} Floor</p>
-                            <div className="relative" ref={openDropdownId === ride.id ? dropdownRef : null}>
+                            <div 
+                                className="relative" 
+                                ref={(el) => {
+                                    if (el && openDropdownId === ride.id) {
+                                        dropdownRefs.current.set(ride.id, el);
+                                    }
+                                }}
+                            >
                                 <button
                                     onClick={(e) => handleToggleDropdown(e, ride.id)}
                                     className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-left truncate"
@@ -294,7 +309,6 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                 {openDropdownId === ride.id && (
                                     <div 
                                         className={`absolute z-10 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto ${dropdownPosition === 'up' ? 'bottom-full mb-1' : 'mt-1'}`}
-                                        onClick={(e) => e.stopPropagation()}
                                     >
                                         {operators.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
                                             const isPresent = attendanceStatusMap.get(op.id);
