@@ -111,6 +111,56 @@ const AppComponent: React.FC = () => {
     const { data: appLogo, setData: setAppLogo } = useFirebaseSync<string | null>('config/appLogo', null);
     const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
+    const { data: opsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', {});
+    
+    // Merge assignments from both paths for compatibility with TFW-NEW app
+    const mergedAssignments = useMemo(() => {
+        const merged: Record<string, Record<string, number[] | number>> = {};
+        
+        // First, add all dailyAssignments
+        Object.keys(dailyAssignments).forEach(date => {
+            merged[date] = { ...dailyAssignments[date] };
+        });
+        
+        // Then, merge in opsAssignments (TFW-NEW path)
+        Object.keys(opsAssignments).forEach(date => {
+            if (merged[date]) {
+                // Merge ride assignments for the same date
+                Object.keys(opsAssignments[date]).forEach(rideId => {
+                    if (!merged[date][rideId]) {
+                        merged[date][rideId] = opsAssignments[date][rideId];
+                    } else {
+                        // Combine operator arrays if both exist
+                        const existing = Array.isArray(merged[date][rideId]) 
+                            ? merged[date][rideId] as number[]
+                            : [merged[date][rideId] as number];
+                        const incoming = Array.isArray(opsAssignments[date][rideId])
+                            ? opsAssignments[date][rideId] as number[]
+                            : [opsAssignments[date][rideId] as number];
+                        // Merge and deduplicate
+                        merged[date][rideId] = Array.from(new Set([...existing, ...incoming]));
+                    }
+                });
+            } else {
+                merged[date] = { ...opsAssignments[date] };
+            }
+        });
+        
+        return merged;
+    }, [dailyAssignments, opsAssignments]);
+    
+    // Debug logging for assignment sync
+    useEffect(() => {
+        if (Object.keys(opsAssignments).length > 0) {
+            console.log('🔄 Synced assignments from TFW-NEW (data/opsAssignments):', opsAssignments);
+        }
+        if (Object.keys(dailyAssignments).length > 0) {
+            console.log('📋 Local assignments (data/dailyAssignments):', dailyAssignments);
+        }
+        if (Object.keys(mergedAssignments).length > 0) {
+            console.log('✅ Merged assignments (visible to users):', mergedAssignments);
+        }
+    }, [opsAssignments, dailyAssignments, mergedAssignments]);
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
@@ -375,7 +425,7 @@ const AppComponent: React.FC = () => {
     
     const isCheckinAllowed = useMemo(() => new Date().getHours() < 22, []);
 
-    const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }).length, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments]);
+    const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments, opsAssignments }).length, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments, opsAssignments]);
 
     const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
 
@@ -404,16 +454,16 @@ const AppComponent: React.FC = () => {
     const renderView = () => {
         switch (currentView) {
             case 'reports': return <Reports dailyCounts={dailyCounts || {}} dailyRideDetails={dailyRideDetails || {}} rides={RIDES_ARRAY} />;
-            case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={OPERATORS_ARRAY} dailyAssignments={dailyAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
-            case 'expertise': return <ExpertiseReport operators={OPERATORS_ARRAY} dailyAssignments={dailyAssignments || {}} rides={RIDES_ARRAY} />;
-            case 'roster': return <DailyRoster rides={ridesWithCounts} operators={OPERATORS_ARRAY} dailyAssignments={dailyAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
+            case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
+            case 'expertise': return <ExpertiseReport operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} rides={RIDES_ARRAY} />;
+            case 'roster': return <DailyRoster rides={ridesWithCounts} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
             case 'ts-assignments': return <TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={tsAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
             case 'ts-roster': return <TicketSalesRoster counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={tsAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTSAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
             case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={tsAssignments || {}} counters={COUNTERS_ARRAY} />;
             case 'history': return <HistoryLog history={history} onClearHistory={() => { if(window.confirm("Are you sure?")) { setHistory([]); logAction('CLEAR_HISTORY', 'Cleared the entire activity log.'); } }}/>;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser} selectedDate={selectedDate} onDateChange={handleDateChange} packageSales={packageSalesData || {}} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} packageSales={packageSalesData || {}} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
-            case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={OPERATORS_ARRAY} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={dailyAssignments || {}} />;
+            case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={OPERATORS_ARRAY} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={mergedAssignments || {}} />;
             // Explicitly handle 'counter' to avoid any confusion with default
             case 'counter':
             default: return filteredRides.length > 0 ? (
