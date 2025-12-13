@@ -292,6 +292,8 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                                 ref={(el) => {
                                     if (el && openDropdownId === counter.id) {
                                         dropdownRefs.current.set(counter.id, el);
+                                    } else if (!el && openDropdownId !== counter.id) {
+                                        dropdownRefs.current.delete(counter.id);
                                     }
                                 }}
                             >
