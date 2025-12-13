@@ -342,14 +342,14 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                 <p>Assign one or more operators below, or use the "Import" button to upload an Excel/CSV file.</p>
                 <p className="text-sm text-gray-400">In Excel, the file should have two columns: Ride Name and Operator Name(s). You can list multiple operators in the second column separated by a comma.</p>
                 {Object.keys(assignments).length === 0 && (
-                  <div className="mt-3 p-3 bg-blue-900/30 border border-blue-700/50 rounded-md">
+                  <aside className="mt-3 p-3 bg-blue-900/30 border border-blue-700/50 rounded-md" role="note" aria-label="No assignments information">
                     <p className="text-sm text-blue-300">
                       <strong>No assignments found for {displayDate.toLocaleDateString()}.</strong>
                     </p>
                     <p className="text-xs text-blue-400 mt-1">
                       If you have assignments in TFW-NEW app, click "🔄 Sync Now" above to fetch them. Otherwise, you can create new assignments below or import them from a file.
                     </p>
-                  </div>
+                  </aside>
                 )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">

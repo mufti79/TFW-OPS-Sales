@@ -358,18 +358,21 @@ const AppComponent: React.FC = () => {
             // Save merged ticket sales assignments to local state
             setTSAssignments(mergedTSAssignments);
 
-            // Provide more detailed feedback
-            const opsCount = Object.keys(opsData).length;
-            const dailyCount = Object.keys(dailyData).length;
+            // Provide detailed feedback about sync results
             const totalDates = Object.keys(mergedDailyAssignments).length;
+            const totalTSDates = Object.keys(mergedTSAssignments).length;
             
-            if (opsCount > 0 || dailyCount > 0) {
-                showNotification(`✓ Synced ${totalDates} date(s) of assignments from TFW-NEW app!`, 'success');
+            if (totalDates === 0 && totalTSDates === 0) {
+                showNotification('Sync complete. No assignments found in TFW-NEW app.', 'warning');
+            } else if (totalDates > 0 && totalTSDates > 0) {
+                showNotification(`✓ Synced ${totalDates} operator and ${totalTSDates} ticket sales assignment dates!`, 'success');
+            } else if (totalDates > 0) {
+                showNotification(`✓ Synced ${totalDates} operator assignment date(s)!`, 'success');
             } else {
-                showNotification('No assignments found in TFW-NEW app to sync.', 'warning');
+                showNotification(`✓ Synced ${totalTSDates} ticket sales assignment date(s)!`, 'success');
             }
             
-            logAction('SYNC_ASSIGNMENTS', `Manually synced assignments from TFW-NEW app (${totalDates} dates total)`);
+            logAction('SYNC_ASSIGNMENTS', `Manually synced assignments from TFW-NEW app (${totalDates} operator dates, ${totalTSDates} TS dates)`);
         } catch (error) {
             console.error('Error syncing assignments:', error);
             showNotification('Failed to sync assignments. Check your connection.', 'error');
