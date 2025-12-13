@@ -318,6 +318,64 @@ const AppComponent: React.FC = () => {
 
     const handleNavigate = (view: View) => setCurrentView(view);
 
+    // Manual sync function to force refresh assignments from Firebase
+    const handleSyncAssignments = useCallback(async () => {
+        if (!isFirebaseConfigured || !database) {
+            showNotification('Cannot sync: Firebase is not configured', 'error');
+            return;
+        }
+
+        try {
+            showNotification('Syncing assignments from TFW-NEW app...', 'info', 2000);
+            
+            // Manually fetch the latest data from both assignment paths
+            const [opsSnapshot, dailySnapshot, salesSnapshot, tsSnapshot] = await Promise.all([
+                get(ref(database, 'data/opsAssignments')),
+                get(ref(database, 'data/dailyAssignments')),
+                get(ref(database, 'data/salesAssignments')),
+                get(ref(database, 'data/tsAssignments'))
+            ]);
+
+            // Update local state with fetched data
+            if (opsSnapshot.exists()) {
+                const data = opsSnapshot.val();
+                // Force update localStorage and state
+                const localKey = 'tfw_data_data_opsAssignments';
+                try {
+                    window.localStorage.setItem(localKey, JSON.stringify(data));
+                } catch (e) {
+                    console.warn('Failed to update localStorage for opsAssignments', e);
+                }
+            }
+
+            if (dailySnapshot.exists()) {
+                const data = dailySnapshot.val();
+                setDailyAssignments(data);
+            }
+
+            if (salesSnapshot.exists()) {
+                const data = salesSnapshot.val();
+                const localKey = 'tfw_data_data_salesAssignments';
+                try {
+                    window.localStorage.setItem(localKey, JSON.stringify(data));
+                } catch (e) {
+                    console.warn('Failed to update localStorage for salesAssignments', e);
+                }
+            }
+
+            if (tsSnapshot.exists()) {
+                const data = tsSnapshot.val();
+                setTSAssignments(data);
+            }
+
+            showNotification('✓ Assignments synced successfully!', 'success');
+            logAction('SYNC_ASSIGNMENTS', 'Manually synced assignments from TFW-NEW app');
+        } catch (error) {
+            console.error('Error syncing assignments:', error);
+            showNotification('Failed to sync assignments. Check your connection.', 'error');
+        }
+    }, [setDailyAssignments, setTSAssignments, showNotification, logAction]);
+
     const handleSaveCount = useCallback((rideId: number, newCount: number, details?: { tickets: number, packages: number }) => {
         const rideName = RIDES_ARRAY.find(r => r.id === rideId)?.name || 'Unknown Ride';
         // Null checks added for safety
@@ -499,10 +557,10 @@ const AppComponent: React.FC = () => {
     const renderView = () => {
         switch (currentView) {
             case 'reports': return <Reports dailyCounts={dailyCounts || {}} dailyRideDetails={dailyRideDetails || {}} rides={RIDES_ARRAY} />;
-            case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
+            case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} />;
             case 'expertise': return <ExpertiseReport operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} rides={RIDES_ARRAY} />;
             case 'roster': return <DailyRoster rides={ridesWithCounts} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
-            case 'ts-assignments': return <TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
+            case 'ts-assignments': return <TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} />;
             case 'ts-roster': return <TicketSalesRoster counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTSAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
             case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} counters={COUNTERS_ARRAY} />;
             case 'history': return <HistoryLog history={history} onClearHistory={() => { if(window.confirm("Are you sure?")) { setHistory([]); logAction('CLEAR_HISTORY', 'Cleared the entire activity log.'); } }}/>;

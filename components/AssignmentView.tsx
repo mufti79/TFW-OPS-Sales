@@ -13,12 +13,14 @@ interface AssignmentViewProps {
   onSave: (date: string, assignments: Record<string, number[]>) => void;
   selectedDate: string;
   attendance: AttendanceRecord[];
+  onSync?: () => Promise<void>;
 }
 
-const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, dailyAssignments, onSave, selectedDate, attendance }) => {
+const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, dailyAssignments, onSave, selectedDate, attendance, onSync }) => {
   const [assignments, setAssignments] = useState<Record<string, number[]>>({});
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<'up' | 'down'>('down');
+  const [isSyncing, setIsSyncing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropdownRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const { showNotification } = useNotification();
@@ -135,6 +137,17 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
 
   const handleSave = () => {
     onSave(selectedDate, assignments);
+  };
+  
+  const handleSync = async () => {
+    if (!onSync || isSyncing) return;
+    
+    setIsSyncing(true);
+    try {
+      await onSync();
+    } finally {
+      setIsSyncing(false);
+    }
   };
   
   const handleClearAll = () => {
@@ -258,6 +271,29 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
           </h1>
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto flex-wrap justify-center">
               <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".xlsx, .xls, .csv" className="hidden" />
+              {onSync && (
+                <button
+                    onClick={handleSync}
+                    disabled={isSyncing}
+                    className={`w-full sm:w-auto px-4 py-2 text-sm font-bold rounded-lg active:scale-95 transition-all ${
+                      isSyncing 
+                        ? 'bg-blue-400 text-white cursor-wait' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                >
+                    {isSyncing ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        Syncing...
+                      </span>
+                    ) : (
+                      '🔄 Sync Now'
+                    )}
+                </button>
+              )}
               <button
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full sm:w-auto px-4 py-2 text-sm bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 active:scale-95 transition-all"
