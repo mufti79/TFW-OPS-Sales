@@ -78,29 +78,25 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
 
   // Close dropdown when clicking outside
   useEffect(() => {
+    if (openDropdownId === null) {
+      return;
+    }
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (openDropdownId !== null) {
-        const dropdownElement = dropdownRefs.current.get(openDropdownId);
-        if (dropdownElement && event.target && !dropdownElement.contains(event.target as Node)) {
-          setOpenDropdownId(null);
-        }
+      const dropdownElement = dropdownRefs.current.get(openDropdownId);
+      if (dropdownElement && event.target && !dropdownElement.contains(event.target as Node)) {
+        setOpenDropdownId(null);
       }
     };
 
-    if (openDropdownId !== null) {
-      // Use a small delay to ensure the dropdown is rendered before adding the listener
-      const timeoutId = setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 0);
-      
-      return () => {
-        clearTimeout(timeoutId);
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    } else {
-      // Clean up Map when no dropdown is open
-      dropdownRefs.current.clear();
-    }
+    // Add listener on next tick to ensure dropdown is rendered
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      // Clean up this dropdown's ref when it closes
+      dropdownRefs.current.delete(openDropdownId);
+    };
   }, [openDropdownId]);
 
 
