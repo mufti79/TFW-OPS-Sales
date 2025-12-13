@@ -353,7 +353,18 @@ const AppComponent: React.FC = () => {
             // Merge ticket sales assignments from TFW-NEW (salesAssignments) into tsAssignments
             const salesData = salesSnapshot.exists() ? salesSnapshot.val() : {};
             const tsData = tsSnapshot.exists() ? tsSnapshot.val() : {};
+            
+            // Log what was fetched for debugging (development only)
+            if (import.meta.env.DEV) {
+                console.log('🎫 Sync - Fetched from data/salesAssignments:', salesData);
+                console.log('📋 Sync - Fetched from data/tsAssignments:', tsData);
+            }
+            
             const mergedTSAssignments = mergeAssignments(tsData, salesData);
+            
+            if (import.meta.env.DEV) {
+                console.log('✅ Sync - Merged ticket sales assignments:', mergedTSAssignments);
+            }
             
             // Save merged ticket sales assignments to local state
             setTSAssignments(mergedTSAssignments);
