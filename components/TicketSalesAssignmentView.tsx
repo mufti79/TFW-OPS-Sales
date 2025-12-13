@@ -311,11 +311,15 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                                             const isPresent = attendanceStatusMap.get(op.id);
                                             const statusLabel = isPresent ? '(P)' : '(A)';
                                             return (
-                                                <label key={op.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
+                                                <label key={op.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                                                     <input
                                                         type="checkbox"
                                                         checked={assignedPersonnelIds.includes(op.id)}
-                                                        onChange={() => handleAssignmentChange(counter.id, op.id)}
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
+                                                            handleAssignmentChange(counter.id, op.id);
+                                                        }}
+                                                        onClick={(e) => e.stopPropagation()}
                                                         className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-teal-600 focus:ring-teal-500"
                                                     />
                                                     <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>

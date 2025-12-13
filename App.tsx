@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
-import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
-import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
+import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, MAINTENANCE_PERSONNEL_ARRAY, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
+import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData, MaintenanceTicket } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
@@ -32,6 +32,8 @@ import DailySalesEntry from './components/DailySalesEntry';
 import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import Dashboard from './components/Dashboard';
+import MaintenanceDashboard from './components/MaintenanceDashboard';
+import ReportProblemModal from './components/ReportProblemModal';
 
 // Notification System Implementation
 interface NotificationState {
@@ -68,8 +70,8 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 };
 
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
-type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'maintenance';
+type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | 'report-problem' | null;
 
 const toLocalDateString = (date: Date): string => {
   const year = date.getFullYear();
@@ -85,6 +87,7 @@ const AppComponent: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFloor, setSelectedFloor] = useState('');
     const [selectedRideForEdit, setSelectedRideForEdit] = useState<Ride | null>(null);
+    const [selectedRideForProblem, setSelectedRideForProblem] = useState<Ride | null>(null);
     const [currentView, setCurrentView] = useState<View>('counter');
     const [currentModal, setCurrentModal] = useState<Modal>(null);
 
@@ -111,6 +114,7 @@ const AppComponent: React.FC = () => {
     const { data: appLogo, setData: setAppLogo } = useFirebaseSync<string | null>('config/appLogo', null);
     const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
+    const { data: maintenanceTickets, setData: setMaintenanceTickets } = useFirebaseSync<Record<string, Record<string, MaintenanceTicket>>>('data/maintenanceTickets', {});
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
@@ -300,6 +304,79 @@ const AppComponent: React.FC = () => {
       logAction('DELETE_CATEGORY', `Removed category "${name}" from suggestions.`);
     };
 
+    const handleUpdateMaintenanceTicketStatus = (ticket: MaintenanceTicket, newStatus: 'in-progress' | 'solved', technician: Operator, helpers?: Operator[]) => {
+        const updatedTicket: MaintenanceTicket = {
+            ...ticket,
+            status: newStatus,
+            assignedToId: technician.id,
+            assignedToName: technician.name,
+            helperIds: helpers?.map(h => h.id),
+            helperNames: helpers?.map(h => h.name),
+        };
+        
+        if (newStatus === 'in-progress') {
+            updatedTicket.inProgressAt = new Date().toISOString();
+        } else if (newStatus === 'solved') {
+            updatedTicket.solvedAt = new Date().toISOString();
+        }
+        
+        setMaintenanceTickets(prev => ({
+            ...prev,
+            [ticket.reportedAt.split('T')[0]]: {
+                ...(prev?.[ticket.reportedAt.split('T')[0]] || {}),
+                [ticket.id]: updatedTicket
+            }
+        }));
+        
+        logAction('UPDATE_MAINTENANCE', `${technician.name} updated maintenance ticket for ${ticket.rideName} to ${newStatus}.`);
+        showNotification(`Ticket updated to ${newStatus}!`, 'success');
+    };
+
+    const handleClearSolvedMaintenanceTickets = (date: string) => {
+        if (window.confirm(`Are you sure you want to clear all solved tickets for ${date}?`)) {
+            const ticketsForDate = maintenanceTickets?.[date] || {};
+            const updatedTickets = Object.fromEntries(
+                Object.entries(ticketsForDate).filter(([_, ticket]) => ticket.status !== 'solved')
+            );
+            
+            setMaintenanceTickets(prev => ({
+                ...prev,
+                [date]: updatedTickets
+            }));
+            
+            logAction('CLEAR_SOLVED_TICKETS', `Cleared solved maintenance tickets for ${date}.`);
+            showNotification('Solved tickets cleared!', 'success');
+        }
+    };
+
+    const handleReportProblem = (rideId: number, rideName: string, problem: string, reportedBy: Operator) => {
+        // Generate a unique ticket ID using timestamp and random number to avoid collisions
+        const ticketId = `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const newTicket: MaintenanceTicket = {
+            id: ticketId,
+            rideId,
+            rideName,
+            problem,
+            status: 'reported',
+            reportedBy: reportedBy.id,
+            reportedByName: reportedBy.name,
+            reportedAt: new Date().toISOString(),
+        };
+        
+        const reportDate = newTicket.reportedAt.split('T')[0];
+        
+        setMaintenanceTickets(prev => ({
+            ...prev,
+            [reportDate]: {
+                ...(prev?.[reportDate] || {}),
+                [ticketId]: newTicket
+            }
+        }));
+        
+        logAction('REPORT_PROBLEM', `${reportedBy.name} reported a problem with ${rideName}: ${problem}`);
+        showNotification('Problem reported successfully!', 'success');
+    };
+
     const handleRemoveObsoleteRides = () => {
         const ridesFromCode = new Set(RIDES_ARRAY.map(r => r.id.toString()));
         const ridesInDb = Object.keys(rides || {});
@@ -414,11 +491,12 @@ const AppComponent: React.FC = () => {
             case 'my-sales': return <DailySalesEntry currentUser={currentUser} selectedDate={selectedDate} onDateChange={handleDateChange} packageSales={packageSalesData || {}} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} packageSales={packageSalesData || {}} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
             case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={OPERATORS_ARRAY} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={dailyAssignments || {}} />;
+            case 'maintenance': return <MaintenanceDashboard maintenanceTickets={maintenanceTickets || {}} selectedDate={selectedDate} onDateChange={handleDateChange} onUpdateTicketStatus={handleUpdateMaintenanceTicketStatus} maintenancePersonnel={MAINTENANCE_PERSONNEL_ARRAY} onClearSolved={handleClearSolvedMaintenanceTickets} />;
             // Explicitly handle 'counter' to avoid any confusion with default
             case 'counter':
             default: return filteredRides.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 animate-fade-in-down">
-                    {filteredRides.map(ride => <RideCard key={ride.id} ride={ride} onCountChange={handleSaveCount} role={role} onChangePicture={() => { setSelectedRideForEdit(ride); setCurrentModal('edit-image'); }}/>)}
+                    {filteredRides.map(ride => <RideCard key={ride.id} ride={ride} onCountChange={handleSaveCount} role={role} onChangePicture={() => { setSelectedRideForEdit(ride); setCurrentModal('edit-image'); }} onReportProblem={() => { setSelectedRideForProblem(ride); setCurrentModal('report-problem'); }}/>)}
                 </div>
             ) : (
                 <div className="text-center py-16">
@@ -439,6 +517,7 @@ const AppComponent: React.FC = () => {
         <main className="container mx-auto p-4 md:p-6">{renderView()}</main>
         {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); setDailyRideDetails(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
         {currentModal === 'edit-image' && selectedRideForEdit && <EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...(prev?.[rideId] || {}), imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/>}
+        {currentModal === 'report-problem' && selectedRideForProblem && currentUser && <ReportProblemModal ride={selectedRideForProblem} currentUser={currentUser} onClose={() => { setCurrentModal(null); setSelectedRideForProblem(null); }} onSubmit={handleReportProblem} />}
         {currentModal === 'ai-assistant' && <CodeAssistant rides={RIDES_ARRAY} dailyCounts={dailyCounts || {}} onClose={() => setCurrentModal(null)}/>}
         {currentModal === 'operators' && <OperatorManager operators={OPERATORS_ARRAY} onClose={() => setCurrentModal(null)} onAddOperator={(name) => { /* Logic to be handled by dev */ }} onDeleteOperators={(ids) => { /* Logic to be handled by dev */ }} onImport={(newOperators, strategy) => { /* Logic to be handled by dev */ }}/>}
         {currentModal === 'backup' && <BackupManager onClose={() => setCurrentModal(null)} onExport={() => { const json = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), data: { dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }}, null, 2); const blob = new Blob([json], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`; link.click(); logAction('EXPORT_BACKUP', 'Exported a full application backup.'); }} onImport={(json) => { if (window.confirm("WARNING: This will overwrite ALL current data. Are you sure?")) { try { const backupData = JSON.parse(json); if (backupData.version === 2 && backupData.data) { setDailyCounts(backupData.data.dailyCounts || {}); setDailyRideDetails(backupData.data.dailyRideDetails || {}); setRides(backupData.data.rides || RIDES); setOperators(backupData.data.operators || OPERATORS); setAttendanceData(backupData.data.attendanceData || {}); setTSAssignments(backupData.data.tsAssignments || {}); setHistory(backupData.data.history || []); setPackageSalesData(backupData.data.packageSalesData || {}); setAppLogo(backupData.data.appLogo || null); setOtherSalesCategories(backupData.data.otherSalesCategories || []); setDailyAssignments(backupData.data.dailyAssignments || {}); showNotification('Backup restored successfully!', 'success'); logAction('IMPORT_BACKUP', 'Restored data from a backup file.'); } else { alert("Invalid backup file format."); } } catch (e) { alert("Failed to parse backup file."); } } }} appLogo={appLogo} onLogoChange={setAppLogo} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={Object.values(rides || {}).map((r,i) => ({...r, id: Number(Object.keys(rides || {})[i])})).filter(r => !RIDES_ARRAY.some(staticRide => staticRide.id === r.id))} onRemoveObsoleteRides={handleRemoveObsoleteRides} estimatedDbSize={estimatedDbSize} onResetDay={handleResetDay} />}
