@@ -82,11 +82,21 @@ The Firebase configuration is stored in `firebaseConfig.ts` in each application.
 3. Changes are automatically synced to TFW-OPS-Sales app
 4. Operators can view their roster in TFW-OPS-Sales app immediately
 
+**Manual Sync Option (in TFW-OPS-Sales):**
+- If assignments don't appear immediately, click the "🔄 Sync Now" button in the Operator Assignments view
+- This will manually fetch the latest assignments from TFW-NEW app
+- A success notification will confirm when sync is complete
+
 ### For Sales Officers:
 1. Log into TFW-NEW app (https://tfw-new.vercel.app)
 2. Make ticket sales personnel assignments for counters
 3. Changes are automatically synced to TFW-OPS-Sales app
 4. Ticket sales personnel can view their assignments in TFW-OPS-Sales app immediately
+
+**Manual Sync Option (in TFW-OPS-Sales):**
+- If assignments don't appear immediately, click the "🔄 Sync Now" button in the Ticket Sales Assignments view
+- This will manually fetch the latest assignments from TFW-NEW app
+- A success notification will confirm when sync is complete
 
 ### For Operators/Ticket Sales Personnel:
 1. Log into TFW-OPS-Sales app (https://tfw-ops-sales.vercel.app)
@@ -108,9 +118,10 @@ Both apps display a connection status indicator:
 
 1. **Check Firebase Configuration**: Ensure both apps use the same Firebase project configuration
 2. **Check Internet Connection**: Both apps require internet for real-time sync
-3. **Check Browser Console**: Look for Firebase connection errors
-4. **Clear Cache**: Try clearing browser cache and refreshing both apps
-5. **Check Firebase Console**: Verify data is being written to the database at: https://console.firebase.google.com/project/toggifunworld-app/database
+3. **Use Manual Sync**: Click the "🔄 Sync Now" button in the assignment views to force refresh
+4. **Check Browser Console**: Look for Firebase connection errors
+5. **Clear Cache**: Try clearing browser cache and refreshing both apps
+6. **Check Firebase Console**: Verify data is being written to the database at: https://console.firebase.google.com/project/toggifunworld-app/database
 
 ### Common Issues:
 
