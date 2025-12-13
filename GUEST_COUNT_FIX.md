@@ -130,6 +130,11 @@ All keys are now **strings** to ensure consistent Firebase storage and retrieval
 
 ## Default Credentials
 
+⚠️ **Security Note:** The default PINs below are simple 4-digit codes intended for ease of use in a controlled environment. For production use in a less controlled setting, consider:
+- Using stronger PINs (minimum 6 digits with non-sequential patterns)
+- Implementing PIN rotation policies
+- Adding audit logging for all logins
+
 - **Admin PIN:** 9999
 - **Operation Officer PIN:** 4321
 - **Sales Officer PIN:** 5678
