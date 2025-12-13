@@ -78,6 +78,40 @@ const toLocalDateString = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+// Helper function to normalize assignment values to arrays
+const normalizeAssignmentToArray = (value: number | number[]): number[] => {
+    return Array.isArray(value) ? value : [value];
+};
+
+// Helper function to merge two assignment objects
+const mergeAssignments = (
+    baseData: Record<string, Record<string, number[] | number>>,
+    incomingData: Record<string, Record<string, number[] | number>>
+): Record<string, Record<string, number[] | number>> => {
+    const merged: Record<string, Record<string, number[] | number>> = { ...baseData };
+    
+    Object.keys(incomingData).forEach(date => {
+        if (merged[date]) {
+            // Merge assignments for the same date
+            Object.keys(incomingData[date]).forEach(itemId => {
+                if (!merged[date][itemId]) {
+                    merged[date][itemId] = incomingData[date][itemId];
+                } else {
+                    // Combine arrays if both exist
+                    const existing = normalizeAssignmentToArray(merged[date][itemId]);
+                    const incoming = normalizeAssignmentToArray(incomingData[date][itemId]);
+                    // Merge and deduplicate
+                    merged[date][itemId] = Array.from(new Set([...existing, ...incoming]));
+                }
+            });
+        } else {
+            merged[date] = { ...incomingData[date] };
+        }
+    });
+    
+    return merged;
+};
+
 // This is the main application component with all the logic.
 const AppComponent: React.FC = () => {
     const { role, currentUser, login, logout } = useAuth();
@@ -113,40 +147,6 @@ const AppComponent: React.FC = () => {
     const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
     const { data: opsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', {});
-    
-    // Helper function to normalize assignment values to arrays
-    const normalizeAssignmentToArray = (value: number | number[]): number[] => {
-        return Array.isArray(value) ? value : [value];
-    };
-    
-    // Helper function to merge two assignment objects
-    const mergeAssignments = (
-        baseData: Record<string, Record<string, number[] | number>>,
-        incomingData: Record<string, Record<string, number[] | number>>
-    ): Record<string, Record<string, number[] | number>> => {
-        const merged: Record<string, Record<string, number[] | number>> = { ...baseData };
-        
-        Object.keys(incomingData).forEach(date => {
-            if (merged[date]) {
-                // Merge assignments for the same date
-                Object.keys(incomingData[date]).forEach(itemId => {
-                    if (!merged[date][itemId]) {
-                        merged[date][itemId] = incomingData[date][itemId];
-                    } else {
-                        // Combine arrays if both exist
-                        const existing = normalizeAssignmentToArray(merged[date][itemId]);
-                        const incoming = normalizeAssignmentToArray(incomingData[date][itemId]);
-                        // Merge and deduplicate
-                        merged[date][itemId] = Array.from(new Set([...existing, ...incoming]));
-                    }
-                });
-            } else {
-                merged[date] = { ...incomingData[date] };
-            }
-        });
-        
-        return merged;
-    };
     
     // Merge assignments from both paths for compatibility with TFW-NEW app
     const mergedAssignments = useMemo(() => {
