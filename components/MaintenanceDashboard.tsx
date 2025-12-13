@@ -199,11 +199,15 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                                 const category = getPersonnelCategory(p.id);
                                 const categoryTag = category === 'Operator' ? '[Ops]' : '[Sales]';
                                 return (
-                                    <label key={p.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
+                                    <label key={p.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                                         <input
                                             type="checkbox"
                                             checked={selectedHelpers.some(h => h.id === p.id)}
-                                            onChange={() => handleToggleHelper(p)}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                handleToggleHelper(p);
+                                            }}
+                                            onClick={(e) => e.stopPropagation()}
                                             className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-indigo-600 focus:ring-indigo-500"
                                         />
                                         <span className="ml-3 text-gray-300">{p.name} <span className="text-gray-500 text-xs">{categoryTag}</span></span>
