@@ -106,6 +106,7 @@ const AppComponent: React.FC = () => {
     const { data: operators, setData: setOperators } = useFirebaseSync<Record<number, Omit<Operator, 'id'>>>('config/operators', OPERATORS);
     const { data: attendanceData, setData: setAttendanceData } = useFirebaseSync<AttendanceData>('data/attendance', {});
     const { data: tsAssignments, setData: setTSAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/tsAssignments', {});
+    const { data: salesAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/salesAssignments', {});
     const { data: history, setData: setHistory } = useFirebaseSync<HistoryRecord[]>('data/history', []);
     const { data: packageSalesData, setData: setPackageSalesData } = useFirebaseSync<PackageSalesData>('data/packageSales', {});
     const { data: appLogo, setData: setAppLogo } = useFirebaseSync<string | null>('config/appLogo', null);
@@ -150,6 +151,38 @@ const AppComponent: React.FC = () => {
         return merged;
     }, [dailyAssignments, opsAssignments]);
     
+    // Merge ticket sales assignments from both paths for compatibility with TFW-NEW app
+    const mergedTSAssignments = useMemo(() => {
+        const merged: Record<string, Record<string, number[] | number>> = {};
+        
+        // First, add all tsAssignments
+        Object.keys(tsAssignments).forEach(date => {
+            merged[date] = { ...tsAssignments[date] };
+        });
+        
+        // Then, merge in salesAssignments (TFW-NEW path)
+        Object.keys(salesAssignments).forEach(date => {
+            if (merged[date]) {
+                // Merge counter assignments for the same date
+                Object.keys(salesAssignments[date]).forEach(counterId => {
+                    if (!merged[date][counterId]) {
+                        merged[date][counterId] = salesAssignments[date][counterId];
+                    } else {
+                        // Combine personnel arrays if both exist
+                        const existing = normalizeAssignmentToArray(merged[date][counterId]);
+                        const incoming = normalizeAssignmentToArray(salesAssignments[date][counterId]);
+                        // Merge and deduplicate
+                        merged[date][counterId] = Array.from(new Set([...existing, ...incoming]));
+                    }
+                });
+            } else {
+                merged[date] = { ...salesAssignments[date] };
+            }
+        });
+        
+        return merged;
+    }, [tsAssignments, salesAssignments]);
+    
     // Debug logging for assignment sync (development only)
     useEffect(() => {
         if (import.meta.env.DEV) {
@@ -159,8 +192,14 @@ const AppComponent: React.FC = () => {
             if (Object.keys(dailyAssignments).length > 0) {
                 console.log('📋 Local assignments (data/dailyAssignments):', dailyAssignments);
             }
+            if (Object.keys(salesAssignments).length > 0) {
+                console.log('🔄 Synced ticket sales assignments from TFW-NEW (data/salesAssignments):', salesAssignments);
+            }
+            if (Object.keys(tsAssignments).length > 0) {
+                console.log('🎫 Local ticket sales assignments (data/tsAssignments):', tsAssignments);
+            }
         }
-    }, [opsAssignments, dailyAssignments]);
+    }, [opsAssignments, dailyAssignments, salesAssignments, tsAssignments]);
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
@@ -303,6 +342,9 @@ const AppComponent: React.FC = () => {
     };
 
     const handleSaveTSAssignments = (date: string, newAssignments: Record<string, number[]>) => {
+        // Note: We write ticket sales assignments only to the primary path (data/tsAssignments) to maintain
+        // a single source of truth for TFW-OPS-Sales edits. The app reads from both paths
+        // (tsAssignments and salesAssignments) for full compatibility with TFW-NEW.
         setTSAssignments(prev => ({ ...prev, [date]: newAssignments }));
         logAction('SAVE_TS_ASSIGNMENTS', `Ticket Sales assignments updated for ${date}.`);
         showNotification(`Ticket Sales assignments for ${date} saved successfully!`, 'success');
@@ -428,7 +470,7 @@ const AppComponent: React.FC = () => {
     
     const isCheckinAllowed = useMemo(() => new Date().getHours() < 22, []);
 
-    const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments, opsAssignments }).length, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments, opsAssignments]);
+    const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments, opsAssignments, salesAssignments }).length, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments, opsAssignments, salesAssignments]);
 
     const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
 
@@ -460,9 +502,9 @@ const AppComponent: React.FC = () => {
             case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
             case 'expertise': return <ExpertiseReport operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} rides={RIDES_ARRAY} />;
             case 'roster': return <DailyRoster rides={ridesWithCounts} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
-            case 'ts-assignments': return <TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={tsAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
-            case 'ts-roster': return <TicketSalesRoster counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={tsAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTSAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
-            case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={tsAssignments || {}} counters={COUNTERS_ARRAY} />;
+            case 'ts-assignments': return <TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} />;
+            case 'ts-roster': return <TicketSalesRoster counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTSAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} />;
+            case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} counters={COUNTERS_ARRAY} />;
             case 'history': return <HistoryLog history={history} onClearHistory={() => { if(window.confirm("Are you sure?")) { setHistory([]); logAction('CLEAR_HISTORY', 'Cleared the entire activity log.'); } }}/>;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser} selectedDate={selectedDate} onDateChange={handleDateChange} packageSales={packageSalesData || {}} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} packageSales={packageSalesData || {}} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
