@@ -97,6 +97,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         clearTimeout(timeoutId);
         document.removeEventListener('mousedown', handleClickOutside);
       };
+    } else {
+      // Clean up Map when no dropdown is open
+      dropdownRefs.current.clear();
     }
   }, [openDropdownId]);
 

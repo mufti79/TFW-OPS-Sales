@@ -93,6 +93,9 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
         clearTimeout(timeoutId);
         document.removeEventListener('mousedown', handleClickOutside);
       };
+    } else {
+      // Clean up Map when no dropdown is open
+      dropdownRefs.current.clear();
     }
   }, [openDropdownId]);
 
