@@ -115,11 +115,13 @@ interface TicketSalesRosterProps {
   hasCheckedInToday: boolean;
   onClockIn: (attendedBriefing: boolean, briefingTime: string | null) => void;
   isCheckinAllowed: boolean;
+  onSync?: () => Promise<void>;
 }
 
-const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onSaveAssignments, hasCheckedInToday, onClockIn, isCheckinAllowed }) => {
+const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onSaveAssignments, hasCheckedInToday, onClockIn, isCheckinAllowed, onSync }) => {
   const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'present' | 'absent'>('all');
   const [manageModalInfo, setManageModalInfo] = useState<Counter | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
@@ -251,9 +253,21 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
         }
         onSaveAssignments(selectedDate, updatedAssignments);
     };
+    
+  const handleSync = async () => {
+    if (!onSync || isSyncing) return;
+    
+    setIsSyncing(true);
+    try {
+      await onSync();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const isRosterEmpty = personnelWithAttendance.length === 0;
   const isManager = role === 'admin' || role === 'sales-officer';
+  const hasAssignments = Object.keys(dailyAssignments[selectedDate] || {}).length > 0;
 
   const [year, month, day] = selectedDate.split('-').map(Number);
   const displayDate = new Date(year, month - 1, day);
@@ -287,9 +301,38 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
             <svg className="w-5 h-5 text-teal-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
             </svg>
-            <div className="text-sm text-gray-300">
+            <div className="text-sm text-gray-300 flex-grow">
               <span className="font-semibold text-teal-400">Sync Enabled:</span> Assignments made in TFW-NEW app automatically appear here. Ticket sales personnel will see their roster in real-time.
+              {!hasAssignments && (
+                <p className="mt-1 text-yellow-400">
+                  ⚠️ No assignments found for {displayDate.toLocaleDateString()}. Use "Sync Now" to fetch from TFW-NEW or "Edit Assignments" to create new ones.
+                </p>
+              )}
             </div>
+            {onSync && (
+              <button
+                onClick={handleSync}
+                disabled={isSyncing}
+                className={`ml-2 px-3 py-1.5 text-xs font-bold rounded-md active:scale-95 transition-all ${
+                  isSyncing 
+                    ? 'bg-teal-400 text-white cursor-wait' 
+                    : 'bg-teal-600 text-white hover:bg-teal-700'
+                }`}
+                title="Manually fetch latest assignments from TFW-NEW app"
+              >
+                {isSyncing ? (
+                  <span className="flex items-center gap-1">
+                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                    </svg>
+                    Syncing...
+                  </span>
+                ) : (
+                  '🔄 Sync Now'
+                )}
+              </button>
+            )}
           </div>
         </div>
       )}
