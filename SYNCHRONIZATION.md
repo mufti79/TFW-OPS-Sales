@@ -1,5 +1,27 @@
 # Cross-Application Synchronization
 
+## Quick Start Guide
+
+### ⚡ For Operation Officers (Operator Assignments):
+1. **To view roster**: Go to TFW-OPS-Sales → Log in → Daily Roster view
+2. **To make/edit assignments**: 
+   - **Option A (Recommended)**: Use TFW-NEW app → Make assignments → They appear automatically in TFW-OPS-Sales
+   - **Option B**: Use TFW-OPS-Sales → Click "Edit Assignments" → Make assignments → They sync to TFW-NEW
+3. **If assignments don't appear**: Click the "🔄 Sync Now" button (visible in Roster view header)
+
+### ⚡ For Sales Officers (Ticket Sales Assignments):
+1. **To view roster**: Go to TFW-OPS-Sales → Log in → Ticket Sales Roster view
+2. **To make/edit assignments**:
+   - **Option A (Recommended)**: Use TFW-NEW app → Make assignments → They appear automatically in TFW-OPS-Sales
+   - **Option B**: Use TFW-OPS-Sales → Click "Edit Assignments" → Make assignments → They sync to TFW-NEW
+3. **If assignments don't appear**: Click the "🔄 Sync Now" button (visible in Roster view header)
+
+### 🔄 Sync Buttons Location:
+- **Roster View**: In the sync status banner (blue/teal box at top) - click "🔄 Sync Now" button on the right
+- **Edit Assignments View**: In the button toolbar at top-right - click "🔄 Sync Now" button
+
+---
+
 ## Overview
 
 This application (**TFW-OPS-Sales**: https://tfw-ops-sales.vercel.app) is synchronized with the **TFW-NEW** application (https://tfw-new.vercel.app) through a shared Firebase Realtime Database.
@@ -77,26 +99,42 @@ The Firebase configuration is stored in `firebaseConfig.ts` in each application.
 ## User Workflow
 
 ### For Operation Officers:
-1. Log into TFW-NEW app (https://tfw-new.vercel.app)
+1. **Recommended**: Log into TFW-NEW app (https://tfw-new.vercel.app)
 2. Make operator assignments for rides
 3. Changes are automatically synced to TFW-OPS-Sales app
 4. Operators can view their roster in TFW-OPS-Sales app immediately
 
+**Alternative - Use TFW-OPS-Sales Directly:**
+- Log into TFW-OPS-Sales app (https://tfw-ops-sales.vercel.app)
+- Click "Edit Assignments" from the roster view
+- Make assignments directly in TFW-OPS-Sales
+- Changes will sync back to TFW-NEW app automatically
+
 **Manual Sync Option (in TFW-OPS-Sales):**
-- If assignments don't appear immediately, click the "🔄 Sync Now" button in the Operator Assignments view
-- This will manually fetch the latest assignments from TFW-NEW app
-- A success notification will confirm when sync is complete
+- The "🔄 Sync Now" button is available in **both** the Roster view and the Edit Assignments view
+- If assignments don't appear immediately, click "🔄 Sync Now" to manually fetch from TFW-NEW app
+- The sync button is located in the top-right corner of the sync status banner (Roster view) or header (Edit view)
+- A success notification will confirm when sync is complete and show how many dates were synced
+- If no assignments are found, you'll get a helpful message suggesting next steps
 
 ### For Sales Officers:
-1. Log into TFW-NEW app (https://tfw-new.vercel.app)
+1. **Recommended**: Log into TFW-NEW app (https://tfw-new.vercel.app)
 2. Make ticket sales personnel assignments for counters
 3. Changes are automatically synced to TFW-OPS-Sales app
 4. Ticket sales personnel can view their assignments in TFW-OPS-Sales app immediately
 
+**Alternative - Use TFW-OPS-Sales Directly:**
+- Log into TFW-OPS-Sales app (https://tfw-ops-sales.vercel.app)
+- Click "Edit Assignments" from the ticket sales roster view
+- Make assignments directly in TFW-OPS-Sales
+- Changes will sync back to TFW-NEW app automatically
+
 **Manual Sync Option (in TFW-OPS-Sales):**
-- If assignments don't appear immediately, click the "🔄 Sync Now" button in the Ticket Sales Assignments view
-- This will manually fetch the latest assignments from TFW-NEW app
-- A success notification will confirm when sync is complete
+- The "🔄 Sync Now" button is available in **both** the Ticket Sales Roster view and the Edit Assignments view
+- If assignments don't appear immediately, click "🔄 Sync Now" to manually fetch from TFW-NEW app
+- The sync button is located in the top-right corner of the sync status banner (Roster view) or header (Edit view)
+- A success notification will confirm when sync is complete and show how many dates were synced
+- If no assignments are found, you'll get a helpful message suggesting next steps
 
 ### For Operators/Ticket Sales Personnel:
 1. Log into TFW-OPS-Sales app (https://tfw-ops-sales.vercel.app)
@@ -118,8 +156,10 @@ Both apps display a connection status indicator:
 
 1. **Check Firebase Configuration**: Ensure both apps use the same Firebase project configuration
 2. **Check Internet Connection**: Both apps require internet for real-time sync
-3. **Use Manual Sync**: Click the "🔄 Sync Now" button in the assignment views to force refresh
-4. **Check Browser Console**: Look for Firebase connection errors and sync debug logs
+3. **Use Manual Sync**: 
+   - Click the "🔄 Sync Now" button in the **Roster view** (visible in sync status banner) or **Edit Assignments view** (visible in header)
+   - Wait for the success notification that shows how many dates were synced
+4. **Check Browser Console**: Look for Firebase connection errors and sync debug logs (press F12)
 5. **Verify Data Exists**: Open TFW-NEW app and confirm assignments exist for the date you're checking
 6. **Check Date Format**: Ensure the date is in YYYY-MM-DD format (e.g., 2025-12-13)
 7. **Clear Cache**: Try clearing browser cache and refreshing both apps
@@ -127,27 +167,37 @@ Both apps display a connection status indicator:
 
 ### Debugging Empty Assignments:
 
-If assignments appear empty after clicking "Sync Now":
+If assignments appear empty even after syncing:
 
-1. **Open Browser Console** (F12 or right-click → Inspect → Console tab):
+1. **Look for the Warning Message**:
+   - In the Roster view, if no assignments exist, you'll see a yellow warning: "⚠️ No assignments found for [date]"
+   - The message will suggest using "Sync Now" or "Edit Assignments"
+
+2. **Click "Sync Now"** (available in Roster view):
+   - Located in the blue/teal sync status banner at the top
+   - Watch for the notification message after clicking
+   - If it says "No assignments found", then no data exists in TFW-NEW for that date
+   - If it shows a count (e.g., "✓ Synced 3 operator assignment dates"), check if your selected date is included
+
+3. **Open Browser Console** (F12 or right-click → Inspect → Console tab):
    - Look for messages starting with `🔄 Sync -` to see what data was fetched
-   - Check if `data/opsAssignments` has data for your date
+   - Check if `data/opsAssignments` or `data/salesAssignments` has data for your date
    - Verify the merged assignments contain the expected data
 
-2. **Check the Date**:
-   - Ensure you're viewing the correct date in the assignment view
+4. **Check the Date**:
+   - Ensure you're viewing the correct date in the roster/assignment view
    - The date selector is in the top-right corner
    - Date must match exactly with assignments in TFW-NEW (format: YYYY-MM-DD)
 
-3. **Verify Data in Firebase**:
+5. **Verify Data in Firebase**:
    - Go to Firebase Console → Realtime Database
    - Navigate to `data/opsAssignments/YYYY-MM-DD` (e.g., `data/opsAssignments/2025-12-13`)
    - Confirm assignments exist at this path
 
-4. **Check for Success Message**:
-   - After clicking "Sync Now", you should see a notification
-   - If it says "No assignments found", then no data exists in TFW-NEW for that date
-   - If it shows a count, that's how many dates were synced
+6. **Create Assignments**:
+   - If no assignments exist, click "Edit Assignments" button from the Roster view
+   - You can create assignments directly in TFW-OPS-Sales
+   - Or create them in TFW-NEW app and they'll sync automatically
 
 ### Common Issues:
 
