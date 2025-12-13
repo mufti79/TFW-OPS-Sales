@@ -113,6 +113,11 @@ const AppComponent: React.FC = () => {
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
     const { data: opsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', {});
     
+    // Helper function to normalize assignment values to arrays
+    const normalizeAssignmentToArray = (value: number | number[]): number[] => {
+        return Array.isArray(value) ? value : [value];
+    };
+    
     // Merge assignments from both paths for compatibility with TFW-NEW app
     const mergedAssignments = useMemo(() => {
         const merged: Record<string, Record<string, number[] | number>> = {};
@@ -131,12 +136,8 @@ const AppComponent: React.FC = () => {
                         merged[date][rideId] = opsAssignments[date][rideId];
                     } else {
                         // Combine operator arrays if both exist
-                        const existing = Array.isArray(merged[date][rideId]) 
-                            ? merged[date][rideId] as number[]
-                            : [merged[date][rideId] as number];
-                        const incoming = Array.isArray(opsAssignments[date][rideId])
-                            ? opsAssignments[date][rideId] as number[]
-                            : [opsAssignments[date][rideId] as number];
+                        const existing = normalizeAssignmentToArray(merged[date][rideId]);
+                        const incoming = normalizeAssignmentToArray(opsAssignments[date][rideId]);
                         // Merge and deduplicate
                         merged[date][rideId] = Array.from(new Set([...existing, ...incoming]));
                     }
@@ -149,16 +150,18 @@ const AppComponent: React.FC = () => {
         return merged;
     }, [dailyAssignments, opsAssignments]);
     
-    // Debug logging for assignment sync
+    // Debug logging for assignment sync (development only)
     useEffect(() => {
-        if (Object.keys(opsAssignments).length > 0) {
-            console.log('🔄 Synced assignments from TFW-NEW (data/opsAssignments):', opsAssignments);
-        }
-        if (Object.keys(dailyAssignments).length > 0) {
-            console.log('📋 Local assignments (data/dailyAssignments):', dailyAssignments);
-        }
-        if (Object.keys(mergedAssignments).length > 0) {
-            console.log('✅ Merged assignments (visible to users):', mergedAssignments);
+        if (import.meta.env.DEV) {
+            if (Object.keys(opsAssignments).length > 0) {
+                console.log('🔄 Synced assignments from TFW-NEW (data/opsAssignments):', opsAssignments);
+            }
+            if (Object.keys(dailyAssignments).length > 0) {
+                console.log('📋 Local assignments (data/dailyAssignments):', dailyAssignments);
+            }
+            if (Object.keys(mergedAssignments).length > 0) {
+                console.log('✅ Merged assignments (visible to users):', mergedAssignments);
+            }
         }
     }, [opsAssignments, dailyAssignments, mergedAssignments]);
     
