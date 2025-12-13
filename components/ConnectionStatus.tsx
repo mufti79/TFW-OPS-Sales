@@ -35,7 +35,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
 
   const config = statusConfig[status] || statusConfig.disconnected;
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       setShowTooltip(!showTooltip);
@@ -49,9 +49,8 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
         onClick={() => setShowTooltip(!showTooltip)}
-        onKeyDown={handleKeyPress}
+        onKeyDown={handleKeyDown}
         tabIndex={0}
-        role="button"
         aria-label="Connection status"
         aria-expanded={showTooltip}
         aria-describedby="connection-status-tooltip"
