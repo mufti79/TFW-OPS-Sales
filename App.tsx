@@ -350,7 +350,8 @@ const AppComponent: React.FC = () => {
     };
 
     const handleReportProblem = (rideId: number, rideName: string, problem: string, reportedBy: Operator) => {
-        const ticketId = `ticket-${Date.now()}`;
+        // Generate a unique ticket ID using timestamp and random number to avoid collisions
+        const ticketId = `ticket-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const newTicket: MaintenanceTicket = {
             id: ticketId,
             rideId,

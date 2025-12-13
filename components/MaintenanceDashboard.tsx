@@ -18,16 +18,20 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
   const [isHelperDropdownOpen, setIsHelperDropdownOpen] = useState(false);
   const helperDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Create Sets for O(1) lookup performance
+  const operatorIds = useMemo(() => new Set(OPERATORS_ARRAY.map(op => op.id)), []);
+  const ticketSalesIds = useMemo(() => new Set(TICKET_SALES_PERSONNEL_ARRAY.map(ts => ts.id)), []);
+
   // Helper function to determine personnel category
-  const getPersonnelCategory = (personnelId: number): 'Operator' | 'Ticket Sales' => {
-    if (OPERATORS_ARRAY.some(op => op.id === personnelId)) {
+  const getPersonnelCategory = useMemo(() => (personnelId: number): 'Operator' | 'Ticket Sales' => {
+    if (operatorIds.has(personnelId)) {
       return 'Operator';
     }
-    if (TICKET_SALES_PERSONNEL_ARRAY.some(ts => ts.id === personnelId)) {
+    if (ticketSalesIds.has(personnelId)) {
       return 'Ticket Sales';
     }
     return 'Operator'; // Default fallback
-  };
+  }, [operatorIds, ticketSalesIds]);
 
 
   useEffect(() => {
