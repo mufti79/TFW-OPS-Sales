@@ -82,21 +82,18 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
       return;
     }
 
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: PointerEvent) => {
       const dropdownElement = dropdownRefs.current.get(openDropdownId);
       if (dropdownElement && event.target && !dropdownElement.contains(event.target as Node)) {
         setOpenDropdownId(null);
       }
     };
 
-    // Use setTimeout to ensure the ref is set before adding the listener
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('mousedown', handleClickOutside);
-    }, 0);
-    
+    // Attach native listener in capture phase and use pointerdown for better device support
+    document.addEventListener('pointerdown', handleClickOutside, true);
+
     return () => {
-      clearTimeout(timeoutId);
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('pointerdown', handleClickOutside, true);
       // Clean up this dropdown's ref when it closes
       dropdownRefs.current.delete(openDropdownId);
     };
@@ -318,7 +315,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                             const isPresent = attendanceStatusMap.get(op.id);
                                             const statusLabel = isPresent ? '(P)' : '(A)';
                                             return (
-                                                <label key={op.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer" onMouseDown={(e) => e.stopPropagation()}>
+                                                <label key={op.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer" onMouseDown={(e) => (e.nativeEvent as MouseEvent).stopImmediatePropagation()}>
                                                     <input
                                                         type="checkbox"
                                                         checked={assignedOperatorIds.includes(op.id)}
