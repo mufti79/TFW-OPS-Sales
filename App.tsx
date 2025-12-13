@@ -119,6 +119,35 @@ const AppComponent: React.FC = () => {
         return Array.isArray(value) ? value : [value];
     };
     
+    // Helper function to merge two assignment objects
+    const mergeAssignments = (
+        baseData: Record<string, Record<string, number[] | number>>,
+        incomingData: Record<string, Record<string, number[] | number>>
+    ): Record<string, Record<string, number[] | number>> => {
+        const merged: Record<string, Record<string, number[] | number>> = { ...baseData };
+        
+        Object.keys(incomingData).forEach(date => {
+            if (merged[date]) {
+                // Merge assignments for the same date
+                Object.keys(incomingData[date]).forEach(itemId => {
+                    if (!merged[date][itemId]) {
+                        merged[date][itemId] = incomingData[date][itemId];
+                    } else {
+                        // Combine arrays if both exist
+                        const existing = normalizeAssignmentToArray(merged[date][itemId]);
+                        const incoming = normalizeAssignmentToArray(incomingData[date][itemId]);
+                        // Merge and deduplicate
+                        merged[date][itemId] = Array.from(new Set([...existing, ...incoming]));
+                    }
+                });
+            } else {
+                merged[date] = { ...incomingData[date] };
+            }
+        });
+        
+        return merged;
+    };
+    
     // Merge assignments from both paths for compatibility with TFW-NEW app
     const mergedAssignments = useMemo(() => {
         const merged: Record<string, Record<string, number[] | number>> = {};
@@ -339,28 +368,7 @@ const AppComponent: React.FC = () => {
             // Merge operator assignments from TFW-NEW (opsAssignments) into dailyAssignments
             const opsData = opsSnapshot.exists() ? opsSnapshot.val() : {};
             const dailyData = dailySnapshot.exists() ? dailySnapshot.val() : {};
-            
-            // Merge both sources: combine assignments from both paths
-            const mergedDailyAssignments: Record<string, Record<string, number[] | number>> = { ...dailyData };
-            
-            Object.keys(opsData).forEach(date => {
-                if (mergedDailyAssignments[date]) {
-                    // Merge ride assignments for the same date
-                    Object.keys(opsData[date]).forEach(rideId => {
-                        if (!mergedDailyAssignments[date][rideId]) {
-                            mergedDailyAssignments[date][rideId] = opsData[date][rideId];
-                        } else {
-                            // Combine operator arrays if both exist
-                            const existing = normalizeAssignmentToArray(mergedDailyAssignments[date][rideId]);
-                            const incoming = normalizeAssignmentToArray(opsData[date][rideId]);
-                            // Merge and deduplicate
-                            mergedDailyAssignments[date][rideId] = Array.from(new Set([...existing, ...incoming]));
-                        }
-                    });
-                } else {
-                    mergedDailyAssignments[date] = { ...opsData[date] };
-                }
-            });
+            const mergedDailyAssignments = mergeAssignments(dailyData, opsData);
             
             // Save merged operator assignments to local state
             setDailyAssignments(mergedDailyAssignments);
@@ -368,28 +376,7 @@ const AppComponent: React.FC = () => {
             // Merge ticket sales assignments from TFW-NEW (salesAssignments) into tsAssignments
             const salesData = salesSnapshot.exists() ? salesSnapshot.val() : {};
             const tsData = tsSnapshot.exists() ? tsSnapshot.val() : {};
-            
-            // Merge both sources: combine assignments from both paths
-            const mergedTSAssignments: Record<string, Record<string, number[] | number>> = { ...tsData };
-            
-            Object.keys(salesData).forEach(date => {
-                if (mergedTSAssignments[date]) {
-                    // Merge counter assignments for the same date
-                    Object.keys(salesData[date]).forEach(counterId => {
-                        if (!mergedTSAssignments[date][counterId]) {
-                            mergedTSAssignments[date][counterId] = salesData[date][counterId];
-                        } else {
-                            // Combine personnel arrays if both exist
-                            const existing = normalizeAssignmentToArray(mergedTSAssignments[date][counterId]);
-                            const incoming = normalizeAssignmentToArray(salesData[date][counterId]);
-                            // Merge and deduplicate
-                            mergedTSAssignments[date][counterId] = Array.from(new Set([...existing, ...incoming]));
-                        }
-                    });
-                } else {
-                    mergedTSAssignments[date] = { ...salesData[date] };
-                }
-            });
+            const mergedTSAssignments = mergeAssignments(tsData, salesData);
             
             // Save merged ticket sales assignments to local state
             setTSAssignments(mergedTSAssignments);
