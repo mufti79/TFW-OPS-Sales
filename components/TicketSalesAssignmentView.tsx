@@ -81,9 +81,9 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
     };
 
     if (openDropdownId !== null) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('click', handleClickOutside);
       return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('click', handleClickOutside);
       };
     }
   }, [openDropdownId]);
@@ -288,7 +288,10 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                                     {assignedNames || <span className="text-gray-500">Unassigned</span>}
                                 </button>
                                 {openDropdownId === counter.id && (
-                                    <div className={`absolute z-10 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto ${dropdownPosition === 'up' ? 'bottom-full mb-1' : 'mt-1'}`}>
+                                    <div 
+                                        className={`absolute z-10 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto ${dropdownPosition === 'up' ? 'bottom-full mb-1' : 'mt-1'}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
                                         {ticketSalesPersonnel.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
                                             const isPresent = attendanceStatusMap.get(op.id);
                                             const statusLabel = isPresent ? '(P)' : '(A)';
