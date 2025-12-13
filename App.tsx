@@ -377,10 +377,8 @@ const AppComponent: React.FC = () => {
                 showNotification('Sync complete. No assignments found in TFW-NEW app.', 'warning');
             } else if (totalDates > 0 && totalTSDates > 0) {
                 showNotification(`✓ Synced ${totalDates} operator and ${totalTSDates} ticket sales assignment dates!`, 'success');
-            } else if (totalDates > 0) {
-                showNotification(`✓ Synced ${totalDates} operator assignment date(s)!`, 'success');
             } else {
-                showNotification(`✓ Synced ${totalTSDates} ticket sales assignment date(s)!`, 'success');
+                showNotification(`✓ Synced ${totalDates > 0 ? totalDates + ' operator' : totalTSDates + ' ticket sales'} assignment date(s)!`, 'success');
             }
             
             logAction('SYNC_ASSIGNMENTS', `Manually synced assignments from TFW-NEW app (${totalDates} operator dates, ${totalTSDates} TS dates)`);
