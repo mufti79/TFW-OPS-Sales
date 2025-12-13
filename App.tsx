@@ -32,6 +32,9 @@ import DailySalesEntry from './components/DailySalesEntry';
 import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import Dashboard from './components/Dashboard';
+import SecurityView from './components/SecurityView';
+import ManagementView from './components/ManagementView';
+import ManagementHub from './components/ManagementHub';
 
 // Notification System Implementation
 interface NotificationState {
@@ -68,7 +71,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 };
 
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
 const toLocalDateString = (date: Date): string => {
@@ -167,6 +170,7 @@ const AppComponent: React.FC = () => {
     const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
     const { data: opsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', {});
+    const { data: floorGuestCounts, setData: setFloorGuestCounts } = useFirebaseSync<Record<string, Record<string, Record<string, number>>>>('data/floorGuestCounts', {});
     
     // Merge assignments from both paths for compatibility with TFW-NEW app
     const mergedAssignments = useMemo(() => {
@@ -296,6 +300,7 @@ const AppComponent: React.FC = () => {
             if (newRole === 'operator') setCurrentView('roster');
             else if (newRole === 'ticket-sales') setCurrentView('ts-roster');
             else if (newRole === 'sales-officer') setCurrentView('sales-officer-dashboard');
+            else if (newRole === 'security') setCurrentView('security-entry');
             else setCurrentView('dashboard');
         }
         return success;
@@ -467,6 +472,18 @@ const AppComponent: React.FC = () => {
       logAction('DELETE_CATEGORY', `Removed category "${name}" from suggestions.`);
     };
 
+    const handleSaveFloorCounts = (date: string, floor: string, counts: Record<string, number>) => {
+        setFloorGuestCounts(prev => ({
+            ...prev,
+            [date]: {
+                ...(prev?.[date] || {}),
+                [floor]: counts
+            }
+        }));
+        showNotification('Floor guest counts saved successfully!', 'success');
+        logAction('SAVE_FLOOR_COUNTS', `Saved floor guest counts for ${floor} on ${date}.`);
+    };
+
     const handleRemoveObsoleteRides = () => {
         const ridesFromCode = new Set(RIDES_ARRAY.map(r => r.id.toString()));
         const ridesInDb = Object.keys(rides || {});
@@ -581,6 +598,9 @@ const AppComponent: React.FC = () => {
             case 'my-sales': return <DailySalesEntry currentUser={currentUser} selectedDate={selectedDate} onDateChange={handleDateChange} packageSales={packageSalesData || {}} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} packageSales={packageSalesData || {}} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
             case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={OPERATORS_ARRAY} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={mergedAssignments || {}} />;
+            case 'management-hub': return <ManagementHub onNavigate={handleNavigate} />;
+            case 'floor-counts': return <ManagementView floorGuestCounts={floorGuestCounts || {}} onNavigate={handleNavigate} />;
+            case 'security-entry': return <SecurityView selectedDate={selectedDate} floorGuestCounts={floorGuestCounts || {}} onSaveFloorCounts={handleSaveFloorCounts} />;
             // Explicitly handle 'counter' to avoid any confusion with default
             case 'counter':
             default: return filteredRides.length > 0 ? (
