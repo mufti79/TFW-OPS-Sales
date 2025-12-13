@@ -334,7 +334,18 @@ const AppComponent: React.FC = () => {
             // Merge operator assignments from TFW-NEW (opsAssignments) into dailyAssignments
             const opsData = opsSnapshot.exists() ? opsSnapshot.val() : {};
             const dailyData = dailySnapshot.exists() ? dailySnapshot.val() : {};
+            
+            // Log what was fetched for debugging (development only)
+            if (import.meta.env.DEV) {
+                console.log('🔄 Sync - Fetched from data/opsAssignments:', opsData);
+                console.log('📋 Sync - Fetched from data/dailyAssignments:', dailyData);
+            }
+            
             const mergedDailyAssignments = mergeAssignments(dailyData, opsData);
+            
+            if (import.meta.env.DEV) {
+                console.log('✅ Sync - Merged operator assignments:', mergedDailyAssignments);
+            }
             
             // Save merged operator assignments to local state
             setDailyAssignments(mergedDailyAssignments);
@@ -342,13 +353,35 @@ const AppComponent: React.FC = () => {
             // Merge ticket sales assignments from TFW-NEW (salesAssignments) into tsAssignments
             const salesData = salesSnapshot.exists() ? salesSnapshot.val() : {};
             const tsData = tsSnapshot.exists() ? tsSnapshot.val() : {};
+            
+            // Log what was fetched for debugging (development only)
+            if (import.meta.env.DEV) {
+                console.log('🎫 Sync - Fetched from data/salesAssignments:', salesData);
+                console.log('📋 Sync - Fetched from data/tsAssignments:', tsData);
+            }
+            
             const mergedTSAssignments = mergeAssignments(tsData, salesData);
+            
+            if (import.meta.env.DEV) {
+                console.log('✅ Sync - Merged ticket sales assignments:', mergedTSAssignments);
+            }
             
             // Save merged ticket sales assignments to local state
             setTSAssignments(mergedTSAssignments);
 
-            showNotification('✓ Assignments synced successfully!', 'success');
-            logAction('SYNC_ASSIGNMENTS', 'Manually synced assignments from TFW-NEW app');
+            // Provide detailed feedback about sync results
+            const totalDates = Object.keys(mergedDailyAssignments).length;
+            const totalTSDates = Object.keys(mergedTSAssignments).length;
+            
+            if (totalDates === 0 && totalTSDates === 0) {
+                showNotification('Sync complete. No assignments found in TFW-NEW app.', 'warning');
+            } else if (totalDates > 0 && totalTSDates > 0) {
+                showNotification(`✓ Synced ${totalDates} operator and ${totalTSDates} ticket sales assignment dates!`, 'success');
+            } else {
+                showNotification(`✓ Synced ${totalDates > 0 ? totalDates + ' operator' : totalTSDates + ' ticket sales'} assignment date(s)!`, 'success');
+            }
+            
+            logAction('SYNC_ASSIGNMENTS', `Manually synced assignments from TFW-NEW app (${totalDates} operator dates, ${totalTSDates} TS dates)`);
         } catch (error) {
             console.error('Error syncing assignments:', error);
             showNotification('Failed to sync assignments. Check your connection.', 'error');

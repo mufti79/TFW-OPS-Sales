@@ -119,17 +119,44 @@ Both apps display a connection status indicator:
 1. **Check Firebase Configuration**: Ensure both apps use the same Firebase project configuration
 2. **Check Internet Connection**: Both apps require internet for real-time sync
 3. **Use Manual Sync**: Click the "🔄 Sync Now" button in the assignment views to force refresh
-4. **Check Browser Console**: Look for Firebase connection errors
-5. **Clear Cache**: Try clearing browser cache and refreshing both apps
-6. **Check Firebase Console**: Verify data is being written to the database at: https://console.firebase.google.com/project/toggifunworld-app/database
+4. **Check Browser Console**: Look for Firebase connection errors and sync debug logs
+5. **Verify Data Exists**: Open TFW-NEW app and confirm assignments exist for the date you're checking
+6. **Check Date Format**: Ensure the date is in YYYY-MM-DD format (e.g., 2025-12-13)
+7. **Clear Cache**: Try clearing browser cache and refreshing both apps
+8. **Check Firebase Console**: Verify data is being written to the database at: https://console.firebase.google.com/project/toggifunworld-app/database
+
+### Debugging Empty Assignments:
+
+If assignments appear empty after clicking "Sync Now":
+
+1. **Open Browser Console** (F12 or right-click → Inspect → Console tab):
+   - Look for messages starting with `🔄 Sync -` to see what data was fetched
+   - Check if `data/opsAssignments` has data for your date
+   - Verify the merged assignments contain the expected data
+
+2. **Check the Date**:
+   - Ensure you're viewing the correct date in the assignment view
+   - The date selector is in the top-right corner
+   - Date must match exactly with assignments in TFW-NEW (format: YYYY-MM-DD)
+
+3. **Verify Data in Firebase**:
+   - Go to Firebase Console → Realtime Database
+   - Navigate to `data/opsAssignments/YYYY-MM-DD` (e.g., `data/opsAssignments/2025-12-13`)
+   - Confirm assignments exist at this path
+
+4. **Check for Success Message**:
+   - After clicking "Sync Now", you should see a notification
+   - If it says "No assignments found", then no data exists in TFW-NEW for that date
+   - If it shows a count, that's how many dates were synced
 
 ### Common Issues:
 
 - **Delayed Updates**: May occur during poor network conditions. Data will sync when connection improves.
 - **Conflicting Changes**: Last write wins. If two officers update the same assignment simultaneously, the most recent change will be preserved.
 - **Missing Data**: Ensure both apps are deployed with the latest code and same Firebase configuration.
-- **Operator assignments not appearing from TFW-NEW**: TFW-OPS-Sales now reads from both `data/dailyAssignments` and `data/opsAssignments` paths to ensure compatibility. This allows operator assignments created in TFW-NEW (which uses `data/opsAssignments`) to appear automatically in TFW-OPS-Sales.
-- **Ticket Sales assignments not appearing from TFW-NEW**: TFW-OPS-Sales now reads from both `data/tsAssignments` and `data/salesAssignments` paths to ensure compatibility. This allows ticket sales assignments created in TFW-NEW (which uses `data/salesAssignments`) to appear automatically in TFW-OPS-Sales.
+- **Operator assignments not appearing from TFW-NEW**: TFW-OPS-Sales now reads from both `data/dailyAssignments` and `data/opsAssignments` paths to ensure compatibility. This allows operator assignments created in TFW-NEW (which uses `data/opsAssignments`) to appear automatically in TFW-OPS-Sales. Use "Sync Now" button to force refresh if needed.
+- **Ticket Sales assignments not appearing from TFW-NEW**: TFW-OPS-Sales now reads from both `data/tsAssignments` and `data/salesAssignments` paths to ensure compatibility. This allows ticket sales assignments created in TFW-NEW (which uses `data/salesAssignments`) to appear automatically in TFW-OPS-Sales. Use "Sync Now" button to force refresh if needed.
+- **Empty assignments after sync**: Check browser console for debug logs. If "No assignments found" message appears, verify data exists in TFW-NEW app for the selected date.
 
 ## Development Notes
 

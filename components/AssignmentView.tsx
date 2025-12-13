@@ -33,12 +33,22 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
       normalizedAssignments[key] = Array.isArray(value) ? value : [value];
     });
     
+    // Debug logging to help diagnose sync issues
+    if (import.meta.env.DEV) {
+      console.log('📅 AssignmentView - Selected date:', selectedDate);
+      console.log('📦 AssignmentView - Raw assignments for date:', rawAssignments);
+      console.log('✨ AssignmentView - Normalized assignments:', normalizedAssignments);
+    }
+    
     // Compare before updating to avoid unnecessary re-renders and overwriting unsaved changes
     setAssignments(prev => {
       // Shallow comparison: check if keys are the same
       const prevKeys = Object.keys(prev).sort();
       const newKeys = Object.keys(normalizedAssignments).sort();
       if (prevKeys.length !== newKeys.length || !prevKeys.every((key, i) => key === newKeys[i])) {
+        if (import.meta.env.DEV) {
+          console.log('🔄 AssignmentView - Updating state (keys changed)');
+        }
         return normalizedAssignments;
       }
       
@@ -47,10 +57,16 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         const prevVal = prev[key];
         const newVal = normalizedAssignments[key];
         if (prevVal.length !== newVal.length || !prevVal.every((id, i) => id === newVal[i])) {
+          if (import.meta.env.DEV) {
+            console.log('🔄 AssignmentView - Updating state (values changed for key:', key, ')');
+          }
           return normalizedAssignments;
         }
       }
       
+      if (import.meta.env.DEV && Object.keys(prev).length > 0) {
+        console.log('⏭️  AssignmentView - State unchanged, keeping previous');
+      }
       return prev; // No changes, keep previous state
     });
   }, [selectedDate, dailyAssignments]);
@@ -325,6 +341,16 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
             <div className="p-4 bg-gray-700/50 text-gray-300">
                 <p>Assign one or more operators below, or use the "Import" button to upload an Excel/CSV file.</p>
                 <p className="text-sm text-gray-400">In Excel, the file should have two columns: Ride Name and Operator Name(s). You can list multiple operators in the second column separated by a comma.</p>
+                {Object.keys(assignments).length === 0 && (
+                  <aside className="mt-3 p-3 bg-blue-900/30 border border-blue-700/50 rounded-md" role="note" aria-label="Information about missing assignments">
+                    <p className="text-sm text-blue-300">
+                      <strong>No assignments found for {displayDate.toLocaleDateString()}.</strong>
+                    </p>
+                    <p className="text-xs text-blue-400 mt-1">
+                      If you have assignments in TFW-NEW app, click "🔄 Sync Now" above to fetch them. Otherwise, you can create new assignments below or import them from a file.
+                    </p>
+                  </aside>
+                )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">
                 {rides.map((ride) => {
