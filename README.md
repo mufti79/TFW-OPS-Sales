@@ -16,6 +16,22 @@ This is the operations and sales management application for Toggi Fun World, dep
 - **Offline Support**: Works offline with local caching and syncs when connected
 - **Multi-role Support**: Operators, Ticket Sales Personnel, Officers, and Admins
 
+## Login Credentials
+
+The application supports multiple user roles with different access levels:
+
+### PIN-Based Logins
+- **Admin**: PIN `9999` - Full administrative access
+- **Operation Officer**: PIN `4321` - Manage operators and ride assignments
+- **Sales Officer**: PIN `5678` - Manage ticket sales and revenue
+- **Security**: PIN `1234` - Enter hourly floor guest counts
+
+### Name-Based Logins
+- **Operators**: Select your name from the dropdown (no PIN required)
+- **Ticket Sales Personnel**: Select your name from the dropdown (no PIN required)
+
+> **Note**: PIN codes are defined in `hooks/useAuth.ts` and should be kept confidential in production environments.
+
 ## Cross-Application Synchronization
 
 **IMPORTANT**: This app is synchronized with the TFW-NEW application through a shared Firebase Realtime Database.
