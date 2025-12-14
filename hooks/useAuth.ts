@@ -1,7 +1,7 @@
 
 import useLocalStorage from './useLocalStorage';
 import { Operator } from '../types';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 export type Role = 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'security' | null;
 
@@ -13,6 +13,32 @@ export const SECURITY_PIN = '1234';
 export const useAuth = () => {
   const [role, setRole] = useLocalStorage<Role>('authRole', null);
   const [currentUser, setCurrentUser] = useLocalStorage<Operator | null>('authUser', null);
+  const [lastActivity, setLastActivity] = useLocalStorage<number>('authLastActivity', Date.now());
+
+  // Update last activity timestamp on any user interaction to prevent auto-logout
+  useEffect(() => {
+    if (!role || !currentUser) return;
+
+    const updateActivity = () => {
+      setLastActivity(Date.now());
+    };
+
+    // Listen to various user activity events
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => {
+      window.addEventListener(event, updateActivity, { passive: true });
+    });
+
+    // Periodically save the last activity timestamp to prevent session loss
+    const activityInterval = setInterval(updateActivity, 60000); // Update every minute
+
+    return () => {
+      events.forEach(event => {
+        window.removeEventListener(event, updateActivity);
+      });
+      clearInterval(activityInterval);
+    };
+  }, [role, currentUser, setLastActivity]);
 
   const login = useCallback((
     newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'security', 
@@ -23,6 +49,7 @@ export const useAuth = () => {
         if (payload === ADMIN_PIN) {
           setRole('admin');
           setCurrentUser({ id: 0, name: 'Admin' });
+          setLastActivity(Date.now());
           return true;
         }
         return false;
@@ -30,6 +57,7 @@ export const useAuth = () => {
         if (payload === OPERATION_OFFICER_PIN) {
           setRole('operation-officer');
           setCurrentUser({ id: -1, name: 'Operation Officer' });
+          setLastActivity(Date.now());
           return true;
         }
         return false;
@@ -37,6 +65,7 @@ export const useAuth = () => {
         if (payload === SALES_OFFICER_PIN) {
           setRole('sales-officer');
           setCurrentUser({ id: -2, name: 'Sales Officer' });
+          setLastActivity(Date.now());
           return true;
         }
         return false;
@@ -44,6 +73,7 @@ export const useAuth = () => {
         if (payload === SECURITY_PIN) {
           setRole('security');
           setCurrentUser({ id: -3, name: 'Security' });
+          setLastActivity(Date.now());
           return true;
         }
         return false;
@@ -53,13 +83,14 @@ export const useAuth = () => {
         if (payload && typeof payload !== 'string') {
           setRole(newRole);
           setCurrentUser(payload as Operator);
+          setLastActivity(Date.now());
           return true;
         }
         return false;
       default:
         return false;
     }
-  }, [setRole, setCurrentUser]);
+  }, [setRole, setCurrentUser, setLastActivity]);
 
   const logout = useCallback(() => {
     setRole(null);
