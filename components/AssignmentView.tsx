@@ -392,7 +392,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                             const isPresent = attendanceStatusMap.get(op.id);
                                             const statusLabel = isPresent ? '(P)' : '(A)';
                                             return (
-                                                <label key={op.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer" onMouseDown={(e) => (e.nativeEvent as MouseEvent).stopImmediatePropagation()}>
+                                                <label key={op.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
                                                     <input
                                                         type="checkbox"
                                                         checked={assignedOperatorIds.includes(op.id)}
@@ -400,9 +400,10 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                                             e.stopPropagation();
                                                             handleAssignmentChange(ride.id, op.id);
                                                         }}
+                                                        onMouseDown={(e) => e.stopPropagation()}
                                                         className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-purple-600 focus:ring-purple-500"
                                                     />
-                                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
+                                                    <span className="ml-3 text-gray-300" onMouseDown={(e) => e.stopPropagation()}>{op.name} {statusLabel}</span>
                                                 </label>
                                             );
                                         })}

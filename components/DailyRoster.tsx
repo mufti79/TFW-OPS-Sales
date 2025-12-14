@@ -69,7 +69,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                             const isPresent = attendanceStatusMap.get(op.id);
                             const statusLabel = isPresent ? '(P)' : '(A)';
                             return (
-                                <label key={op.id} className="flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer" onMouseDown={(e) => e.stopPropagation()}>
+                                <label key={op.id} className="flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer">
                                     <input 
                                         type="checkbox"
                                         checked={selectedIds.includes(op.id)}
@@ -77,9 +77,10 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                                             e.stopPropagation();
                                             handleToggle(op.id);
                                         }}
+                                        onMouseDown={(e) => e.stopPropagation()}
                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-purple-600 focus:ring-purple-500"
                                     />
-                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
+                                    <span className="ml-3 text-gray-300" onMouseDown={(e) => e.stopPropagation()}>{op.name} {statusLabel}</span>
                                 </label>
                             );
                         })}
