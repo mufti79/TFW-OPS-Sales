@@ -516,9 +516,10 @@ const AppComponent: React.FC = () => {
 
     const handleAddOperator = useCallback((name: string) => {
         // Use timestamp-based ID to avoid conflicts with existing 8-digit IDs (like 21700110)
-        // Format: 9XXXXXXXXXX (timestamp in milliseconds with random suffix, prefixed with 9 for distinction)
-        // Add random component (0-999) to prevent collisions in rapid succession
-        const newId = Number('9' + Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0'));
+        // Format: 9XXXXXXXXXXXXX (timestamp in milliseconds, prefixed with 9 for distinction)
+        // To stay within MAX_SAFE_INTEGER, we use just timestamp without extra suffix
+        // The timestamp already provides millisecond precision which is sufficient for our use case
+        const newId = Number('9' + Date.now().toString());
         
         setOperators(prev => ({
             ...prev,
@@ -530,13 +531,15 @@ const AppComponent: React.FC = () => {
     }, [setOperators, logAction, showNotification]);
 
     const handleDeleteOperators = useCallback((ids: number[]) => {
+        // Get operator names before deletion for accurate logging
+        const operatorNames = ids.map(id => operators?.[id]?.name || `ID ${id}`).join(', ');
+        
         setOperators(prev => {
             const next = { ...prev };
             ids.forEach(id => delete next[id]);
             return next;
         });
         
-        const operatorNames = ids.map(id => operators?.[id]?.name || `ID ${id}`).join(', ');
         logAction('DELETE_OPERATORS', `Deleted operator(s): ${operatorNames}`);
         showNotification(`${ids.length} operator(s) deleted successfully!`, 'success');
     }, [operators, setOperators, logAction, showNotification]);
@@ -547,9 +550,9 @@ const AppComponent: React.FC = () => {
             const newOperatorsObj: Record<number, Omit<Operator, 'id'>> = {};
             const baseTime = Date.now();
             newOperators.forEach((op, index) => {
-                // Generate unique timestamp-based IDs with index offset and random component
-                const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-                const newId = Number('9' + (baseTime + index).toString() + randomSuffix);
+                // Generate unique timestamp-based IDs by incrementing baseTime
+                // This ensures uniqueness even for bulk imports
+                const newId = Number('9' + (baseTime + index).toString());
                 newOperatorsObj[newId] = { name: op.name };
             });
             setOperators(newOperatorsObj);
@@ -557,19 +560,21 @@ const AppComponent: React.FC = () => {
         } else {
             // Merge: keep existing operators and add new ones with unique IDs
             let addedCount = 0;
+            const baseTime = Date.now();
             setOperators(prev => {
                 const next = { ...prev };
                 const existingNames = new Set(Object.values(prev || {}).map(op => op.name.toLowerCase()));
-                const baseTime = Date.now();
+                let idCounter = 0;
                 
-                newOperators.forEach((op, index) => {
+                newOperators.forEach((op) => {
                     // Skip duplicates based on name
                     if (!existingNames.has(op.name.toLowerCase())) {
-                        const randomSuffix = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-                        const newId = Number('9' + (baseTime + index).toString() + randomSuffix);
+                        // Generate unique IDs by incrementing from baseTime
+                        const newId = Number('9' + (baseTime + idCounter).toString());
                         next[newId] = { name: op.name };
                         existingNames.add(op.name.toLowerCase());
                         addedCount++;
+                        idCounter++;
                     }
                 });
                 
@@ -583,7 +588,7 @@ const AppComponent: React.FC = () => {
             logAction('IMPORT_OPERATORS', logMessage);
         }
         showNotification('Operators imported successfully!', 'success');
-    }, [operators, setOperators, logAction, showNotification]);
+    }, [setOperators, logAction, showNotification]);
     
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
         // Robust null checks to prevent crashes if data hasn't synced or is corrupt
