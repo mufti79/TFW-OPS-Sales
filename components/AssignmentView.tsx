@@ -400,10 +400,10 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                                             e.stopPropagation();
                                                             handleAssignmentChange(ride.id, op.id);
                                                         }}
-                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        onPointerDown={(e) => e.stopPropagation()}
                                                         className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-purple-600 focus:ring-purple-500"
                                                     />
-                                                    <span className="ml-3 text-gray-300" onMouseDown={(e) => e.stopPropagation()}>{op.name} {statusLabel}</span>
+                                                    <span className="ml-3 text-gray-300" onPointerDown={(e) => e.stopPropagation()}>{op.name} {statusLabel}</span>
                                                 </label>
                                             );
                                         })}

@@ -379,10 +379,10 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                                                             e.stopPropagation();
                                                             handleAssignmentChange(counter.id, op.id);
                                                         }}
-                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        onPointerDown={(e) => e.stopPropagation()}
                                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-teal-600 focus:ring-teal-500"
                                                     />
-                                                    <span className="ml-3 text-gray-300" onMouseDown={(e) => e.stopPropagation()}>{op.name} {statusLabel}</span>
+                                                    <span className="ml-3 text-gray-300" onPointerDown={(e) => e.stopPropagation()}>{op.name} {statusLabel}</span>
                                                 </label>
                                             );
                                         })}
