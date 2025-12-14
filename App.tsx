@@ -513,6 +513,82 @@ const AppComponent: React.FC = () => {
              showNotification(`Data for ${date} has been reset.`, 'success');
         }
     };
+
+    const handleAddOperator = useCallback((name: string) => {
+        // Use timestamp-based ID to avoid conflicts with existing 8-digit IDs (like 21700110)
+        // Format: 9XXXXXXXXXXXXX (timestamp in milliseconds, prefixed with 9 for distinction)
+        // To stay within MAX_SAFE_INTEGER, we use just timestamp without extra suffix
+        // The timestamp already provides millisecond precision which is sufficient for our use case
+        const newId = Number('9' + Date.now().toString());
+        
+        setOperators(prev => ({
+            ...prev,
+            [newId]: { name }
+        }));
+        
+        logAction('ADD_OPERATOR', `Added new operator: ${name} (ID: ${newId})`);
+        showNotification(`Operator "${name}" added successfully!`, 'success');
+    }, [setOperators, logAction, showNotification]);
+
+    const handleDeleteOperators = useCallback((ids: number[]) => {
+        // Get operator names before deletion for accurate logging
+        const operatorNames = ids.map(id => operators?.[id]?.name || `ID ${id}`).join(', ');
+        
+        setOperators(prev => {
+            const next = { ...prev };
+            ids.forEach(id => delete next[id]);
+            return next;
+        });
+        
+        logAction('DELETE_OPERATORS', `Deleted operator(s): ${operatorNames}`);
+        showNotification(`${ids.length} operator(s) deleted successfully!`, 'success');
+    }, [operators, setOperators, logAction, showNotification]);
+
+    const handleImportOperators = useCallback((newOperators: Operator[], strategy: 'merge' | 'replace') => {
+        if (strategy === 'replace') {
+            // Replace: clear all existing operators and add new ones with timestamp-based IDs
+            const newOperatorsObj: Record<number, Omit<Operator, 'id'>> = {};
+            const baseTime = Date.now();
+            newOperators.forEach((op, index) => {
+                // Generate unique timestamp-based IDs by incrementing baseTime
+                // This ensures uniqueness even for bulk imports
+                const newId = Number('9' + (baseTime + index).toString());
+                newOperatorsObj[newId] = { name: op.name };
+            });
+            setOperators(newOperatorsObj);
+            logAction('IMPORT_OPERATORS', `Replaced all operators with ${newOperators.length} imported operator(s)`);
+        } else {
+            // Merge: keep existing operators and add new ones with unique IDs
+            let addedCount = 0;
+            const baseTime = Date.now();
+            setOperators(prev => {
+                const next = { ...prev };
+                const existingNames = new Set(Object.values(prev || {}).map(op => op.name.toLowerCase()));
+                let idCounter = 0;
+                
+                newOperators.forEach((op) => {
+                    // Skip duplicates based on name
+                    if (!existingNames.has(op.name.toLowerCase())) {
+                        // Generate unique IDs by incrementing from baseTime
+                        const newId = Number('9' + (baseTime + idCounter).toString());
+                        next[newId] = { name: op.name };
+                        existingNames.add(op.name.toLowerCase());
+                        addedCount++;
+                        idCounter++;
+                    }
+                });
+                
+                return next;
+            });
+            
+            const skippedCount = newOperators.length - addedCount;
+            const logMessage = skippedCount > 0 
+                ? `Merged ${addedCount} operator(s) into existing list (${skippedCount} duplicate(s) skipped)`
+                : `Merged ${addedCount} operator(s) into existing list`;
+            logAction('IMPORT_OPERATORS', logMessage);
+        }
+        showNotification('Operators imported successfully!', 'success');
+    }, [setOperators, logAction, showNotification]);
     
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
         // Robust null checks to prevent crashes if data hasn't synced or is corrupt
@@ -539,6 +615,15 @@ const AppComponent: React.FC = () => {
             };
         });
     }, [dailyCounts, dailyRideDetails, selectedDate, rides]);
+
+    // Compute operators array from Firebase-synced data, with fallback to static constants
+    const operatorsArray = useMemo<Operator[]>(() => {
+        // Fallback to OPERATORS constant if operators state is empty or null.
+        // This ensures the operator list populates immediately even if Firebase/LocalStorage has no config yet.
+        const configOperators = (operators && Object.keys(operators).length > 0) ? operators : OPERATORS;
+        
+        return Object.entries(configOperators).map(([id, operatorData]) => ({ id: Number(id), ...operatorData }));
+    }, [operators]);
 
     const filteredRides = useMemo(() => {
         let filtered = ridesWithCounts || [];
@@ -580,7 +665,7 @@ const AppComponent: React.FC = () => {
     }
 
     if (!role || !currentUser) {
-        return <Login onLogin={handleLogin} operators={OPERATORS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} appLogo={appLogo} />;
+        return <Login onLogin={handleLogin} operators={operatorsArray} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} appLogo={appLogo} />;
     }
     
     const isManager = role === 'admin' || role === 'operation-officer';
@@ -588,16 +673,16 @@ const AppComponent: React.FC = () => {
     const renderView = () => {
         switch (currentView) {
             case 'reports': return <Reports dailyCounts={dailyCounts || {}} dailyRideDetails={dailyRideDetails || {}} rides={RIDES_ARRAY} />;
-            case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} />;
-            case 'expertise': return <ExpertiseReport operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} rides={RIDES_ARRAY} />;
-            case 'roster': return <DailyRoster rides={ridesWithCounts} operators={OPERATORS_ARRAY} dailyAssignments={mergedAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} />;
+            case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} />;
+            case 'expertise': return <ExpertiseReport operators={operatorsArray} dailyAssignments={mergedAssignments || {}} rides={RIDES_ARRAY} />;
+            case 'roster': return <DailyRoster rides={ridesWithCounts} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} />;
             case 'ts-assignments': return <TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} />;
             case 'ts-roster': return <TicketSalesRoster counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTSAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} />;
             case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} counters={COUNTERS_ARRAY} />;
             case 'history': return <HistoryLog history={history} onClearHistory={() => { if(window.confirm("Are you sure?")) { setHistory([]); logAction('CLEAR_HISTORY', 'Cleared the entire activity log.'); } }}/>;
             case 'my-sales': return <DailySalesEntry currentUser={currentUser} selectedDate={selectedDate} onDateChange={handleDateChange} packageSales={packageSalesData || {}} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
             case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} packageSales={packageSalesData || {}} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
-            case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={OPERATORS_ARRAY} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={mergedAssignments || {}} />;
+            case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={operatorsArray} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={mergedAssignments || {}} />;
             case 'management-hub': return <ManagementHub onNavigate={handleNavigate} />;
             case 'floor-counts': return <ManagementView floorGuestCounts={floorGuestCounts || {}} onNavigate={handleNavigate} />;
             case 'security-entry': return <SecurityView selectedDate={selectedDate} floorGuestCounts={floorGuestCounts || {}} onSaveFloorCounts={handleSaveFloorCounts} />;
@@ -627,7 +712,7 @@ const AppComponent: React.FC = () => {
         {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); setDailyRideDetails(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
         {currentModal === 'edit-image' && selectedRideForEdit && <EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...(prev?.[rideId] || {}), imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/>}
         {currentModal === 'ai-assistant' && <CodeAssistant rides={RIDES_ARRAY} dailyCounts={dailyCounts || {}} onClose={() => setCurrentModal(null)}/>}
-        {currentModal === 'operators' && <OperatorManager operators={OPERATORS_ARRAY} onClose={() => setCurrentModal(null)} onAddOperator={(name) => { /* Logic to be handled by dev */ }} onDeleteOperators={(ids) => { /* Logic to be handled by dev */ }} onImport={(newOperators, strategy) => { /* Logic to be handled by dev */ }}/>}
+        {currentModal === 'operators' && <OperatorManager operators={operatorsArray} onClose={() => setCurrentModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators}/>}
         {currentModal === 'backup' && <BackupManager onClose={() => setCurrentModal(null)} onExport={() => { const json = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), data: { dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }}, null, 2); const blob = new Blob([json], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`; link.click(); logAction('EXPORT_BACKUP', 'Exported a full application backup.'); }} onImport={(json) => { if (window.confirm("WARNING: This will overwrite ALL current data. Are you sure?")) { try { const backupData = JSON.parse(json); if (backupData.version === 2 && backupData.data) { setDailyCounts(backupData.data.dailyCounts || {}); setDailyRideDetails(backupData.data.dailyRideDetails || {}); setRides(backupData.data.rides || RIDES); setOperators(backupData.data.operators || OPERATORS); setAttendanceData(backupData.data.attendanceData || {}); setTSAssignments(backupData.data.tsAssignments || {}); setHistory(backupData.data.history || []); setPackageSalesData(backupData.data.packageSalesData || {}); setAppLogo(backupData.data.appLogo || null); setOtherSalesCategories(backupData.data.otherSalesCategories || []); setDailyAssignments(backupData.data.dailyAssignments || {}); showNotification('Backup restored successfully!', 'success'); logAction('IMPORT_BACKUP', 'Restored data from a backup file.'); } else { alert("Invalid backup file format."); } } catch (e) { alert("Failed to parse backup file."); } } }} appLogo={appLogo} onLogoChange={setAppLogo} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={Object.values(rides || {}).map((r,i) => ({...r, id: Number(Object.keys(rides || {})[i])})).filter(r => !RIDES_ARRAY.some(staticRide => staticRide.id === r.id))} onRemoveObsoleteRides={handleRemoveObsoleteRides} estimatedDbSize={estimatedDbSize} onResetDay={handleResetDay} />}
       </div>
     );
