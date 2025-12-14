@@ -203,22 +203,15 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
 };
 
 const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSalesPersonnel, packageSales, startDate, endDate, onStartDateChange, onEndDateChange, role, onEditSales, otherSalesCategories }) => {
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingPersonnel, setEditingPersonnel] = useState<Operator | null>(null);
     const [expandedPersonnelId, setExpandedPersonnelId] = useState<number | null>(null);
     const [showTotalBreakdown, setShowTotalBreakdown] = useState(false);
 
-    const handleEditClick = (personnel: Operator, source: string = 'button') => {
-        console.log('Edit clicked for:', personnel.name, 'via', source); // Debug log
-        console.log('Current modal state:', isEditModalOpen);
-        console.log('Personnel ID:', personnel.id);
+    const handleEditClick = (personnel: Operator) => {
         setEditingPersonnel(personnel);
-        setIsEditModalOpen(true);
-        console.log('Modal should now be open');
     };
 
     const handleCloseModal = () => {
-        setIsEditModalOpen(false);
         setEditingPersonnel(null);
     };
     
@@ -394,7 +387,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                                 <React.Fragment key={personnel.id}>
                                     <tr 
                                         className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-800/50'} border-t border-gray-700 ${canEdit ? 'cursor-pointer hover:bg-gray-700/70 transition-colors' : ''}`}
-                                        onDoubleClick={() => canEdit && handleEditClick(personnel, 'double-click')}
+                                        onDoubleClick={() => canEdit && handleEditClick(personnel)}
                                         title={canEdit ? "Double-click to edit" : ""}
                                     >
                                         <td className="p-3 font-medium flex items-center">
@@ -414,7 +407,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                                         <td className="p-3 text-center">
                                             {canEdit && (
                                                 <button 
-                                                    onClick={(e) => { e.stopPropagation(); handleEditClick(personnel, 'button'); }} 
+                                                    onClick={(e) => { e.stopPropagation(); handleEditClick(personnel); }} 
                                                     className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg text-sm hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md hover:shadow-lg"
                                                     aria-label={`Edit sales for ${personnel.name}`}
                                                 >
@@ -456,7 +449,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     </tr></tfoot>
                 </table>
             </div>
-            {isEditModalOpen && editingPersonnel && <EditSalesModal personnel={editingPersonnel} onClose={handleCloseModal} onSave={onEditSales} startDate={startDate} endDate={endDate} existingSalesData={packageSales} otherSalesCategories={otherSalesCategories} />}
+            {editingPersonnel && <EditSalesModal personnel={editingPersonnel} onClose={handleCloseModal} onSave={onEditSales} startDate={startDate} endDate={endDate} existingSalesData={packageSales} otherSalesCategories={otherSalesCategories} />}
             
             <DeveloperAttribution />
         </div>
