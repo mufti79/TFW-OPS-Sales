@@ -513,6 +513,69 @@ const AppComponent: React.FC = () => {
              showNotification(`Data for ${date} has been reset.`, 'success');
         }
     };
+
+    const handleAddOperator = useCallback((name: string) => {
+        // Find the highest existing ID to generate a new unique ID
+        const existingIds = Object.keys(operators || {}).map(id => Number(id));
+        const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+        const newId = maxId + 1;
+        
+        setOperators(prev => ({
+            ...prev,
+            [newId]: { name }
+        }));
+        
+        logAction('ADD_OPERATOR', `Added new operator: ${name} (ID: ${newId})`);
+        showNotification(`Operator "${name}" added successfully!`, 'success');
+    }, [operators, setOperators, logAction, showNotification]);
+
+    const handleDeleteOperators = useCallback((ids: number[]) => {
+        setOperators(prev => {
+            const next = { ...prev };
+            ids.forEach(id => delete next[id]);
+            return next;
+        });
+        
+        const operatorNames = ids.map(id => operators?.[id]?.name || `ID ${id}`).join(', ');
+        logAction('DELETE_OPERATORS', `Deleted operator(s): ${operatorNames}`);
+        showNotification(`${ids.length} operator(s) deleted successfully!`, 'success');
+    }, [operators, setOperators, logAction, showNotification]);
+
+    const handleImportOperators = useCallback((newOperators: Operator[], strategy: 'merge' | 'replace') => {
+        if (strategy === 'replace') {
+            // Replace: clear all existing operators and add new ones with sequential IDs
+            const newOperatorsObj: Record<number, Omit<Operator, 'id'>> = {};
+            newOperators.forEach((op, index) => {
+                const newId = index + 1;
+                newOperatorsObj[newId] = { name: op.name };
+            });
+            setOperators(newOperatorsObj);
+            logAction('IMPORT_OPERATORS', `Replaced all operators with ${newOperators.length} imported operator(s)`);
+        } else {
+            // Merge: keep existing operators and add new ones with unique IDs
+            const existingIds = Object.keys(operators || {}).map(id => Number(id));
+            let maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+            
+            setOperators(prev => {
+                const next = { ...prev };
+                const existingNames = new Set(Object.values(prev || {}).map(op => op.name.toLowerCase()));
+                
+                newOperators.forEach(op => {
+                    // Skip duplicates based on name
+                    if (!existingNames.has(op.name.toLowerCase())) {
+                        maxId++;
+                        next[maxId] = { name: op.name };
+                        existingNames.add(op.name.toLowerCase());
+                    }
+                });
+                
+                return next;
+            });
+            
+            logAction('IMPORT_OPERATORS', `Merged ${newOperators.length} operator(s) into existing list`);
+        }
+        showNotification('Operators imported successfully!', 'success');
+    }, [operators, setOperators, logAction, showNotification]);
     
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
         // Robust null checks to prevent crashes if data hasn't synced or is corrupt
@@ -627,7 +690,7 @@ const AppComponent: React.FC = () => {
         {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); setDailyRideDetails(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
         {currentModal === 'edit-image' && selectedRideForEdit && <EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...(prev?.[rideId] || {}), imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/>}
         {currentModal === 'ai-assistant' && <CodeAssistant rides={RIDES_ARRAY} dailyCounts={dailyCounts || {}} onClose={() => setCurrentModal(null)}/>}
-        {currentModal === 'operators' && <OperatorManager operators={OPERATORS_ARRAY} onClose={() => setCurrentModal(null)} onAddOperator={(name) => { /* Logic to be handled by dev */ }} onDeleteOperators={(ids) => { /* Logic to be handled by dev */ }} onImport={(newOperators, strategy) => { /* Logic to be handled by dev */ }}/>}
+        {currentModal === 'operators' && <OperatorManager operators={OPERATORS_ARRAY} onClose={() => setCurrentModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators}/>}
         {currentModal === 'backup' && <BackupManager onClose={() => setCurrentModal(null)} onExport={() => { const json = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), data: { dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }}, null, 2); const blob = new Blob([json], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`; link.click(); logAction('EXPORT_BACKUP', 'Exported a full application backup.'); }} onImport={(json) => { if (window.confirm("WARNING: This will overwrite ALL current data. Are you sure?")) { try { const backupData = JSON.parse(json); if (backupData.version === 2 && backupData.data) { setDailyCounts(backupData.data.dailyCounts || {}); setDailyRideDetails(backupData.data.dailyRideDetails || {}); setRides(backupData.data.rides || RIDES); setOperators(backupData.data.operators || OPERATORS); setAttendanceData(backupData.data.attendanceData || {}); setTSAssignments(backupData.data.tsAssignments || {}); setHistory(backupData.data.history || []); setPackageSalesData(backupData.data.packageSalesData || {}); setAppLogo(backupData.data.appLogo || null); setOtherSalesCategories(backupData.data.otherSalesCategories || []); setDailyAssignments(backupData.data.dailyAssignments || {}); showNotification('Backup restored successfully!', 'success'); logAction('IMPORT_BACKUP', 'Restored data from a backup file.'); } else { alert("Invalid backup file format."); } } catch (e) { alert("Failed to parse backup file."); } } }} appLogo={appLogo} onLogoChange={setAppLogo} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={Object.values(rides || {}).map((r,i) => ({...r, id: Number(Object.keys(rides || {})[i])})).filter(r => !RIDES_ARRAY.some(staticRide => staticRide.id === r.id))} onRemoveObsoleteRides={handleRemoveObsoleteRides} estimatedDbSize={estimatedDbSize} onResetDay={handleResetDay} />}
       </div>
     );
