@@ -132,6 +132,8 @@ interface RosterData {
 const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssignments, selectedDate, onDateChange, role, currentUser, attendance, onNavigate, onCountChange, onShowModal, onSaveAssignments, hasCheckedInToday, onClockIn, isCheckinAllowed, onSync }) => {
   const [manageModalInfo, setManageModalInfo] = useState<RideWithCount | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  // Track unsaved incremental counts for each ride (operator view only)
+  const [unsavedCounts, setUnsavedCounts] = useState<Record<number, { tickets: number; packages: number }>>({});
   
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
@@ -363,8 +365,57 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     const myAssignedRides = assignmentsByOperator.get(currentUser.id) || [];
     const myAttendance = attendance.find(a => a.operatorId === currentUser.id && a.date === selectedDate);
     
+    // Handle saving incremental counts (adds to existing counts)
+    const handleSaveIncrement = (rideId: number) => {
+        const increment = unsavedCounts[rideId];
+        if (!increment) return;
+        
+        const ride = myAssignedRides.find(r => r.id === rideId);
+        if (!ride) return;
+        
+        // Add the increment to the existing count
+        const newTickets = (ride.details?.tickets || 0) + increment.tickets;
+        const newPackages = (ride.details?.packages || 0) + increment.packages;
+        
+        // Validate that counts don't go negative
+        if (newTickets < 0 || newPackages < 0) {
+            alert('Cannot save: Total count cannot be negative. Please adjust your entry.');
+            return;
+        }
+        
+        const newTotal = newTickets + newPackages;
+        
+        onCountChange(rideId, newTotal, { tickets: newTickets, packages: newPackages });
+        
+        // Clear the unsaved increment for this ride
+        setUnsavedCounts(prev => {
+            const next = { ...prev };
+            delete next[rideId];
+            return next;
+        });
+    };
+    
+    // Handle counter changes (stores them as unsaved increments)
+    const handleCounterChange = (rideId: number, tickets: number, packages: number) => {
+        setUnsavedCounts(prev => ({
+            ...prev,
+            [rideId]: { tickets, packages }
+        }));
+    };
+    
     return (
         <div className="flex flex-col">
+            {/* Info banner explaining the save feature */}
+            <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg" role="note" aria-label="Information about saving guest counts">
+                <div className="flex items-start gap-2">
+                    <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                    </svg>
+                    <div className="text-sm text-gray-300">
+                        <span className="font-semibold text-blue-400">How to Count Guests:</span> Use the + and - buttons to count new guests, then click "💾 Save & Add to Total" to add them to your saved count. Your counts are preserved when you log out and log back in.
+                    </div>
+                </div>
+            </div>
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
@@ -394,8 +445,14 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
             {myAssignedRides.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {myAssignedRides.map(ride => (
-                      <div key={ride.id} className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-1 transition-all duration-300 border border-gray-700 flex flex-col group">
+                    {myAssignedRides.map(ride => {
+                        const hasUnsaved = !!unsavedCounts[ride.id];
+                        const unsaved = unsavedCounts[ride.id] || { tickets: 0, packages: 0 };
+                        const savedTickets = ride.details?.tickets || 0;
+                        const savedPackages = ride.details?.packages || 0;
+                        
+                        return (
+                      <div key={ride.id} className={`bg-gray-800 rounded-lg overflow-hidden shadow-lg transform hover:-translate-y-1 transition-all duration-300 flex flex-col group ${hasUnsaved ? 'border-2 border-yellow-500' : 'border border-gray-700'}`}>
                         <div className="relative">
                           <img src={ride.imageUrl} alt={ride.name} className="w-full h-48 object-cover" />
                            {isManager && (
@@ -409,6 +466,11 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                                   </svg>
                               </button>
                           )}
+                          {hasUnsaved && (
+                            <div className="absolute top-2 left-2 bg-yellow-500 text-gray-900 px-2 py-1 rounded-md text-xs font-bold animate-pulse">
+                              Unsaved
+                            </div>
+                          )}
                         </div>
                         <div className="p-4 flex flex-col flex-grow">
                           <div className="flex-grow">
@@ -416,15 +478,40 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                               {ride.floor} Floor
                             </span>
                             <h3 className="text-xl font-bold text-gray-100">{ride.name}</h3>
+                            {savedTickets > 0 || savedPackages > 0 ? (
+                              <div className="mt-2 text-sm text-gray-400">
+                                Saved: <span className="font-semibold text-green-400">{savedTickets + savedPackages}</span> guests
+                                <span className="text-xs block">
+                                  ({savedTickets} tickets, {savedPackages} packages)
+                                </span>
+                              </div>
+                            ) : null}
                           </div>
-                          <SplitCounter 
-                            tickets={ride.details?.tickets || 0} 
-                            packages={ride.details?.packages || 0} 
-                            onChange={(t, p) => onCountChange(ride.id, t + p, { tickets: t, packages: p })} 
-                          />
+                          <div className="mt-2">
+                            <label className="text-xs text-gray-500 block mb-1">Add New Counts:</label>
+                            <SplitCounter 
+                              tickets={unsaved.tickets} 
+                              packages={unsaved.packages} 
+                              onChange={(t, p) => handleCounterChange(ride.id, t, p)} 
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleSaveIncrement(ride.id)}
+                            disabled={!hasUnsaved}
+                            aria-disabled={!hasUnsaved}
+                            aria-label={hasUnsaved ? 'Save and add counts to total' : 'No unsaved changes'}
+                            className={`mt-3 w-full py-2 rounded-lg font-bold text-sm transition-all ${
+                              hasUnsaved 
+                                ? 'bg-green-600 hover:bg-green-700 text-white active:scale-95' 
+                                : 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                            }`}
+                          >
+                            {hasUnsaved ? '💾 Save & Add to Total' : '✓ Saved'}
+                          </button>
                         </div>
                       </div>
-                    ))}
+                        );
+                    })}
                 </div>
             ) : (
                 <div className="text-center py-16">
