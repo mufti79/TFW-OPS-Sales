@@ -208,10 +208,13 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
     const [expandedPersonnelId, setExpandedPersonnelId] = useState<number | null>(null);
     const [showTotalBreakdown, setShowTotalBreakdown] = useState(false);
 
-    const handleEditClick = (personnel: Operator) => {
-        console.log('Edit clicked for:', personnel.name); // Debug log
+    const handleEditClick = (personnel: Operator, source: string = 'button') => {
+        console.log('Edit clicked for:', personnel.name, 'via', source); // Debug log
+        console.log('Current modal state:', isEditModalOpen);
+        console.log('Personnel ID:', personnel.id);
         setEditingPersonnel(personnel);
         setIsEditModalOpen(true);
+        console.log('Modal should now be open');
     };
 
     const handleCloseModal = () => {
@@ -358,6 +361,13 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     </div>
                 </div>
             </div>
+            {(role === 'admin' || role === 'sales-officer') && (
+                <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg">
+                    <p className="text-sm text-blue-200">
+                        💡 <span className="font-semibold">Tip:</span> Click the <span className="inline-block px-2 py-0.5 bg-blue-600 rounded text-xs">✏️ Edit</span> button or <span className="font-semibold">double-click any row</span> to edit sales data.
+                    </p>
+                </div>
+            )}
             <div className="bg-gray-800 rounded-lg shadow-lg overflow-x-auto border border-gray-700">
                 <table className="w-full text-left min-w-[1024px]">
                     <thead className="bg-gray-700/50"><tr>
@@ -378,13 +388,18 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                             const discount = sales ? sales.totalDiscount : 0;
                             const net = gross - discount;
                             const isExpanded = expandedPersonnelId === personnel.id;
+                            const canEdit = role === 'admin' || role === 'sales-officer';
                             
                             return (
                                 <React.Fragment key={personnel.id}>
-                                    <tr className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-800/50'} border-t border-gray-700`}>
+                                    <tr 
+                                        className={`${index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-800/50'} border-t border-gray-700 ${canEdit ? 'cursor-pointer hover:bg-gray-700/70 transition-colors' : ''}`}
+                                        onDoubleClick={() => canEdit && handleEditClick(personnel, 'double-click')}
+                                        title={canEdit ? "Double-click to edit" : ""}
+                                    >
                                         <td className="p-3 font-medium flex items-center">
                                             {sales && sales.otherSales.length > 0 && otherTotal > 0 && (
-                                                <button onClick={() => setExpandedPersonnelId(isExpanded ? null : personnel.id)} className="mr-2 p-1 rounded-full hover:bg-gray-600">
+                                                <button onClick={(e) => { e.stopPropagation(); setExpandedPersonnelId(isExpanded ? null : personnel.id); }} className="mr-2 p-1 rounded-full hover:bg-gray-600">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
                                                 </button>
                                             )}
@@ -396,7 +411,17 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                                         <td className="p-3 text-right tabular-nums">{otherTotal.toLocaleString()}</td>
                                         <td className="p-3 text-right tabular-nums text-orange-400">{discount > 0 ? `-${discount.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '0'}</td>
                                         <td className="p-3 text-right font-bold text-lg text-teal-400 tabular-nums">{net.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-                                        <td className="p-3 text-center">{(role === 'admin' || role === 'sales-officer') && <button onClick={() => handleEditClick(personnel)} className="px-3 py-1 bg-blue-600 text-white font-semibold rounded-md text-sm">Edit</button>}</td>
+                                        <td className="p-3 text-center">
+                                            {canEdit && (
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); handleEditClick(personnel, 'button'); }} 
+                                                    className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg text-sm hover:bg-blue-700 active:bg-blue-800 transition-colors shadow-md hover:shadow-lg"
+                                                    aria-label={`Edit sales for ${personnel.name}`}
+                                                >
+                                                    ✏️ Edit
+                                                </button>
+                                            )}
+                                        </td>
                                     </tr>
                                     {isExpanded && sales && sales.otherSales.length > 0 && otherTotal > 0 && (
                                         <tr className="bg-gray-900/50">
