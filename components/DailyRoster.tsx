@@ -376,6 +376,13 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
         // Add the increment to the existing count
         const newTickets = (ride.details?.tickets || 0) + increment.tickets;
         const newPackages = (ride.details?.packages || 0) + increment.packages;
+        
+        // Validate that counts don't go negative
+        if (newTickets < 0 || newPackages < 0) {
+            alert('Cannot save: Total count cannot be negative. Please adjust your entry.');
+            return;
+        }
+        
         const newTotal = newTickets + newPackages;
         
         onCountChange(rideId, newTotal, { tickets: newTickets, packages: newPackages });
@@ -491,6 +498,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                           <button
                             onClick={() => handleSaveIncrement(ride.id)}
                             disabled={!hasUnsaved}
+                            aria-disabled={!hasUnsaved}
+                            aria-label={hasUnsaved ? 'Save and add counts to total' : 'No unsaved changes'}
                             className={`mt-3 w-full py-2 rounded-lg font-bold text-sm transition-all ${
                               hasUnsaved 
                                 ? 'bg-green-600 hover:bg-green-700 text-white active:scale-95' 
