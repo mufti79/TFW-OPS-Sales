@@ -32,13 +32,15 @@ interface EditSalesModalProps {
 const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onSave, startDate, endDate, existingSalesData, otherSalesCategories }) => {
     const [correctionDate, setCorrectionDate] = useState(endDate);
     const [xtremeQty, setXtremeQty] = useState(0);
+    const [xtremeQtyWithDiscount, setXtremeQtyWithDiscount] = useState(0);
+    const [xtremeDiscount, setXtremeDiscount] = useState(0);
     const [kiddoQty, setKiddoQty] = useState(0);
+    const [kiddoQtyWithDiscount, setKiddoQtyWithDiscount] = useState(0);
+    const [kiddoDiscount, setKiddoDiscount] = useState(0);
     const [vipQty, setVipQty] = useState(0);
+    const [vipQtyWithDiscount, setVipQtyWithDiscount] = useState(0);
+    const [vipDiscount, setVipDiscount] = useState(0);
     const [otherSales, setOtherSales] = useState<OtherSaleItem[]>([]);
-    
-    // Discount
-    const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
-    const [discountValue, setDiscountValue] = useState(0);
 
     const datesInRange = useMemo(() => {
         const dates = [];
@@ -54,16 +56,14 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
     useEffect(() => {
         const record = existingSalesData[correctionDate]?.[personnel.id] as any;
         setXtremeQty(record?.xtremeQty || 0);
+        setXtremeQtyWithDiscount(record?.xtremeQtyWithDiscount || 0);
+        setXtremeDiscount(record?.xtremeDiscountPercentage || 0);
         setKiddoQty(record?.kiddoQty || 0);
+        setKiddoQtyWithDiscount(record?.kiddoQtyWithDiscount || 0);
+        setKiddoDiscount(record?.kiddoDiscountPercentage || 0);
         setVipQty(record?.vipQty || 0);
-        
-        if (record?.discountFixed && record.discountFixed > 0) {
-            setDiscountType('fixed');
-            setDiscountValue(record.discountFixed);
-        } else {
-            setDiscountType('percent');
-            setDiscountValue(record?.discountPercentage || 0);
-        }
+        setVipQtyWithDiscount(record?.vipQtyWithDiscount || 0);
+        setVipDiscount(record?.vipDiscountPercentage || 0);
 
         const existingOtherSales = record?.otherSales || [];
         if(record?.otherAmount > 0 && existingOtherSales.length === 0) {
@@ -89,13 +89,40 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
 
     const handleSaveClick = () => {
         const prices = { xtreme: 1200, kiddo: 800, vip: 2500 };
+        
+        // Calculate amounts with per-package discounts
+        const xtremeAmountNoDiscount = xtremeQty * prices.xtreme;
+        const xtremeGrossWithDiscount = xtremeQtyWithDiscount * prices.xtreme;
+        const xtremeDiscountAmount = xtremeGrossWithDiscount * (xtremeDiscount / 100);
+        const xtremeAmountWithDiscount = xtremeGrossWithDiscount - xtremeDiscountAmount;
+        const xtremeAmount = xtremeAmountNoDiscount + xtremeAmountWithDiscount;
+        
+        const kiddoAmountNoDiscount = kiddoQty * prices.kiddo;
+        const kiddoGrossWithDiscount = kiddoQtyWithDiscount * prices.kiddo;
+        const kiddoDiscountAmount = kiddoGrossWithDiscount * (kiddoDiscount / 100);
+        const kiddoAmountWithDiscount = kiddoGrossWithDiscount - kiddoDiscountAmount;
+        const kiddoAmount = kiddoAmountNoDiscount + kiddoAmountWithDiscount;
+        
+        const vipAmountNoDiscount = vipQty * prices.vip;
+        const vipGrossWithDiscount = vipQtyWithDiscount * prices.vip;
+        const vipDiscountAmount = vipGrossWithDiscount * (vipDiscount / 100);
+        const vipAmountWithDiscount = vipGrossWithDiscount - vipDiscountAmount;
+        const vipAmount = vipAmountNoDiscount + vipAmountWithDiscount;
+        
         const salesData = {
-            xtremeQty, xtremeAmount: xtremeQty * prices.xtreme,
-            kiddoQty, kiddoAmount: kiddoQty * prices.kiddo,
-            vipQty, vipAmount: vipQty * prices.vip,
-            otherSales: otherSales.map(({ category, amount }) => ({ category, amount })),
-            discountPercentage: discountType === 'percent' ? discountValue : 0,
-            discountFixed: discountType === 'fixed' ? discountValue : 0
+            xtremeQty,
+            xtremeAmount,
+            xtremeQtyWithDiscount,
+            xtremeDiscountPercentage: xtremeDiscount,
+            kiddoQty,
+            kiddoAmount,
+            kiddoQtyWithDiscount,
+            kiddoDiscountPercentage: kiddoDiscount,
+            vipQty,
+            vipAmount,
+            vipQtyWithDiscount,
+            vipDiscountPercentage: vipDiscount,
+            otherSales: otherSales.map(({ category, amount }) => ({ category, amount }))
         };
         console.log('Saving sales data:', salesData); // Debug log
         onSave(correctionDate, personnel.id, salesData);
@@ -120,35 +147,42 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
                                 {datesInRange.map(date => <option key={date} value={date}>{new Date(date + 'T00:00:00').toLocaleDateString()}</option>)}
                             </select>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                           <div><label htmlFor="xtreme-qty" className="block text-sm font-medium text-gray-400">Xtreme Qty</label><input id="xtreme-qty" type="number" value={xtremeQty} onChange={e => setXtremeQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
-                           <div><label htmlFor="kiddo-qty" className="block text-sm font-medium text-gray-400">Kiddo Qty</label><input id="kiddo-qty" type="number" value={kiddoQty} onChange={e => setKiddoQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
-                           <div><label htmlFor="vip-qty" className="block text-sm font-medium text-gray-400">VIP Qty</label><input id="vip-qty" type="number" value={vipQty} onChange={e => setVipQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-orange-400 mb-1">Discount</label>
-                            <div className="flex gap-2 mb-2">
-                                <button
-                                    onClick={() => { setDiscountType('percent'); setDiscountValue(0); }}
-                                    className={`px-3 py-1 text-xs font-medium rounded-md ${discountType === 'percent' ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-                                >
-                                    Percent %
-                                </button>
-                                <button
-                                    onClick={() => { setDiscountType('fixed'); setDiscountValue(0); }}
-                                    className={`px-3 py-1 text-xs font-medium rounded-md ${discountType === 'fixed' ? 'bg-orange-600 text-white' : 'bg-gray-700 text-gray-300'}`}
-                                >
-                                    Fixed BDT
-                                </button>
+                        <div className="space-y-3">
+                            <h3 className="text-lg font-bold text-gray-200">Package Sales (No Discount)</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                               <div><label htmlFor="xtreme-qty" className="block text-sm font-medium text-purple-400">Xtreme Qty</label><input id="xtreme-qty" type="number" value={xtremeQty} onChange={e => setXtremeQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
+                               <div><label htmlFor="kiddo-qty" className="block text-sm font-medium text-pink-400">Kiddo Qty</label><input id="kiddo-qty" type="number" value={kiddoQty} onChange={e => setKiddoQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
+                               <div><label htmlFor="vip-qty" className="block text-sm font-medium text-yellow-400">VIP Qty</label><input id="vip-qty" type="number" value={vipQty} onChange={e => setVipQty(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" /></div>
                             </div>
-                            <input 
-                                type="number" 
-                                min="0" 
-                                max={discountType === 'percent' ? 100 : undefined} 
-                                value={discountValue} 
-                                onChange={e => setDiscountValue(Math.max(0, Number(e.target.value)))} 
-                                className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" 
-                            />
+                        </div>
+                        <div className="space-y-3">
+                            <h3 className="text-lg font-bold text-orange-400">Package Sales (With Discount)</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="xtreme-qty-disc" className="block text-sm font-medium text-purple-400">Xtreme Qty</label>
+                                    <input id="xtreme-qty-disc" type="number" value={xtremeQtyWithDiscount} onChange={e => setXtremeQtyWithDiscount(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" />
+                                </div>
+                                <div>
+                                    <label htmlFor="xtreme-disc" className="block text-sm font-medium text-purple-400">Discount %</label>
+                                    <input id="xtreme-disc" type="number" value={xtremeDiscount} onChange={e => setXtremeDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" max="100" step="0.1" />
+                                </div>
+                                <div>
+                                    <label htmlFor="kiddo-qty-disc" className="block text-sm font-medium text-pink-400">Kiddo Qty</label>
+                                    <input id="kiddo-qty-disc" type="number" value={kiddoQtyWithDiscount} onChange={e => setKiddoQtyWithDiscount(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" />
+                                </div>
+                                <div>
+                                    <label htmlFor="kiddo-disc" className="block text-sm font-medium text-pink-400">Discount %</label>
+                                    <input id="kiddo-disc" type="number" value={kiddoDiscount} onChange={e => setKiddoDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" max="100" step="0.1" />
+                                </div>
+                                <div>
+                                    <label htmlFor="vip-qty-disc" className="block text-sm font-medium text-yellow-400">VIP Qty</label>
+                                    <input id="vip-qty-disc" type="number" value={vipQtyWithDiscount} onChange={e => setVipQtyWithDiscount(Math.max(0, parseInt(e.target.value) || 0))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" />
+                                </div>
+                                <div>
+                                    <label htmlFor="vip-disc" className="block text-sm font-medium text-yellow-400">Discount %</label>
+                                    <input id="vip-disc" type="number" value={vipDiscount} onChange={e => setVipDiscount(Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)))} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg" min="0" max="100" step="0.1" />
+                                </div>
+                            </div>
                         </div>
                         <div className="p-4 rounded-lg border border-gray-600">
                           <h3 className="text-lg font-bold mb-3">Other Sales</h3>
