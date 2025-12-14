@@ -19,8 +19,14 @@ export const useAuth = () => {
   useEffect(() => {
     if (!role || !currentUser) return;
 
+    let activityTimeout: NodeJS.Timeout | null = null;
+    
     const updateActivity = () => {
-      setLastActivity(Date.now());
+      // Debounce activity updates to avoid excessive localStorage writes
+      if (activityTimeout) clearTimeout(activityTimeout);
+      activityTimeout = setTimeout(() => {
+        setLastActivity(Date.now());
+      }, 5000); // Only update after 5 seconds of activity
     };
 
     // Listen to various user activity events
@@ -30,9 +36,13 @@ export const useAuth = () => {
     });
 
     // Periodically save the last activity timestamp to prevent session loss
-    const activityInterval = setInterval(updateActivity, 60000); // Update every minute
+    // Using a longer interval (5 minutes) to reduce localStorage writes
+    const activityInterval = setInterval(() => {
+      setLastActivity(Date.now());
+    }, 300000); // Update every 5 minutes
 
     return () => {
+      if (activityTimeout) clearTimeout(activityTimeout);
       events.forEach(event => {
         window.removeEventListener(event, updateActivity);
       });

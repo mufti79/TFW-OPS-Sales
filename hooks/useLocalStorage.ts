@@ -1,7 +1,7 @@
 // FIX: Implemented the useLocalStorage custom hook to persist state to browser's local storage.
 // This resolves the module not found errors in useAuth.ts and DailySalesEntry.tsx.
 // Enhanced with better error handling and persistence mechanisms to prevent auto-logout.
-import { useState, useCallback, Dispatch, SetStateAction, useEffect } from 'react';
+import { useState, useCallback, Dispatch, SetStateAction, useEffect, useRef } from 'react';
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -17,6 +17,8 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
     }
   });
 
+  const lastValueRef = useRef<string>('');
+
   // Periodically verify localStorage integrity to prevent unexpected logouts
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -24,12 +26,10 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
     const verifyStorage = () => {
       try {
         const item = window.localStorage.getItem(key);
-        if (item) {
+        if (item && item !== lastValueRef.current) {
           const parsedItem = JSON.parse(item);
-          // If stored value doesn't match current state, update state to match storage
-          if (JSON.stringify(parsedItem) !== JSON.stringify(storedValue)) {
-            setStoredValue(parsedItem);
-          }
+          setStoredValue(parsedItem);
+          lastValueRef.current = item;
         }
       } catch (error) {
         console.warn(`Storage verification failed for key "${key}":`, error);
@@ -44,6 +44,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
       if (e.key === key && e.newValue) {
         try {
           setStoredValue(JSON.parse(e.newValue));
+          lastValueRef.current = e.newValue;
         } catch (error) {
           console.error('Error parsing storage event value:', error);
         }
@@ -56,7 +57,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
       clearInterval(intervalId);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [key, storedValue]);
+  }, [key]); // Removed storedValue from dependencies to prevent infinite loop
 
   const setValue: Dispatch<SetStateAction<T>> = useCallback((value) => {
     try {
@@ -64,15 +65,17 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
         const valueToStore = value instanceof Function ? value(prevValue) : value;
         if (typeof window !== 'undefined') {
           try {
-            window.localStorage.setItem(key, JSON.stringify(valueToStore));
-            // Double-check write was successful
+            const jsonValue = JSON.stringify(valueToStore);
+            window.localStorage.setItem(key, jsonValue);
+            lastValueRef.current = jsonValue;
+            // Verify write was successful
             const written = window.localStorage.getItem(key);
-            if (!written) {
+            if (written !== jsonValue) {
               console.error(`Failed to persist ${key} to localStorage - retrying`);
               // Retry once
               setTimeout(() => {
                 try {
-                  window.localStorage.setItem(key, JSON.stringify(valueToStore));
+                  window.localStorage.setItem(key, jsonValue);
                 } catch (retryError) {
                   console.error('Retry failed:', retryError);
                 }
