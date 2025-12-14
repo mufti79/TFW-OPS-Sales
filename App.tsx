@@ -254,8 +254,12 @@ const AppComponent: React.FC = () => {
         const checkDate = () => {
             const newToday = toLocalDateString(new Date());
             if (newToday !== today) {
-                localStorage.setItem('TFW_APP_NEW_DAY_FLAG', 'true');
-                window.location.reload();
+                console.log('Day changed detected:', { oldDay: today, newDay: newToday });
+                // Only reload if user is logged in (to avoid unnecessary reloads)
+                if (role && currentUser) {
+                    localStorage.setItem('TFW_APP_NEW_DAY_FLAG', 'true');
+                    window.location.reload();
+                }
             }
         };
         const intervalId = setInterval(checkDate, 60000);
@@ -267,19 +271,23 @@ const AppComponent: React.FC = () => {
             clearInterval(intervalId);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [today]);
+    }, [today, role, currentUser]);
     
     useEffect(() => {
         const newDayFlag = localStorage.getItem('TFW_APP_NEW_DAY_FLAG');
-        if (newDayFlag) {
+        if (newDayFlag && role && currentUser) {
+            console.log('Processing new day flag - logging out user');
             localStorage.removeItem('TFW_APP_NEW_DAY_FLAG');
             logout();
             showNotification("A new day has started. Please log in for your daily check-in.", "info");
             const newToday = toLocalDateString(new Date());
             setToday(newToday);
             setSelectedDate(newToday);
+        } else if (newDayFlag && !role) {
+            // Clear flag if no user is logged in
+            localStorage.removeItem('TFW_APP_NEW_DAY_FLAG');
         }
-    }, [logout, showNotification]);
+    }, [logout, showNotification, role, currentUser]);
 
     const logAction = useCallback((action: string, details: string) => {
       const user = currentUser?.name || 'System';
