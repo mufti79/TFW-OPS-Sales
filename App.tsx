@@ -554,11 +554,11 @@ const AppComponent: React.FC = () => {
             logAction('IMPORT_OPERATORS', `Replaced all operators with ${newOperators.length} imported operator(s)`);
         } else {
             // Merge: keep existing operators and add new ones with unique IDs
+            let addedCount = 0;
             setOperators(prev => {
                 const next = { ...prev };
                 const existingNames = new Set(Object.values(prev || {}).map(op => op.name.toLowerCase()));
                 let baseTime = Date.now();
-                let addedCount = 0;
                 
                 newOperators.forEach((op, index) => {
                     // Skip duplicates based on name
@@ -573,7 +573,11 @@ const AppComponent: React.FC = () => {
                 return next;
             });
             
-            logAction('IMPORT_OPERATORS', `Merged ${newOperators.length} operator(s) into existing list`);
+            const skippedCount = newOperators.length - addedCount;
+            const logMessage = skippedCount > 0 
+                ? `Merged ${addedCount} operator(s) into existing list (${skippedCount} duplicate(s) skipped)`
+                : `Merged ${addedCount} operator(s) into existing list`;
+            logAction('IMPORT_OPERATORS', logMessage);
         }
         showNotification('Operators imported successfully!', 'success');
     }, [operators, setOperators, logAction, showNotification]);
