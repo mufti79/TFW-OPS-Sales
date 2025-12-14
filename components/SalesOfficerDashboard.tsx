@@ -97,6 +97,7 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
             discountPercentage: discountType === 'percent' ? discountValue : 0,
             discountFixed: discountType === 'fixed' ? discountValue : 0
         };
+        console.log('Saving sales data:', salesData); // Debug log
         onSave(correctionDate, personnel.id, salesData);
         onClose();
     };
@@ -181,8 +182,14 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
     const [showTotalBreakdown, setShowTotalBreakdown] = useState(false);
 
     const handleEditClick = (personnel: Operator) => {
+        console.log('Edit clicked for:', personnel.name); // Debug log
         setEditingPersonnel(personnel);
         setIsEditModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsEditModalOpen(false);
+        setEditingPersonnel(null);
     };
     
     const aggregatedSalesByPersonnel = useMemo(() => {
@@ -397,7 +404,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                     </tr></tfoot>
                 </table>
             </div>
-            {isEditModalOpen && editingPersonnel && <EditSalesModal personnel={editingPersonnel} onClose={() => setIsEditModalOpen(false)} onSave={onEditSales} startDate={startDate} endDate={endDate} existingSalesData={packageSales} otherSalesCategories={otherSalesCategories} />}
+            {isEditModalOpen && editingPersonnel && <EditSalesModal personnel={editingPersonnel} onClose={handleCloseModal} onSave={onEditSales} startDate={startDate} endDate={endDate} existingSalesData={packageSales} otherSalesCategories={otherSalesCategories} />}
             
             <DeveloperAttribution />
         </div>
