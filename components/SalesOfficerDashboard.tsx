@@ -87,27 +87,20 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
         }));
     };
 
+    const calculatePackageAmount = (qtyNoDiscount: number, qtyWithDiscount: number, price: number, discountPercent: number) => {
+        const amountNoDiscount = qtyNoDiscount * price;
+        const grossWithDiscount = qtyWithDiscount * price;
+        const discountAmount = grossWithDiscount * (discountPercent / 100);
+        const amountWithDiscount = grossWithDiscount - discountAmount;
+        return amountNoDiscount + amountWithDiscount;
+    };
+
     const handleSaveClick = () => {
         const prices = { xtreme: 1200, kiddo: 800, vip: 2500 };
         
-        // Calculate amounts with per-package discounts
-        const xtremeAmountNoDiscount = xtremeQty * prices.xtreme;
-        const xtremeGrossWithDiscount = xtremeQtyWithDiscount * prices.xtreme;
-        const xtremeDiscountAmount = xtremeGrossWithDiscount * (xtremeDiscount / 100);
-        const xtremeAmountWithDiscount = xtremeGrossWithDiscount - xtremeDiscountAmount;
-        const xtremeAmount = xtremeAmountNoDiscount + xtremeAmountWithDiscount;
-        
-        const kiddoAmountNoDiscount = kiddoQty * prices.kiddo;
-        const kiddoGrossWithDiscount = kiddoQtyWithDiscount * prices.kiddo;
-        const kiddoDiscountAmount = kiddoGrossWithDiscount * (kiddoDiscount / 100);
-        const kiddoAmountWithDiscount = kiddoGrossWithDiscount - kiddoDiscountAmount;
-        const kiddoAmount = kiddoAmountNoDiscount + kiddoAmountWithDiscount;
-        
-        const vipAmountNoDiscount = vipQty * prices.vip;
-        const vipGrossWithDiscount = vipQtyWithDiscount * prices.vip;
-        const vipDiscountAmount = vipGrossWithDiscount * (vipDiscount / 100);
-        const vipAmountWithDiscount = vipGrossWithDiscount - vipDiscountAmount;
-        const vipAmount = vipAmountNoDiscount + vipAmountWithDiscount;
+        const xtremeAmount = calculatePackageAmount(xtremeQty, xtremeQtyWithDiscount, prices.xtreme, xtremeDiscount);
+        const kiddoAmount = calculatePackageAmount(kiddoQty, kiddoQtyWithDiscount, prices.kiddo, kiddoDiscount);
+        const vipAmount = calculatePackageAmount(vipQty, vipQtyWithDiscount, prices.vip, vipDiscount);
         
         const salesData = {
             xtremeQty,
