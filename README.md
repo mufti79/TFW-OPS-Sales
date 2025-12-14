@@ -30,7 +30,7 @@ The application supports multiple user roles with different access levels:
 - **Operators**: Select your name from the dropdown (no PIN required)
 - **Ticket Sales Personnel**: Select your name from the dropdown (no PIN required)
 
-> **Note**: PIN codes are defined in `hooks/useAuth.ts` and should be kept confidential in production environments.
+> ⚠️ **Security Notice**: The PIN codes shown above are the default development credentials defined in `hooks/useAuth.ts`. For production deployments, these should be changed to secure, unique values and stored as environment variables. The current hardcoded PINs are a security risk and should not be used in a production environment accessible from the internet.
 
 ## Cross-Application Synchronization
 
