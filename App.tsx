@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
@@ -74,6 +74,10 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
+// Constants for session management and date checking
+const DATE_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const VISIBILITY_CHECK_THROTTLE = 30 * 1000; // 30 seconds
+
 const toLocalDateString = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -144,6 +148,9 @@ const AppComponent: React.FC = () => {
     const [selectedRideForEdit, setSelectedRideForEdit] = useState<Ride | null>(null);
     const [currentView, setCurrentView] = useState<View>('counter');
     const [currentModal, setCurrentModal] = useState<Modal>(null);
+
+    // Use ref to persist lastVisibilityCheck across renders
+    const lastVisibilityCheckRef = useRef(Date.now());
 
     const [today, setToday] = useState(toLocalDateString(new Date()));
     const [selectedDate, setSelectedDate] = useState(today);
@@ -237,6 +244,36 @@ const AppComponent: React.FC = () => {
         }
     }, []);
     
+    // Monitor for unexpected session loss and log diagnostic information
+    useEffect(() => {
+        if (!role && !currentUser) return;
+        
+        const checkSessionIntegrity = () => {
+            try {
+                const authRole = localStorage.getItem('authRole');
+                const authUser = localStorage.getItem('authUser');
+                
+                // If we have role/currentUser in state but not in localStorage, something cleared it
+                if (role && currentUser && (!authRole || !authUser)) {
+                    console.error('⚠️ Session data missing from localStorage!', {
+                        stateRole: role,
+                        storageRole: authRole,
+                        stateUser: currentUser?.name,
+                        storageSize: JSON.stringify(localStorage).length,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            } catch (error) {
+                console.error('Session integrity check failed:', error);
+            }
+        };
+        
+        // Check every 30 seconds
+        const integrityInterval = setInterval(checkSessionIntegrity, 30000);
+        
+        return () => clearInterval(integrityInterval);
+    }, [role, currentUser]);
+    
     useEffect(() => {
       const link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
       if (link && appLogo) {
@@ -251,17 +288,32 @@ const AppComponent: React.FC = () => {
             const newToday = toLocalDateString(new Date());
             if (newToday !== today) {
                 console.log('Day changed detected:', { oldDay: today, newDay: newToday });
-                // Only reload if user is logged in (to avoid unnecessary reloads)
+                // Only set flag and reload if user is logged in
                 if (role && currentUser) {
                     localStorage.setItem('TFW_APP_NEW_DAY_FLAG', 'true');
                     window.location.reload();
+                } else {
+                    // Just update the date if no user is logged in
+                    setToday(newToday);
+                    setSelectedDate(newToday);
                 }
             }
         };
-        const intervalId = setInterval(checkDate, 60000);
+        
+        // Check date periodically to reduce overhead
+        const intervalId = setInterval(checkDate, DATE_CHECK_INTERVAL);
+        
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') checkDate();
+            if (document.visibilityState === 'visible') {
+                // Only check date if enough time has passed since last check
+                const now = Date.now();
+                if (now - lastVisibilityCheckRef.current > VISIBILITY_CHECK_THROTTLE) {
+                    lastVisibilityCheckRef.current = now;
+                    checkDate();
+                }
+            }
         };
+        
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => {
             clearInterval(intervalId);

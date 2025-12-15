@@ -15,6 +15,42 @@ export const useAuth = () => {
   const [currentUser, setCurrentUser] = useLocalStorage<Operator | null>('authUser', null);
   const [lastActivity, setLastActivity] = useLocalStorage<number>('authLastActivity', Date.now());
 
+  // Backup auth data to sessionStorage as additional protection against localStorage clearing
+  useEffect(() => {
+    if (role && currentUser) {
+      try {
+        sessionStorage.setItem('authBackup', JSON.stringify({ role, currentUser, lastActivity }));
+      } catch (error) {
+        console.warn('Failed to backup auth to sessionStorage:', error);
+      }
+    }
+  }, [role, currentUser, lastActivity]);
+
+  // Attempt to recover auth from sessionStorage if localStorage is empty but session exists
+  useEffect(() => {
+    if (!role && !currentUser) {
+      try {
+        const backup = sessionStorage.getItem('authBackup');
+        if (backup) {
+          const parsed = JSON.parse(backup);
+          // Check if the backup is still valid (less than 24 hours old)
+          if (parsed.lastActivity && Date.now() - parsed.lastActivity < 86400000) {
+            console.log('Recovering session from backup...');
+            setRole(parsed.role);
+            setCurrentUser(parsed.currentUser);
+            setLastActivity(Date.now());
+          } else {
+            // Backup is too old, clear it
+            sessionStorage.removeItem('authBackup');
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to recover auth from backup:', error);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, currentUser]); // Re-run when role/user changes to catch recovery opportunities
+
   // Update last activity timestamp on any user interaction to prevent auto-logout
   useEffect(() => {
     if (!role || !currentUser) return;
@@ -105,6 +141,12 @@ export const useAuth = () => {
   const logout = useCallback(() => {
     setRole(null);
     setCurrentUser(null);
+    // Clear backup when user explicitly logs out
+    try {
+      sessionStorage.removeItem('authBackup');
+    } catch (error) {
+      console.warn('Failed to clear auth backup:', error);
+    }
   }, [setRole, setCurrentUser]);
 
   return { role, currentUser, login, logout };

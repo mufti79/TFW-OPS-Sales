@@ -86,7 +86,47 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
             console.error('Failed to save to localStorage:', storageError);
             // Attempt to clear some space by removing non-critical data
             if (storageError instanceof DOMException && storageError.name === 'QuotaExceededError') {
-              console.warn('Storage quota exceeded. Consider clearing old data.');
+              console.warn('Storage quota exceeded. Attempting to free up space...');
+              try {
+                // Remove old Firebase sync data to free up space, but preserve auth data
+                const authKeys = ['authRole', 'authUser', 'authLastActivity'];
+                
+                // First, collect all keys to avoid issues with changing indices during removal
+                const allKeys: string[] = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                  const storageKey = localStorage.key(i);
+                  if (storageKey) {
+                    allKeys.push(storageKey);
+                  }
+                }
+                
+                // Filter to find non-critical keys that can be removed
+                const keysToRemove = allKeys.filter(
+                  k => !authKeys.includes(k) && !k.startsWith('tfw_')
+                );
+                
+                // Now safely remove non-critical keys
+                keysToRemove.forEach(k => {
+                  try {
+                    localStorage.removeItem(k);
+                  } catch (e) {
+                    // Ignore errors during cleanup
+                  }
+                });
+                
+                // Retry the original operation
+                if (keysToRemove.length > 0) {
+                  console.log(`Cleared ${keysToRemove.length} non-critical storage items. Retrying...`);
+                  try {
+                    window.localStorage.setItem(key, jsonValue);
+                    lastValueRef.current = jsonValue;
+                  } catch (retryError) {
+                    console.error('Retry after cleanup still failed:', retryError);
+                  }
+                }
+              } catch (cleanupError) {
+                console.error('Failed to clean up storage:', cleanupError);
+              }
             }
           }
         }
