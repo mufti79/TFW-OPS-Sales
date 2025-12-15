@@ -26,19 +26,17 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   const { showNotification } = useNotification();
   
   // Sync local state with prop from Firebase
+  // Memoize the selected date's assignments to prevent unnecessary re-renders
+  const selectedDateAssignments = useMemo(() => {
+    return dailyAssignments[selectedDate] || {};
+  }, [dailyAssignments, selectedDate]);
+
   useEffect(() => {
-    const rawAssignments = dailyAssignments[selectedDate] || {};
+    const rawAssignments = selectedDateAssignments;
     const normalizedAssignments: Record<string, number[]> = {};
     Object.entries(rawAssignments).forEach(([key, value]) => {
       normalizedAssignments[key] = Array.isArray(value) ? value : [value];
     });
-    
-    // Debug logging to help diagnose sync issues
-    if (import.meta.env.DEV) {
-      console.log('📅 AssignmentView - Selected date:', selectedDate);
-      console.log('📦 AssignmentView - Raw assignments for date:', rawAssignments);
-      console.log('✨ AssignmentView - Normalized assignments:', normalizedAssignments);
-    }
     
     // Compare before updating to avoid unnecessary re-renders and overwriting unsaved changes
     setAssignments(prev => {
@@ -64,12 +62,10 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         }
       }
       
-      if (import.meta.env.DEV && Object.keys(prev).length > 0) {
-        console.log('⏭️  AssignmentView - State unchanged, keeping previous');
-      }
+      // Return prev to avoid unnecessary state updates
       return prev; // No changes, keep previous state
     });
-  }, [selectedDate, dailyAssignments]);
+  }, [selectedDate, selectedDateAssignments]);
 
   const isDirty = useMemo(() => {
     const currentRemoteAssignments = dailyAssignments[selectedDate] || {};

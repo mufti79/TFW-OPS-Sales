@@ -25,8 +25,13 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   const dropdownRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const { showNotification } = useNotification();
   
+  // Memoize the selected date's assignments to prevent unnecessary re-renders
+  const selectedDateAssignments = useMemo(() => {
+    return dailyAssignments[selectedDate] || {};
+  }, [dailyAssignments, selectedDate]);
+
   useEffect(() => {
-    const rawAssignments = dailyAssignments[selectedDate] || {};
+    const rawAssignments = selectedDateAssignments;
     const normalizedAssignments: Record<string, number[]> = {};
     Object.entries(rawAssignments).forEach(([key, value]) => {
       normalizedAssignments[key] = Array.isArray(value) ? value : [value];
@@ -52,7 +57,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
       
       return prev; // No changes, keep previous state
     });
-  }, [selectedDate, dailyAssignments]);
+  }, [selectedDate, selectedDateAssignments]);
 
   const isDirty = useMemo(() => {
     const currentRemoteAssignments = dailyAssignments[selectedDate] || {};
