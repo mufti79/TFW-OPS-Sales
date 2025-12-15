@@ -37,8 +37,7 @@ const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCou
     // Allow empty string to clear the field
     if (countStr === '') {
       setLocalCounts(prev => {
-        const newCounts = { ...prev };
-        delete newCounts[hour.toString()];
+        const { [hour.toString()]: _, ...newCounts } = prev;
         return newCounts;
       });
       return;
