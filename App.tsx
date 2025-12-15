@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useEffect, ReactNode } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, ReactNode, useRef } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
@@ -144,6 +144,9 @@ const AppComponent: React.FC = () => {
     const [selectedRideForEdit, setSelectedRideForEdit] = useState<Ride | null>(null);
     const [currentView, setCurrentView] = useState<View>('counter');
     const [currentModal, setCurrentModal] = useState<Modal>(null);
+
+    // Use ref to persist lastVisibilityCheck across renders
+    const lastVisibilityCheckRef = useRef(Date.now());
 
     const [today, setToday] = useState(toLocalDateString(new Date()));
     const [selectedDate, setSelectedDate] = useState(today);
@@ -296,15 +299,12 @@ const AppComponent: React.FC = () => {
         // Check date every 5 minutes instead of every minute to reduce overhead
         const intervalId = setInterval(checkDate, 300000);
         
-        // Track last visibility check to prevent rapid successive checks
-        let lastVisibilityCheck = Date.now();
-        
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
                 // Only check date if it's been at least 30 seconds since last check
                 const now = Date.now();
-                if (now - lastVisibilityCheck > 30000) {
-                    lastVisibilityCheck = now;
+                if (now - lastVisibilityCheckRef.current > 30000) {
+                    lastVisibilityCheckRef.current = now;
                     checkDate();
                 }
             }

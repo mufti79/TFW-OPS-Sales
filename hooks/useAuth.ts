@@ -48,7 +48,7 @@ export const useAuth = () => {
         console.warn('Failed to recover auth from backup:', error);
       }
     }
-  }, []); // Only run once on mount
+  }, [role, currentUser, setRole, setCurrentUser, setLastActivity]); // Re-run when role/user changes to catch recovery opportunities
 
   // Update last activity timestamp on any user interaction to prevent auto-logout
   useEffect(() => {
