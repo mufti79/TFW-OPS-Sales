@@ -72,7 +72,7 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
         } else {
             setOtherSales(existingOtherSales.map((item: any) => ({ ...item, id: `item-${Date.now()}-${Math.random()}` })));
         }
-    }, [correctionDate, personnel.id, existingSalesData]);
+    }, [correctionDate, personnel.id]); // Removed existingSalesData from dependencies
     
     const handleAddOtherSale = () => setOtherSales(prev => [...prev, { id: `item-${Date.now()}`, category: '', amount: 0 }]);
     const handleRemoveOtherSale = (id: string) => setOtherSales(prev => prev.filter(item => item.id !== id));
