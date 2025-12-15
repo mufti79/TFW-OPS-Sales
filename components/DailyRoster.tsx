@@ -73,20 +73,10 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                                     <input 
                                         type="checkbox"
                                         checked={selectedIds.includes(op.id)}
-                                        onChange={(e) => {
-                                            e.stopPropagation();
-                                            handleToggle(op.id);
-                                        }}
-                                        onMouseDown={(e) => {
-                                            e.stopPropagation();
-                                            e.nativeEvent.stopImmediatePropagation();
-                                        }}
+                                        onChange={() => handleToggle(op.id)}
                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-purple-600 focus:ring-purple-500"
                                     />
-                                    <span className="ml-3 text-gray-300" onMouseDown={(e) => {
-                                        e.stopPropagation();
-                                        e.nativeEvent.stopImmediatePropagation();
-                                    }}>{op.name} {statusLabel}</span>
+                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
                                 </label>
                             );
                         })}
