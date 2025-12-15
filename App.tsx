@@ -74,6 +74,10 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
+// Constants for session management and date checking
+const DATE_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const VISIBILITY_CHECK_THROTTLE = 30 * 1000; // 30 seconds
+
 const toLocalDateString = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -296,14 +300,14 @@ const AppComponent: React.FC = () => {
             }
         };
         
-        // Check date every 5 minutes instead of every minute to reduce overhead
-        const intervalId = setInterval(checkDate, 300000);
+        // Check date periodically to reduce overhead
+        const intervalId = setInterval(checkDate, DATE_CHECK_INTERVAL);
         
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                // Only check date if it's been at least 30 seconds since last check
+                // Only check date if enough time has passed since last check
                 const now = Date.now();
-                if (now - lastVisibilityCheckRef.current > 30000) {
+                if (now - lastVisibilityCheckRef.current > VISIBILITY_CHECK_THROTTLE) {
                     lastVisibilityCheckRef.current = now;
                     checkDate();
                 }

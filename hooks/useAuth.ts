@@ -48,7 +48,8 @@ export const useAuth = () => {
         console.warn('Failed to recover auth from backup:', error);
       }
     }
-  }, [role, currentUser, setRole, setCurrentUser, setLastActivity]); // Re-run when role/user changes to catch recovery opportunities
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role, currentUser]); // Re-run when role/user changes to catch recovery opportunities
 
   // Update last activity timestamp on any user interaction to prevent auto-logout
   useEffect(() => {

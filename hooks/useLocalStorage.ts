@@ -90,16 +90,22 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
               try {
                 // Remove old Firebase sync data to free up space, but preserve auth data
                 const authKeys = ['authRole', 'authUser', 'authLastActivity'];
-                const keysToRemove: string[] = [];
                 
+                // First, collect all keys to avoid issues with changing indices during removal
+                const allKeys: string[] = [];
                 for (let i = 0; i < localStorage.length; i++) {
                   const storageKey = localStorage.key(i);
-                  if (storageKey && !authKeys.includes(storageKey) && !storageKey.startsWith('tfw_')) {
-                    keysToRemove.push(storageKey);
+                  if (storageKey) {
+                    allKeys.push(storageKey);
                   }
                 }
                 
-                // Remove non-critical keys
+                // Filter to find non-critical keys that can be removed
+                const keysToRemove = allKeys.filter(
+                  k => !authKeys.includes(k) && !k.startsWith('tfw_')
+                );
+                
+                // Now safely remove non-critical keys
                 keysToRemove.forEach(k => {
                   try {
                     localStorage.removeItem(k);
