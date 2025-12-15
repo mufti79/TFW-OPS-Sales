@@ -41,6 +41,7 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
     const [vipQtyWithDiscount, setVipQtyWithDiscount] = useState(0);
     const [vipDiscount, setVipDiscount] = useState(0);
     const [otherSales, setOtherSales] = useState<OtherSaleItem[]>([]);
+    const [isSaving, setIsSaving] = useState(false);
 
     const datesInRange = useMemo(() => {
         const dates = [];
@@ -95,48 +96,92 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
         return amountNoDiscount + amountWithDiscount;
     };
 
-    const handleSaveClick = () => {
-        const prices = { xtreme: 1200, kiddo: 800, vip: 2500 };
+    const handleSaveClick = async () => {
+        if (isSaving) return; // Prevent double-clicks
         
-        const xtremeAmount = calculatePackageAmount(xtremeQty, xtremeQtyWithDiscount, prices.xtreme, xtremeDiscount);
-        const kiddoAmount = calculatePackageAmount(kiddoQty, kiddoQtyWithDiscount, prices.kiddo, kiddoDiscount);
-        const vipAmount = calculatePackageAmount(vipQty, vipQtyWithDiscount, prices.vip, vipDiscount);
+        setIsSaving(true);
         
-        const salesData = {
-            xtremeQty,
-            xtremeAmount,
-            xtremeQtyWithDiscount,
-            xtremeDiscountPercentage: xtremeDiscount,
-            kiddoQty,
-            kiddoAmount,
-            kiddoQtyWithDiscount,
-            kiddoDiscountPercentage: kiddoDiscount,
-            vipQty,
-            vipAmount,
-            vipQtyWithDiscount,
-            vipDiscountPercentage: vipDiscount,
-            otherSales: otherSales.map(({ category, amount }) => ({ category, amount }))
-        };
-        console.log('Saving sales data:', salesData); // Debug log
-        onSave(correctionDate, personnel.id, salesData);
-        onClose();
+        try {
+            const prices = { xtreme: 1200, kiddo: 800, vip: 2500 };
+            
+            const xtremeAmount = calculatePackageAmount(xtremeQty, xtremeQtyWithDiscount, prices.xtreme, xtremeDiscount);
+            const kiddoAmount = calculatePackageAmount(kiddoQty, kiddoQtyWithDiscount, prices.kiddo, kiddoDiscount);
+            const vipAmount = calculatePackageAmount(vipQty, vipQtyWithDiscount, prices.vip, vipDiscount);
+            
+            const salesData = {
+                xtremeQty,
+                xtremeAmount,
+                xtremeQtyWithDiscount,
+                xtremeDiscountPercentage: xtremeDiscount,
+                kiddoQty,
+                kiddoAmount,
+                kiddoQtyWithDiscount,
+                kiddoDiscountPercentage: kiddoDiscount,
+                vipQty,
+                vipAmount,
+                vipQtyWithDiscount,
+                vipDiscountPercentage: vipDiscount,
+                otherSales: otherSales.map(({ category, amount }) => ({ category, amount }))
+            };
+            
+            console.log('Saving sales data:', salesData); // Debug log
+            
+            // Call onSave and wait a moment for state propagation
+            onSave(correctionDate, personnel.id, salesData);
+            
+            // Give Firebase time to propagate the change before closing
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            onClose();
+        } catch (error) {
+            console.error('Error saving sales data:', error);
+            alert('Failed to save sales data. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog">
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg border border-gray-700 animate-fade-in-up">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog" aria-busy={isSaving}>
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-lg border border-gray-700 animate-fade-in-up relative">
+                {isSaving && (
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center z-10 rounded-lg">
+                        <div className="bg-gray-900 px-6 py-4 rounded-lg shadow-xl border border-teal-500">
+                            <div className="flex items-center gap-3">
+                                <svg className="animate-spin h-8 w-8 text-teal-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span className="text-white font-semibold text-lg">Saving changes...</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div className="p-6 max-h-[90vh] overflow-y-auto">
                     <div className="flex justify-between items-start mb-4">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-100">Correct Sales for</h2>
                             <p className="text-teal-400 font-semibold">{personnel.name}</p>
                         </div>
-                        <button onClick={onClose} className="text-gray-400 hover:text-white"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                        <button 
+                            onClick={onClose} 
+                            disabled={isSaving}
+                            className="text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            aria-label="Close modal"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                     </div>
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="correction-date" className="block text-sm font-medium text-gray-300">Date to Correct</label>
-                            <select id="correction-date" value={correctionDate} onChange={e => setCorrectionDate(e.target.value)} className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg">
+                            <select 
+                                id="correction-date" 
+                                value={correctionDate} 
+                                onChange={e => setCorrectionDate(e.target.value)} 
+                                disabled={isSaving}
+                                className="mt-1 w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 {datesInRange.map(date => <option key={date} value={date}>{new Date(date + 'T00:00:00').toLocaleDateString()}</option>)}
                             </select>
                         </div>
@@ -194,8 +239,30 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
                     </div>
                 </div>
                 <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500">Cancel</button>
-                    <button onClick={handleSaveClick} className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700">Save Correction</button>
+                    <button 
+                        onClick={onClose} 
+                        disabled={isSaving}
+                        className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleSaveClick} 
+                        disabled={isSaving}
+                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                        {isSaving ? (
+                            <>
+                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Saving...
+                            </>
+                        ) : (
+                            'Save Correction'
+                        )}
+                    </button>
                 </div>
             </div>
         </div>
