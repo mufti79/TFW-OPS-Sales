@@ -75,10 +75,16 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
                                             e.stopPropagation();
                                             handleToggle(p.id);
                                         }}
-                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onMouseDown={(e) => {
+                                            e.stopPropagation();
+                                            e.nativeEvent.stopImmediatePropagation();
+                                        }}
                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-teal-600 focus:ring-teal-500"
                                     />
-                                    <span className="ml-3 text-gray-300" onMouseDown={(e) => e.stopPropagation()}>{p.name} {statusLabel}</span>
+                                    <span className="ml-3 text-gray-300" onMouseDown={(e) => {
+                                        e.stopPropagation();
+                                        e.nativeEvent.stopImmediatePropagation();
+                                    }}>{p.name} {statusLabel}</span>
                                 </label>
                             );
                         })}

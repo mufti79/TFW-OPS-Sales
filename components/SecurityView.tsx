@@ -34,12 +34,23 @@ const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCou
   }, [localCounts, remoteCounts, hours]);
 
   const handleCountChange = (hour: number, countStr: string) => {
+    // Allow empty string to clear the field
+    if (countStr === '') {
+      setLocalCounts(prev => {
+        const newCounts = { ...prev };
+        delete newCounts[hour.toString()];
+        return newCounts;
+      });
+      return;
+    }
+    
     const count = parseInt(countStr, 10);
-    const newCount = !isNaN(count) && count >= 0 ? count : 0;
-    setLocalCounts(prev => ({
+    if (!isNaN(count) && count >= 0) {
+      setLocalCounts(prev => ({
         ...prev,
-        [hour.toString()]: newCount
-    }));
+        [hour.toString()]: count
+      }));
+    }
   };
 
   const handleSave = () => {
