@@ -435,9 +435,9 @@ const AppComponent: React.FC = () => {
         if (!currentUser) return;
         setAttendanceData(prev => ({ ...prev, [today]: { ...(prev?.[today] || {}), [currentUser.id]: { attendedBriefing, briefingTime } } }));
         logAction('CLOCK_IN', `${currentUser.name} checked in. Attended briefing: ${attendedBriefing}.`);
-        showNotification('Check-in successful! You will be logged out momentarily.', 'success');
-        setTimeout(handleLogout, 3000);
-    }, [currentUser, setAttendanceData, today, logAction, showNotification, handleLogout]);
+        showNotification('Check-in successful! You can now view your roster and assignments.', 'success', 3000);
+        // Keep user logged in for the entire day - no automatic logout after check-in
+    }, [currentUser, setAttendanceData, today, logAction, showNotification]);
 
     const handleSavePackageSales = (data: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser) return;
