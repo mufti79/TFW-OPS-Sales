@@ -5,6 +5,9 @@ import { Operator, PackageSalesRecord, PackageSalesData } from '../types';
 import { Role } from '../hooks/useAuth';
 import DeveloperAttribution from './DeveloperAttribution';
 
+// Delay before closing modal to allow Firebase state propagation
+const SAVE_DELAY_MS = 500;
+
 type OtherSaleItem = { id: string; category: string; amount: number };
 
 interface SalesOfficerDashboardProps {
@@ -130,7 +133,7 @@ const EditSalesModal: React.FC<EditSalesModalProps> = ({ personnel, onClose, onS
             onSave(correctionDate, personnel.id, salesData);
             
             // Give Firebase time to propagate the change before closing
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, SAVE_DELAY_MS));
             
             onClose();
         } catch (error) {
