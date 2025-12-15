@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { SECURITY_FLOORS } from '../constants';
 
 interface SecurityViewProps {
@@ -10,14 +10,21 @@ interface SecurityViewProps {
 const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCounts, onSaveFloorCounts }) => {
   const [selectedFloor, setSelectedFloor] = useState(SECURITY_FLOORS[0]);
   const [localCounts, setLocalCounts] = useState<Record<string, number>>({});
+  const previousDataRef = useRef<string>('');
   
   // 2 PM to 9 PM (21:00)
   const hours = Array.from({ length: 8 }, (_, i) => 14 + i); 
 
-  // Sync local state when props change
+  // Sync local state when the actual data changes (not just the reference)
   useEffect(() => {
     const countsForFloorAndDate = floorGuestCounts[selectedDate]?.[selectedFloor] || {};
-    setLocalCounts(countsForFloorAndDate);
+    const currentDataKey = JSON.stringify(countsForFloorAndDate);
+    
+    // Only update if the actual data has changed
+    if (currentDataKey !== previousDataRef.current) {
+      previousDataRef.current = currentDataKey;
+      setLocalCounts(countsForFloorAndDate);
+    }
   }, [selectedDate, selectedFloor, floorGuestCounts]);
 
   const remoteCounts = useMemo(() => floorGuestCounts[selectedDate]?.[selectedFloor] || {}, [floorGuestCounts, selectedDate, selectedFloor]);
