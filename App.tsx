@@ -237,6 +237,36 @@ const AppComponent: React.FC = () => {
         }
     }, []);
     
+    // Monitor for unexpected session loss and log diagnostic information
+    useEffect(() => {
+        if (!role && !currentUser) return;
+        
+        const checkSessionIntegrity = () => {
+            try {
+                const authRole = localStorage.getItem('authRole');
+                const authUser = localStorage.getItem('authUser');
+                
+                // If we have role/currentUser in state but not in localStorage, something cleared it
+                if (role && currentUser && (!authRole || !authUser)) {
+                    console.error('⚠️ Session data missing from localStorage!', {
+                        stateRole: role,
+                        storageRole: authRole,
+                        stateUser: currentUser?.name,
+                        storageSize: JSON.stringify(localStorage).length,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            } catch (error) {
+                console.error('Session integrity check failed:', error);
+            }
+        };
+        
+        // Check every 30 seconds
+        const integrityInterval = setInterval(checkSessionIntegrity, 30000);
+        
+        return () => clearInterval(integrityInterval);
+    }, [role, currentUser]);
+    
     useEffect(() => {
       const link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
       if (link && appLogo) {
@@ -251,17 +281,35 @@ const AppComponent: React.FC = () => {
             const newToday = toLocalDateString(new Date());
             if (newToday !== today) {
                 console.log('Day changed detected:', { oldDay: today, newDay: newToday });
-                // Only reload if user is logged in (to avoid unnecessary reloads)
+                // Only set flag and reload if user is logged in
                 if (role && currentUser) {
                     localStorage.setItem('TFW_APP_NEW_DAY_FLAG', 'true');
                     window.location.reload();
+                } else {
+                    // Just update the date if no user is logged in
+                    setToday(newToday);
+                    setSelectedDate(newToday);
                 }
             }
         };
-        const intervalId = setInterval(checkDate, 60000);
+        
+        // Check date every 5 minutes instead of every minute to reduce overhead
+        const intervalId = setInterval(checkDate, 300000);
+        
+        // Track last visibility check to prevent rapid successive checks
+        let lastVisibilityCheck = Date.now();
+        
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') checkDate();
+            if (document.visibilityState === 'visible') {
+                // Only check date if it's been at least 30 seconds since last check
+                const now = Date.now();
+                if (now - lastVisibilityCheck > 30000) {
+                    lastVisibilityCheck = now;
+                    checkDate();
+                }
+            }
         };
+        
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => {
             clearInterval(intervalId);
