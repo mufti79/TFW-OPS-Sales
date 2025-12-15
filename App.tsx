@@ -183,22 +183,18 @@ const AppComponent: React.FC = () => {
     }, [tsAssignments, salesAssignments]);
     
     // Debug logging for assignment sync (development only)
+    // Only log once on mount to avoid performance issues from continuous re-renders
     useEffect(() => {
         if (import.meta.env.DEV) {
-            if (Object.keys(opsAssignments).length > 0) {
-                console.log('🔄 Synced assignments from TFW-NEW (data/opsAssignments):', opsAssignments);
-            }
-            if (Object.keys(dailyAssignments).length > 0) {
-                console.log('📋 Local assignments (data/dailyAssignments):', dailyAssignments);
-            }
-            if (Object.keys(salesAssignments).length > 0) {
-                console.log('🔄 Synced ticket sales assignments from TFW-NEW (data/salesAssignments):', salesAssignments);
-            }
-            if (Object.keys(tsAssignments).length > 0) {
-                console.log('🎫 Local ticket sales assignments (data/tsAssignments):', tsAssignments);
-            }
+            console.log('📊 Assignment Data Loaded:', {
+                opsAssignments: Object.keys(opsAssignments).length > 0 ? `${Object.keys(opsAssignments).length} dates` : 'empty',
+                dailyAssignments: Object.keys(dailyAssignments).length > 0 ? `${Object.keys(dailyAssignments).length} dates` : 'empty',
+                salesAssignments: Object.keys(salesAssignments).length > 0 ? `${Object.keys(salesAssignments).length} dates` : 'empty',
+                tsAssignments: Object.keys(tsAssignments).length > 0 ? `${Object.keys(tsAssignments).length} dates` : 'empty'
+            });
         }
-    }, [opsAssignments, dailyAssignments, salesAssignments, tsAssignments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
