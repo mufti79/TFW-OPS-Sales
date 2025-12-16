@@ -165,33 +165,6 @@ export const logMemoryStats = (): void => {
   }
 };
 
-/**
- * React hook for monitoring memory usage
- * @param threshold - Warning threshold percentage
- * @param onHighMemory - Callback when memory usage is high
- */
-export const useMemoryMonitor = (
-  threshold: number = 80,
-  onHighMemory?: () => void
-) => {
-  if (typeof window === 'undefined') return;
-  
-  const checkMemory = () => {
-    if (isMemoryPressureHigh(threshold)) {
-      console.warn('High memory pressure detected');
-      onHighMemory?.();
-    }
-  };
-  
-  // Check immediately
-  checkMemory();
-  
-  // Set up periodic checking
-  const intervalId = setInterval(checkMemory, 60000);
-  
-  return () => clearInterval(intervalId);
-};
-
 export default {
   getMemoryStats,
   isMemoryPressureHigh,
@@ -202,5 +175,4 @@ export default {
   formatBytes,
   estimateObjectSize,
   logMemoryStats,
-  useMemoryMonitor,
 };

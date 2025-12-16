@@ -717,6 +717,8 @@ const AppComponent: React.FC = () => {
     const estimatedDbSize = useMemo(() => {
         try {
             // Only stringify non-null objects to reduce memory footprint
+            // Note: We intentionally exclude opsAssignments and salesAssignments from size calculation
+            // as they are merged into dailyAssignments and tsAssignments respectively, avoiding double-counting
             const data = {
                 dailyCounts: dailyCounts || {},
                 dailyRideDetails: dailyRideDetails || {},
