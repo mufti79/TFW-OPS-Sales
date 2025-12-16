@@ -46,8 +46,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For API calls, use network-first strategy
-  if (event.request.url.includes('/api/') || event.request.url.includes('firebaseio.com')) {
+  // For API calls and Firebase, use network-first strategy
+  // Use hostname check to prevent URL manipulation attacks
+  const url = new URL(event.request.url);
+  const isApiCall = url.pathname.includes('/api/');
+  const isFirebaseCall = url.hostname.endsWith('.firebaseio.com') || url.hostname === 'firebaseio.com';
+  
+  if (isApiCall || isFirebaseCall) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
