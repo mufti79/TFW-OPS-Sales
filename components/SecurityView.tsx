@@ -75,6 +75,13 @@ const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCou
   const [year, month, day] = selectedDate.split('-').map(Number);
   const displayDate = new Date(year, month - 1, day);
 
+  // Calculate the total for the selected floor across all hours
+  const floorTotal = useMemo(() => {
+    return hours.reduce((sum, hour) => {
+      return sum + (localCounts[hour.toString()] || 0);
+    }, 0);
+  }, [localCounts, hours]);
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
@@ -116,6 +123,18 @@ const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCou
                   </div>
               </div>
           ))}
+          
+          {/* Level Total Row */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-indigo-900/50 to-cyan-900/50 rounded-lg border-2 border-indigo-500/50">
+              <div className="flex justify-between items-center">
+                  <span className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                      Level {selectedFloor.replace('th', '')} Total
+                  </span>
+                  <span className="text-2xl font-bold text-cyan-300 tabular-nums">
+                      {floorTotal.toLocaleString()} {floorTotal === 1 ? 'Guest' : 'Guests'}
+                  </span>
+              </div>
+          </div>
       </div>
       <div className="mt-8 flex justify-end">
         <button
