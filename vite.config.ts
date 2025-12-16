@@ -18,6 +18,25 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      }
+      },
+      build: {
+        // Optimize memory usage during build and runtime
+        chunkSizeWarningLimit: 1000,
+        rollupOptions: {
+          output: {
+            // Split code into smaller chunks to reduce memory pressure
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom'],
+              'firebase-vendor': ['firebase/app', 'firebase/database', 'firebase/auth'],
+            }
+          }
+        },
+        // Use esbuild for faster minification with lower memory usage
+        minify: 'esbuild',
+      },
+      // Optimize dependencies to reduce bundle size
+      optimizeDeps: {
+        include: ['react', 'react-dom', 'firebase/app', 'firebase/database', 'firebase/auth'],
+      },
     };
 });
