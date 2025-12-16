@@ -718,7 +718,9 @@ const AppComponent: React.FC = () => {
         try {
             // Only stringify non-null objects to reduce memory footprint
             // Note: We intentionally exclude opsAssignments and salesAssignments from size calculation
-            // as they are merged into dailyAssignments and tsAssignments respectively, avoiding double-counting
+            // as they are merged into dailyAssignments and tsAssignments respectively (see lines 194-200),
+            // avoiding double-counting. Changes to opsAssignments/salesAssignments are reflected through
+            // mergedAssignments and mergedTSAssignments which depend on the base assignments we track here.
             const data = {
                 dailyCounts: dailyCounts || {},
                 dailyRideDetails: dailyRideDetails || {},
