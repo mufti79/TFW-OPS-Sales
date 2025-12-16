@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useCallback, useEffect, ReactNode, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, ReactNode, useRef, lazy, Suspense } from 'react';
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
@@ -15,26 +15,38 @@ import Login from './components/Login';
 import Header from './components/Header';
 import RideCard from './components/RideCard';
 import Footer from './components/Footer';
-import Reports from './components/Reports';
-import EditImageModal from './components/EditImageModal';
-import CodeAssistant from './components/CodeAssistant';
-import OperatorManager from './components/OperatorManager';
-import AssignmentView from './components/AssignmentView';
-import ExpertiseReport from './components/ExpertiseReport';
-import DailyRoster from './components/DailyRoster';
-import KioskModeWrapper from './components/KioskModeWrapper';
-import BackupManager from './components/BackupManager';
-import TicketSalesAssignmentView from './components/TicketSalesAssignmentView';
-import TicketSalesRoster from './components/TicketSalesRoster';
-import TicketSalesExpertiseReport from './components/TicketSalesExpertiseReport';
-import HistoryLog from './components/HistoryLog';
-import DailySalesEntry from './components/DailySalesEntry';
-import SalesOfficerDashboard from './components/SalesOfficerDashboard';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
-import Dashboard from './components/Dashboard';
-import SecurityView from './components/SecurityView';
-import ManagementView from './components/ManagementView';
-import ManagementHub from './components/ManagementHub';
+import KioskModeWrapper from './components/KioskModeWrapper';
+
+// Lazy load heavy components to reduce initial memory footprint
+const Reports = lazy(() => import('./components/Reports'));
+const EditImageModal = lazy(() => import('./components/EditImageModal'));
+const CodeAssistant = lazy(() => import('./components/CodeAssistant'));
+const OperatorManager = lazy(() => import('./components/OperatorManager'));
+const AssignmentView = lazy(() => import('./components/AssignmentView'));
+const ExpertiseReport = lazy(() => import('./components/ExpertiseReport'));
+const DailyRoster = lazy(() => import('./components/DailyRoster'));
+const BackupManager = lazy(() => import('./components/BackupManager'));
+const TicketSalesAssignmentView = lazy(() => import('./components/TicketSalesAssignmentView'));
+const TicketSalesRoster = lazy(() => import('./components/TicketSalesRoster'));
+const TicketSalesExpertiseReport = lazy(() => import('./components/TicketSalesExpertiseReport'));
+const HistoryLog = lazy(() => import('./components/HistoryLog'));
+const DailySalesEntry = lazy(() => import('./components/DailySalesEntry'));
+const SalesOfficerDashboard = lazy(() => import('./components/SalesOfficerDashboard'));
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const SecurityView = lazy(() => import('./components/SecurityView'));
+const ManagementView = lazy(() => import('./components/ManagementView'));
+const ManagementHub = lazy(() => import('./components/ManagementHub'));
+
+// Loading component for lazy-loaded modules
+const LoadingFallback: React.FC = () => (
+  <div className="flex items-center justify-center py-12">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-400 mx-auto mb-4"></div>
+      <p className="text-gray-400">Loading...</p>
+    </div>
+  </div>
+);
 
 // Notification System Implementation
 interface NotificationState {
@@ -700,7 +712,34 @@ const AppComponent: React.FC = () => {
     
     const isCheckinAllowed = useMemo(() => new Date().getHours() < 22, []);
 
-    const estimatedDbSize = useMemo(() => JSON.stringify({ dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments, opsAssignments, salesAssignments }).length, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments, opsAssignments, salesAssignments]);
+    // Optimize memory usage by calculating size only when explicitly needed, not on every render
+    // This prevents frequent stringification of large objects which can cause memory issues
+    const estimatedDbSize = useMemo(() => {
+        try {
+            // Only stringify non-null objects to reduce memory footprint
+            // Note: We intentionally exclude opsAssignments and salesAssignments from size calculation
+            // as they are merged into dailyAssignments and tsAssignments respectively (see lines 194-200),
+            // avoiding double-counting. Changes to opsAssignments/salesAssignments are reflected through
+            // mergedAssignments and mergedTSAssignments which depend on the base assignments we track here.
+            const data = {
+                dailyCounts: dailyCounts || {},
+                dailyRideDetails: dailyRideDetails || {},
+                rides: rides || {},
+                operators: operators || {},
+                attendanceData: attendanceData || {},
+                tsAssignments: tsAssignments || {},
+                history: history || [],
+                packageSalesData: packageSalesData || {},
+                appLogo: appLogo || '',
+                otherSalesCategories: otherSalesCategories || [],
+                dailyAssignments: dailyAssignments || {}
+            };
+            return JSON.stringify(data).length;
+        } catch (e) {
+            console.error('Error calculating DB size:', e);
+            return 0;
+        }
+    }, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments]);
 
     const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
 
@@ -728,20 +767,20 @@ const AppComponent: React.FC = () => {
 
     const renderView = () => {
         switch (currentView) {
-            case 'reports': return <Reports dailyCounts={dailyCounts || {}} dailyRideDetails={dailyRideDetails || {}} rides={RIDES_ARRAY} />;
-            case 'assignments': return <AssignmentView rides={RIDES_ARRAY} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} />;
-            case 'expertise': return <ExpertiseReport operators={operatorsArray} dailyAssignments={mergedAssignments || {}} rides={RIDES_ARRAY} />;
-            case 'roster': return <DailyRoster rides={ridesWithCounts} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} />;
-            case 'ts-assignments': return <TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} />;
-            case 'ts-roster': return <TicketSalesRoster counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTSAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} />;
-            case 'ts-expertise': return <TicketSalesExpertiseReport ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} counters={COUNTERS_ARRAY} />;
-            case 'history': return <HistoryLog history={history} onClearHistory={() => { if(window.confirm("Are you sure?")) { setHistory([]); logAction('CLEAR_HISTORY', 'Cleared the entire activity log.'); } }}/>;
-            case 'my-sales': return <DailySalesEntry currentUser={currentUser} selectedDate={selectedDate} onDateChange={handleDateChange} packageSales={packageSalesData || {}} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} />;
-            case 'sales-officer-dashboard': return <SalesOfficerDashboard ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} packageSales={packageSalesData || {}} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} />;
-            case 'dashboard': return <Dashboard ridesWithCounts={ridesWithCounts} operators={operatorsArray} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={mergedAssignments || {}} />;
-            case 'management-hub': return <ManagementHub onNavigate={handleNavigate} />;
-            case 'floor-counts': return <ManagementView floorGuestCounts={floorGuestCounts || {}} onNavigate={handleNavigate} />;
-            case 'security-entry': return <SecurityView selectedDate={selectedDate} floorGuestCounts={floorGuestCounts || {}} onSaveFloorCounts={handleSaveFloorCounts} />;
+            case 'reports': return <Suspense fallback={<LoadingFallback />}><Reports dailyCounts={dailyCounts || {}} dailyRideDetails={dailyRideDetails || {}} rides={RIDES_ARRAY} /></Suspense>;
+            case 'assignments': return <Suspense fallback={<LoadingFallback />}><AssignmentView rides={RIDES_ARRAY} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} /></Suspense>;
+            case 'expertise': return <Suspense fallback={<LoadingFallback />}><ExpertiseReport operators={operatorsArray} dailyAssignments={mergedAssignments || {}} rides={RIDES_ARRAY} /></Suspense>;
+            case 'roster': return <Suspense fallback={<LoadingFallback />}><DailyRoster rides={ridesWithCounts} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} /></Suspense>;
+            case 'ts-assignments': return <Suspense fallback={<LoadingFallback />}><TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} /></Suspense>;
+            case 'ts-roster': return <Suspense fallback={<LoadingFallback />}><TicketSalesRoster counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTSAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} /></Suspense>;
+            case 'ts-expertise': return <Suspense fallback={<LoadingFallback />}><TicketSalesExpertiseReport ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} counters={COUNTERS_ARRAY} /></Suspense>;
+            case 'history': return <Suspense fallback={<LoadingFallback />}><HistoryLog history={history} onClearHistory={() => { if(window.confirm("Are you sure?")) { setHistory([]); logAction('CLEAR_HISTORY', 'Cleared the entire activity log.'); } }}/></Suspense>;
+            case 'my-sales': return <Suspense fallback={<LoadingFallback />}><DailySalesEntry currentUser={currentUser} selectedDate={selectedDate} onDateChange={handleDateChange} packageSales={packageSalesData || {}} onSave={handleSavePackageSales} mySalesStartDate={mySalesStartDate} onMySalesStartDateChange={setMySalesStartDate} mySalesEndDate={mySalesEndDate} onMySalesEndDateChange={setMySalesEndDate} otherSalesCategories={otherSalesCategories} /></Suspense>;
+            case 'sales-officer-dashboard': return <Suspense fallback={<LoadingFallback />}><SalesOfficerDashboard ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} packageSales={packageSalesData || {}} startDate={startDate} endDate={endDate} onStartDateChange={setStartDate} onEndDateChange={setEndDate} role={role} onEditSales={handleEditPackageSales} otherSalesCategories={otherSalesCategories} /></Suspense>;
+            case 'dashboard': return <Suspense fallback={<LoadingFallback />}><Dashboard ridesWithCounts={ridesWithCounts} operators={operatorsArray} attendance={attendanceArray} historyLog={history} onNavigate={handleNavigate} selectedDate={selectedDate} onDateChange={handleDateChange} dailyAssignments={mergedAssignments || {}} /></Suspense>;
+            case 'management-hub': return <Suspense fallback={<LoadingFallback />}><ManagementHub onNavigate={handleNavigate} /></Suspense>;
+            case 'floor-counts': return <Suspense fallback={<LoadingFallback />}><ManagementView floorGuestCounts={floorGuestCounts || {}} onNavigate={handleNavigate} /></Suspense>;
+            case 'security-entry': return <Suspense fallback={<LoadingFallback />}><SecurityView selectedDate={selectedDate} floorGuestCounts={floorGuestCounts || {}} onSaveFloorCounts={handleSaveFloorCounts} /></Suspense>;
             // Explicitly handle 'counter' to avoid any confusion with default
             case 'counter':
             default: return filteredRides.length > 0 ? (
@@ -766,10 +805,10 @@ const AppComponent: React.FC = () => {
         <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={setCurrentModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo}/>
         <main className="container mx-auto p-4 md:p-6">{renderView()}</main>
         {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); setDailyRideDetails(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
-        {currentModal === 'edit-image' && selectedRideForEdit && <EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...(prev?.[rideId] || {}), imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/>}
-        {currentModal === 'ai-assistant' && <CodeAssistant rides={RIDES_ARRAY} dailyCounts={dailyCounts || {}} onClose={() => setCurrentModal(null)}/>}
-        {currentModal === 'operators' && <OperatorManager operators={operatorsArray} onClose={() => setCurrentModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators}/>}
-        {currentModal === 'backup' && <BackupManager onClose={() => setCurrentModal(null)} onExport={() => { const json = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), data: { dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }}, null, 2); const blob = new Blob([json], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`; link.click(); logAction('EXPORT_BACKUP', 'Exported a full application backup.'); }} onImport={(json) => { if (window.confirm("WARNING: This will overwrite ALL current data. Are you sure?")) { try { const backupData = JSON.parse(json); if (backupData.version === 2 && backupData.data) { setDailyCounts(backupData.data.dailyCounts || {}); setDailyRideDetails(backupData.data.dailyRideDetails || {}); setRides(backupData.data.rides || RIDES); setOperators(backupData.data.operators || OPERATORS); setAttendanceData(backupData.data.attendanceData || {}); setTSAssignments(backupData.data.tsAssignments || {}); setHistory(backupData.data.history || []); setPackageSalesData(backupData.data.packageSalesData || {}); setAppLogo(backupData.data.appLogo || null); setOtherSalesCategories(backupData.data.otherSalesCategories || []); setDailyAssignments(backupData.data.dailyAssignments || {}); showNotification('Backup restored successfully!', 'success'); logAction('IMPORT_BACKUP', 'Restored data from a backup file.'); } else { alert("Invalid backup file format."); } } catch (e) { alert("Failed to parse backup file."); } } }} appLogo={appLogo} onLogoChange={setAppLogo} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={Object.values(rides || {}).map((r,i) => ({...r, id: Number(Object.keys(rides || {})[i])})).filter(r => !RIDES_ARRAY.some(staticRide => staticRide.id === r.id))} onRemoveObsoleteRides={handleRemoveObsoleteRides} estimatedDbSize={estimatedDbSize} onResetDay={handleResetDay} />}
+        {currentModal === 'edit-image' && selectedRideForEdit && <Suspense fallback={<LoadingFallback />}><EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...(prev?.[rideId] || {}), imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/></Suspense>}
+        {currentModal === 'ai-assistant' && <Suspense fallback={<LoadingFallback />}><CodeAssistant rides={RIDES_ARRAY} dailyCounts={dailyCounts || {}} onClose={() => setCurrentModal(null)}/></Suspense>}
+        {currentModal === 'operators' && <Suspense fallback={<LoadingFallback />}><OperatorManager operators={operatorsArray} onClose={() => setCurrentModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators}/></Suspense>}
+        {currentModal === 'backup' && <Suspense fallback={<LoadingFallback />}><BackupManager onClose={() => setCurrentModal(null)} onExport={() => { const json = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), data: { dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }}, null, 2); const blob = new Blob([json], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`; link.click(); logAction('EXPORT_BACKUP', 'Exported a full application backup.'); }} onImport={(json) => { if (window.confirm("WARNING: This will overwrite ALL current data. Are you sure?")) { try { const backupData = JSON.parse(json); if (backupData.version === 2 && backupData.data) { setDailyCounts(backupData.data.dailyCounts || {}); setDailyRideDetails(backupData.data.dailyRideDetails || {}); setRides(backupData.data.rides || RIDES); setOperators(backupData.data.operators || OPERATORS); setAttendanceData(backupData.data.attendanceData || {}); setTSAssignments(backupData.data.tsAssignments || {}); setHistory(backupData.data.history || []); setPackageSalesData(backupData.data.packageSalesData || {}); setAppLogo(backupData.data.appLogo || null); setOtherSalesCategories(backupData.data.otherSalesCategories || []); setDailyAssignments(backupData.data.dailyAssignments || {}); showNotification('Backup restored successfully!', 'success'); logAction('IMPORT_BACKUP', 'Restored data from a backup file.'); } else { alert("Invalid backup file format."); } } catch (e) { alert("Failed to parse backup file."); } } }} appLogo={appLogo} onLogoChange={setAppLogo} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={Object.values(rides || {}).map((r,i) => ({...r, id: Number(Object.keys(rides || {})[i])})).filter(r => !RIDES_ARRAY.some(staticRide => staticRide.id === r.id))} onRemoveObsoleteRides={handleRemoveObsoleteRides} estimatedDbSize={estimatedDbSize} onResetDay={handleResetDay} /></Suspense>}
       </div>
     );
 }

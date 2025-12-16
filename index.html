@@ -38,6 +38,32 @@
         animation: fadeInDown 0.5s ease-out forwards;
       }
     </style>
+    <!-- Register service worker for PWA and memory optimization -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+              console.log('ServiceWorker registered:', registration.scope);
+            })
+            .catch(err => {
+              console.log('ServiceWorker registration failed:', err);
+            });
+        });
+        
+        // Listen for memory pressure and clear cache if needed
+        if ('performance' in window && 'memory' in performance) {
+          setInterval(() => {
+            const memory = performance.memory;
+            // If using more than 80% of heap limit, clear runtime cache
+            if (memory.usedJSHeapSize / memory.jsHeapSizeLimit > 0.8) {
+              navigator.serviceWorker.controller?.postMessage({ type: 'CLEAR_CACHE' });
+              console.warn('Memory pressure detected, clearing runtime cache');
+            }
+          }, 60000); // Check every minute
+        }
+      }
+    </script>
   </head>
   <body class="bg-gray-900 text-gray-100 font-sans">
     <div id="root"></div>
