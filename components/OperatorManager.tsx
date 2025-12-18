@@ -128,7 +128,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({ operators, onClose, o
       return;
     }
 
-    const exportData = operators.sort((a,b) => a.name.localeCompare(b.name)).map(op => ({ "Operator Name": op.name }));
+    const exportData = operators.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(op => ({ "Operator Name": op.name }));
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Operators");
@@ -187,7 +187,7 @@ const OperatorManager: React.FC<OperatorManagerProps> = ({ operators, onClose, o
             )}
 
             <div className="space-y-2 max-h-[calc(50vh-80px)] overflow-y-auto pr-2">
-                {operators.sort((a,b) => a.name.localeCompare(b.name)).map(op => (
+                {operators.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(op => (
                 <div key={op.id} className="flex items-center justify-between bg-gray-700 p-3 rounded-lg">
                     <div className="flex items-center flex-grow">
                         <input

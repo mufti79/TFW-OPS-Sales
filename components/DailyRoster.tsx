@@ -65,7 +65,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                     
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         <label className="block text-sm font-medium text-gray-300 mb-2">Select operators to assign:</label>
-                        {allOperators.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
+                        {allOperators.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
                             const isPresent = attendanceStatusMap.get(op.id);
                             const statusLabel = isPresent ? '(P)' : '(A)';
                             return (
@@ -167,12 +167,12 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     }
     
     for (const rideList of assignmentsByOperator.values()) {
-      rideList.sort((a, b) => a.name.localeCompare(b.name));
+      rideList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
 
     const unassignedRides = rides
         .filter(r => !assignedRideIds.has(r.id.toString()))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     
     const attendanceTodayMap = new Map<number, AttendanceRecord>();
     attendance
@@ -189,7 +189,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     })).sort((a, b) => {
         if (a.attendance && !b.attendance) return -1;
         if (!a.attendance && b.attendance) return 1;
-        return a.name.localeCompare(b.name);
+        return (a.name || '').localeCompare(b.name || '');
     });
 
     const presentCount = operatorsWithAttendance.filter(op => op.attendance).length;
@@ -222,7 +222,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
     return Array.from(operatedRidesCount.entries())
         .map(([name, count]) => ({ name, count }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [dailyAssignments, rides, currentUser, role]);
 
   const handleDownloadRoster = () => {

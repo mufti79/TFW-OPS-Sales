@@ -372,7 +372,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                                     <div 
                                         className={`absolute z-10 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto ${dropdownPosition === 'up' ? 'bottom-full mb-1' : 'mt-1'}`}
                                     >
-                                        {ticketSalesPersonnel.sort((a, b) => a.name.localeCompare(b.name)).map(op => {
+                                        {ticketSalesPersonnel.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
                                             const isPresent = attendanceStatusMap.get(op.id);
                                             const statusLabel = isPresent ? '(P)' : '(A)';
                                             return (

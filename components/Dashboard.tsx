@@ -22,8 +22,8 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
     const activeRides = ridesWithCounts.filter(ride => ride.count > 0).length;
     
     const attendanceTodayMap = new Map(attendance.filter(a => a.date === selectedDate).map(a => [a.operatorId, a]));
-    const presentOperators = operators.filter(op => attendanceTodayMap.has(op.id)).sort((a,b) => a.name.localeCompare(b.name));
-    const absentOperators = operators.filter(op => !attendanceTodayMap.has(op.id)).sort((a,b) => a.name.localeCompare(b.name));
+    const presentOperators = operators.filter(op => attendanceTodayMap.has(op.id)).sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+    const absentOperators = operators.filter(op => !attendanceTodayMap.has(op.id)).sort((a,b) => (a.name || '').localeCompare(b.name || ''));
     const presentCount = presentOperators.length;
 
     const topRides = [...ridesWithCounts]
@@ -37,7 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
     const assignedRideIds = new Set(Object.keys(assignmentsToday));
     const unassignedRides = ridesWithCounts
         .filter(r => !assignedRideIds.has(r.id.toString()))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     const ridesAwaitingCount = ridesWithCounts
         .filter(ride => ride.count === 0 && assignmentsToday[ride.id])
@@ -53,7 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
                 operatorNames,
             };
         })
-        .sort((a,b) => a.name.localeCompare(b.name));
+        .sort((a,b) => (a.name || '').localeCompare(b.name || ''));
 
     return { totalGuests, activeRides, presentCount, topRides, presentOperators, absentOperators, unassignedRides, ridesAwaitingCount };
   }, [ridesWithCounts, operators, attendance, selectedDate, dailyAssignments]);
@@ -83,7 +83,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
       })).sort((a, b) => {
           if (a.attendance && !b.attendance) return -1;
           if (!a.attendance && b.attendance) return 1;
-          return a.name.localeCompare(b.name);
+          return (a.name || '').localeCompare(b.name || '');
       });
 
       if (operatorsWithAttendance.length === 0) {

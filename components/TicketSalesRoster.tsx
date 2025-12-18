@@ -63,7 +63,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
                     
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         <label className="block text-sm font-medium text-gray-300 mb-2">Select personnel to assign:</label>
-                        {allPersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => {
+                        {allPersonnel.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(p => {
                             const isPresent = attendanceStatusMap.get(p.id);
                             const statusLabel = isPresent ? '(P)' : '(A)';
                             return (
@@ -155,12 +155,12 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
     }
     
     for (const counterList of assignmentsByPersonnel.values()) {
-      counterList.sort((a, b) => a.name.localeCompare(b.name));
+      counterList.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     }
 
     const unassignedCounters = counters
         .filter(c => !assignedCounterIds.has(c.id.toString()))
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
     
     const attendanceTodayMap = new Map<number, AttendanceRecord>();
     const allPersonnelIds = new Set(ticketSalesPersonnel.map(p => p.id));
@@ -174,7 +174,7 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
     })).sort((a, b) => {
         if (a.attendance && !b.attendance) return -1;
         if (!a.attendance && b.attendance) return 1;
-        return a.name.localeCompare(b.name);
+        return (a.name || '').localeCompare(b.name || '');
     });
 
     const presentCount = personnelWithAttendance.filter(op => op.attendance).length;

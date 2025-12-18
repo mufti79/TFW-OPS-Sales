@@ -367,7 +367,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
 
     const handleDownload = () => {
         const headers = ["Personnel Name", "Xtreme Qty", "Xtreme Amount", "Kiddo Qty", "Kiddo Amount", "VIP Qty", "VIP Amount", "Other Amount", "Other Sales Breakdown", "Total Qty", "Gross Amount", "Discount", "Net Amount"];
-        const rows = ticketSalesPersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => {
+        const rows = ticketSalesPersonnel.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(p => {
             const sales = aggregatedSalesByPersonnel.get(p.id);
             const otherTotal = sales ? sales.otherSales.reduce((s, i) => s + i.amount, 0) : 0;
             const otherBreakdown = sales ? sales.otherSales.map(i => `${i.category}: ${i.amount}`).join('; ') : '';
@@ -444,7 +444,7 @@ const SalesOfficerDashboard: React.FC<SalesOfficerDashboardProps> = ({ ticketSal
                         <th className="p-3 font-semibold text-center">Actions</th>
                     </tr></thead>
                     <tbody>
-                        {ticketSalesPersonnel.sort((a,b) => a.name.localeCompare(b.name)).map((personnel, index) => {
+                        {ticketSalesPersonnel.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map((personnel, index) => {
                             const sales = aggregatedSalesByPersonnel.get(personnel.id);
                             const otherTotal = sales ? sales.otherSales.reduce((s, i) => s + i.amount, 0) : 0;
                             const gross = sales ? sales.xtremeAmount + sales.kiddoAmount + sales.vipAmount + otherTotal : 0;
