@@ -116,7 +116,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
                 aria-label="Select your name"
                 >
                 <option value="">-- Select Your Name --</option>
-                {operators.sort((a,b) => a.name.localeCompare(b.name)).map(op => (
+                {operators.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(op => (
                     <option key={op.id} value={op.id}>{op.name}</option>
                 ))}
                 </select>
@@ -140,7 +140,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
                     aria-label="Select your name for Ticket Sales"
                     >
                     <option value="">-- Select Your Name --</option>
-                    {ticketSalesPersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(op => (
+                    {ticketSalesPersonnel.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(op => (
                         <option key={op.id} value={op.id}>{op.name}</option>
                     ))}
                     </select>

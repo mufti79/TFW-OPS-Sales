@@ -155,7 +155,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                     className="w-full max-w-sm px-4 py-3 bg-gray-900 border border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-lg"
                 >
                     <option value="">-- Select --</option>
-                    {maintenancePersonnel.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
+                    {maintenancePersonnel.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(p => (
                         <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                 </select>
@@ -174,7 +174,7 @@ const MaintenanceDashboard: React.FC<MaintenanceDashboardProps> = ({ maintenance
                     <div className="absolute z-10 w-full max-w-sm mt-1 bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                         {maintenancePersonnel
                             .filter(p => p.id !== selectedTechnician?.id)
-                            .sort((a,b) => a.name.localeCompare(b.name))
+                            .sort((a,b) => (a.name || '').localeCompare(b.name || ''))
                             .map(p => (
                                 <label key={p.id} className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer">
                                     <input
