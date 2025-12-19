@@ -7,11 +7,6 @@ import { ref, onValue, set, off } from 'firebase/database';
 // This prevents users from seeing stale cached data for too long
 const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
-interface CachedData<T> {
-  value: T;
-  timestamp: number;
-}
-
 function useFirebaseSync<T>(
   path: string,
   initialValue: T
