@@ -89,6 +89,7 @@ type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 // Constants for session management and date checking
 const DATE_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const VISIBILITY_CHECK_THROTTLE = 30 * 1000; // 30 seconds
+const CACHE_CLEAR_RELOAD_DELAY = 2000; // 2 seconds - delay before reloading after clearing cache
 
 const toLocalDateString = (date: Date): string => {
   const year = date.getFullYear();
@@ -743,6 +744,37 @@ const AppComponent: React.FC = () => {
 
     const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
 
+    // Clear cache handler - removes all localStorage cache and reloads from Firebase
+    const handleClearCache = useCallback(() => {
+        if (window.confirm('This will clear all cached data and reload from the server. Your login session will be preserved. Continue?')) {
+            try {
+                // Collect all TFW-related localStorage keys first before removing any
+                // We collect all keys first to avoid any issues with concurrent modifications
+                const keysToRemove: string[] = [];
+                const totalKeys = localStorage.length;
+                for (let i = 0; i < totalKeys; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('tfw_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                // Remove all collected keys
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                showNotification('Cache cleared successfully! Reloading...', 'success', CACHE_CLEAR_RELOAD_DELAY);
+                
+                // Reload the page after a short delay to allow notification to show
+                setTimeout(() => {
+                    window.location.reload();
+                }, CACHE_CLEAR_RELOAD_DELAY);
+            } catch (error) {
+                console.error('Error clearing cache:', error);
+                showNotification('Failed to clear cache. Please try again.', 'error');
+            }
+        }
+    }, [showNotification]);
+
     // Note: We deliberately allow the app to run even if not configured to support offline mode.
     
     if (initialLoading) {
@@ -802,7 +834,7 @@ const AppComponent: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-900">
         <KioskModeWrapper />
-        <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={setCurrentModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo}/>
+        <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={setCurrentModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo} onClearCache={handleClearCache}/>
         <main className="container mx-auto p-4 md:p-6">{renderView()}</main>
         {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); setDailyRideDetails(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
         {currentModal === 'edit-image' && selectedRideForEdit && <Suspense fallback={<LoadingFallback />}><EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...(prev?.[rideId] || {}), imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/></Suspense>}

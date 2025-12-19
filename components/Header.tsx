@@ -21,6 +21,7 @@ interface HeaderProps {
   currentView: View;
   connectionStatus: Connection;
   appLogo: string | null;
+  onClearCache?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -35,6 +36,7 @@ const Header: React.FC<HeaderProps> = ({
   currentView,
   connectionStatus,
   appLogo,
+  onClearCache,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const isManager = role === 'admin' || role === 'operation-officer';
@@ -164,6 +166,19 @@ const Header: React.FC<HeaderProps> = ({
           <div className="hidden md:flex items-center ml-4 md:ml-6 space-x-4">
             <ConnectionStatus status={connectionStatus} />
             
+            {onClearCache && (
+              <button 
+                onClick={onClearCache}
+                className="px-3 py-2 bg-yellow-600 text-white font-semibold rounded-md hover:bg-yellow-700 active:scale-95 transition-all text-xs flex items-center gap-2"
+                title="Clear cached data and reload from server"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+                Clear Cache
+              </button>
+            )}
+            
             {isAdmin && <button onClick={() => onShowModal('ai-assistant')} className={navLinkClasses}>AI Assistant</button>}
             {isAdmin && <button onClick={() => onShowModal('operators')} className={navLinkClasses}>Operators</button>}
             {isAdmin && <button onClick={() => onShowModal('backup')} className={navLinkClasses}>Backup</button>}
@@ -206,6 +221,19 @@ const Header: React.FC<HeaderProps> = ({
             {renderMobileNavLinks()}
              <div className="border-t border-gray-700 pt-4 mt-4">
                 <p className="px-3 text-sm font-medium text-gray-400">Admin Tools</p>
+                 {onClearCache && (
+                   <button 
+                     onClick={() => { onClearCache(); setMenuOpen(false); }}
+                     className={`${navLinkClasses} w-full text-left block bg-yellow-600 hover:bg-yellow-700 text-white flex items-center gap-2`}
+                     title="Clear cached data and reload from server"
+                     aria-label="Clear cache and refresh application"
+                   >
+                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                       <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                     </svg>
+                     Clear Cache & Refresh
+                   </button>
+                 )}
                  {isAdmin && <button onClick={() => { onShowModal('ai-assistant'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>AI Assistant</button>}
                  {isAdmin && <button onClick={() => { onShowModal('operators'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>Operators</button>}
                  {isAdmin && <button onClick={() => { onShowModal('backup'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>Backup</button>}
