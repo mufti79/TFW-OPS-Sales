@@ -745,7 +745,7 @@ const AppComponent: React.FC = () => {
 
     // Clear cache handler - removes all localStorage cache and reloads from Firebase
     const handleClearCache = useCallback(() => {
-        if (window.confirm('This will clear all cached data and reload from the server. You may need to log in again. Continue?')) {
+        if (window.confirm('This will clear all cached data and reload from the server. Your login session will be preserved. Continue?')) {
             try {
                 // Collect all TFW-related localStorage keys first before removing any
                 const keysToRemove: string[] = [];
