@@ -52,7 +52,10 @@ You can customize each ride's picture individually:
 2. Find the `RIDES_ARRAY` constant
 3. Update the `imageUrl` property for any ride:
    ```typescript
-   { id: 1, name: 'Paintball', floor: '17th', imageUrl: '/your-image.jpg' }
+   export const RIDES_ARRAY: Ride[] = [
+     { id: 1, name: 'Paintball', floor: '17th', imageUrl: '/your-image.jpg' },
+     // ... other rides
+   ];
    ```
 4. Place your image file in the `public/` directory
 
