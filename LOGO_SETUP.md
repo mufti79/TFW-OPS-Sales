@@ -48,6 +48,8 @@ You can customize each ride's picture individually:
 6. The image will be saved to Firebase and synced across all devices
 
 ### Method 2: Update Constants File
+**Note**: This method requires rebuilding and redeploying the application. For dynamic updates without deployment, use Method 1 instead.
+
 1. Edit the `constants.ts` file
 2. Find the `RIDES_ARRAY` constant
 3. Update the `imageUrl` property for any ride:
@@ -58,6 +60,8 @@ You can customize each ride's picture individually:
    ];
    ```
 4. Place your image file in the `public/` directory
+5. Rebuild the application with `npm run build`
+6. Redeploy to Vercel
 
 ## Tips
 
