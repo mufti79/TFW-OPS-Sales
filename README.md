@@ -16,6 +16,7 @@ This is the operations and sales management application for Toggi Fun World, dep
 - **Offline Support**: Works offline with local caching and syncs when connected
 - **Multi-role Support**: Operators, Ticket Sales Personnel, Officers, and Admins
 - **Memory Optimized**: Robust memory management prevents crashes and ensures smooth performance
+- **Custom Branding**: Upload your own logo and ride images (see [LOGO_SETUP.md](./LOGO_SETUP.md))
 
 ## Performance & Reliability
 
@@ -101,6 +102,7 @@ For synchronization problems with TFW-NEW app:
 ## Support
 
 For issues or questions:
+- **Logo & Images**: Check [LOGO_SETUP.md](./LOGO_SETUP.md) for customization guide
 - Check [MEMORY_OPTIMIZATION.md](./MEMORY_OPTIMIZATION.md) for performance issues
 - Check [SYNCHRONIZATION.md](./SYNCHRONIZATION.md) for sync-related issues
 - Check [FIX_SUMMARY.md](./FIX_SUMMARY.md) for recent fixes and improvements
