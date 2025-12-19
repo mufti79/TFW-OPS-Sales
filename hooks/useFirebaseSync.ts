@@ -7,6 +7,47 @@ import { ref, onValue, set, off } from 'firebase/database';
 // This prevents users from seeing stale cached data for too long
 const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
+/**
+ * Validates and retrieves cached data from localStorage
+ * @returns The cached value if valid and not expired, or null if invalid/expired
+ */
+function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: string): T | null {
+  try {
+    const item = window.localStorage.getItem(localKey);
+    const timestampStr = window.localStorage.getItem(localKeyTimestamp);
+    
+    if (!item || !timestampStr) {
+      return null;
+    }
+    
+    const timestamp = parseInt(timestampStr, 10);
+    
+    // Validate that timestamp is a valid number
+    if (isNaN(timestamp)) {
+      console.warn(`Invalid timestamp for ${path}, clearing cache`);
+      window.localStorage.removeItem(localKey);
+      window.localStorage.removeItem(localKeyTimestamp);
+      return null;
+    }
+    
+    const now = Date.now();
+    
+    // Only use cached data if it's less than CACHE_EXPIRATION_MS old
+    if (now - timestamp < CACHE_EXPIRATION_MS) {
+      return JSON.parse(item);
+    } else {
+      // Cache is stale, clear it
+      console.warn(`Cache expired for ${path}, clearing stale data`);
+      window.localStorage.removeItem(localKey);
+      window.localStorage.removeItem(localKeyTimestamp);
+      return null;
+    }
+  } catch (error) {
+    console.warn(`Error reading localStorage for key "${localKey}":`, error);
+    return null;
+  }
+}
+
 function useFirebaseSync<T>(
   path: string,
   initialValue: T
@@ -16,37 +57,11 @@ function useFirebaseSync<T>(
 
   // Initialize state from localStorage if available and not stale, otherwise use initialValue
   const [storedValue, setStoredValue] = useState<T>(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const item = window.localStorage.getItem(localKey);
-        const timestampStr = window.localStorage.getItem(localKeyTimestamp);
-        
-        if (item && timestampStr) {
-          const timestamp = parseInt(timestampStr, 10);
-          
-          // Validate that timestamp is a valid number
-          if (isNaN(timestamp)) {
-            console.warn(`Invalid timestamp for ${path}, clearing cache`);
-            window.localStorage.removeItem(localKey);
-            window.localStorage.removeItem(localKeyTimestamp);
-            return initialValue;
-          }
-          
-          const now = Date.now();
-          
-          // Only use cached data if it's less than CACHE_EXPIRATION_MS old
-          if (now - timestamp < CACHE_EXPIRATION_MS) {
-            return JSON.parse(item);
-          } else {
-            // Cache is stale, clear it
-            console.warn(`Cache expired for ${path}, clearing stale data`);
-            window.localStorage.removeItem(localKey);
-            window.localStorage.removeItem(localKeyTimestamp);
-          }
-        }
+    if (typeof window !== 'undefined') {
+      const cachedValue = getCachedValue<T>(localKey, localKeyTimestamp, path);
+      if (cachedValue !== null) {
+        return cachedValue;
       }
-    } catch (error) {
-      console.warn(`Error reading localStorage for key "${localKey}":`, error);
     }
     return initialValue;
   });

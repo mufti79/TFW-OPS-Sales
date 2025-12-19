@@ -89,6 +89,7 @@ type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 // Constants for session management and date checking
 const DATE_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const VISIBILITY_CHECK_THROTTLE = 30 * 1000; // 30 seconds
+const CACHE_CLEAR_RELOAD_DELAY = 2000; // 2 seconds - delay before reloading after clearing cache
 
 const toLocalDateString = (date: Date): string => {
   const year = date.getFullYear();
@@ -748,8 +749,10 @@ const AppComponent: React.FC = () => {
         if (window.confirm('This will clear all cached data and reload from the server. Your login session will be preserved. Continue?')) {
             try {
                 // Collect all TFW-related localStorage keys first before removing any
+                // We collect all keys first to avoid any issues with concurrent modifications
                 const keysToRemove: string[] = [];
-                for (let i = 0; i < localStorage.length; i++) {
+                const totalKeys = localStorage.length;
+                for (let i = 0; i < totalKeys; i++) {
                     const key = localStorage.key(i);
                     if (key && key.startsWith('tfw_')) {
                         keysToRemove.push(key);
@@ -759,12 +762,12 @@ const AppComponent: React.FC = () => {
                 // Remove all collected keys
                 keysToRemove.forEach(key => localStorage.removeItem(key));
                 
-                showNotification('Cache cleared successfully! Reloading...', 'success', 2000);
+                showNotification('Cache cleared successfully! Reloading...', 'success', CACHE_CLEAR_RELOAD_DELAY);
                 
                 // Reload the page after a short delay to allow notification to show
                 setTimeout(() => {
                     window.location.reload();
-                }, 2000);
+                }, CACHE_CLEAR_RELOAD_DELAY);
             } catch (error) {
                 console.error('Error clearing cache:', error);
                 showNotification('Failed to clear cache. Please try again.', 'error');
