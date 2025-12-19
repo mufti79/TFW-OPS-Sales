@@ -23,6 +23,15 @@ function useFirebaseSync<T>(
         
         if (item && timestampStr) {
           const timestamp = parseInt(timestampStr, 10);
+          
+          // Validate that timestamp is a valid number
+          if (isNaN(timestamp)) {
+            console.warn(`Invalid timestamp for ${path}, clearing cache`);
+            window.localStorage.removeItem(localKey);
+            window.localStorage.removeItem(localKeyTimestamp);
+            return initialValue;
+          }
+          
           const now = Date.now();
           
           // Only use cached data if it's less than CACHE_EXPIRATION_MS old

@@ -225,6 +225,8 @@ const Header: React.FC<HeaderProps> = ({
                    <button 
                      onClick={() => { onClearCache(); setMenuOpen(false); }}
                      className={`${navLinkClasses} w-full text-left block bg-yellow-600 hover:bg-yellow-700 text-white`}
+                     title="Clear cached data and reload from server"
+                     aria-label="Clear cache and refresh application"
                    >
                      🔄 Clear Cache & Refresh
                    </button>
