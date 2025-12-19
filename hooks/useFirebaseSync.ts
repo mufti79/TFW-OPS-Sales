@@ -30,7 +30,7 @@ function useFirebaseSync<T>(
             return JSON.parse(item);
           } else {
             // Cache is stale, clear it
-            console.log(`Cache expired for ${path}, clearing stale data`);
+            console.warn(`Cache expired for ${path}, clearing stale data`);
             window.localStorage.removeItem(localKey);
             window.localStorage.removeItem(localKeyTimestamp);
           }

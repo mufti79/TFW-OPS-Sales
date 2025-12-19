@@ -747,10 +747,10 @@ const AppComponent: React.FC = () => {
     const handleClearCache = useCallback(() => {
         if (window.confirm('This will clear all cached data and reload from the server. You may need to log in again. Continue?')) {
             try {
-                // Collect all TFW-related localStorage keys first
+                // Collect all TFW-related localStorage keys first before removing any
+                // Using reverse iteration to avoid index shifting issues
                 const keysToRemove: string[] = [];
-                const storageLength = localStorage.length;
-                for (let i = 0; i < storageLength; i++) {
+                for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
                     if (key && key.startsWith('tfw_')) {
                         keysToRemove.push(key);
