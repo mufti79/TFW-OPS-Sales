@@ -743,6 +743,34 @@ const AppComponent: React.FC = () => {
 
     const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
 
+    // Clear cache handler - removes all localStorage cache and reloads from Firebase
+    const handleClearCache = useCallback(() => {
+        if (window.confirm('This will clear all cached data and reload from the server. You may need to log in again. Continue?')) {
+            try {
+                // Clear all TFW-related localStorage keys
+                const keysToRemove: string[] = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && key.startsWith('tfw_')) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                showNotification('Cache cleared successfully! Reloading...', 'success', 2000);
+                
+                // Reload the page after a short delay to allow notification to show
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } catch (error) {
+                console.error('Error clearing cache:', error);
+                showNotification('Failed to clear cache. Please try again.', 'error');
+            }
+        }
+    }, [showNotification]);
+
     // Note: We deliberately allow the app to run even if not configured to support offline mode.
     
     if (initialLoading) {
@@ -802,7 +830,7 @@ const AppComponent: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-900">
         <KioskModeWrapper />
-        <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={setCurrentModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo}/>
+        <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={setCurrentModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo} onClearCache={handleClearCache}/>
         <main className="container mx-auto p-4 md:p-6">{renderView()}</main>
         {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); setDailyRideDetails(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
         {currentModal === 'edit-image' && selectedRideForEdit && <Suspense fallback={<LoadingFallback />}><EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...(prev?.[rideId] || {}), imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/></Suspense>}
