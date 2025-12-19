@@ -34,7 +34,14 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     
     // Only use cached data if it's less than CACHE_EXPIRATION_MS old
     if (now - timestamp < CACHE_EXPIRATION_MS) {
-      return JSON.parse(item);
+      try {
+        return JSON.parse(item);
+      } catch (parseError) {
+        console.warn(`Failed to parse cached data for ${path}, clearing cache:`, parseError);
+        window.localStorage.removeItem(localKey);
+        window.localStorage.removeItem(localKeyTimestamp);
+        return null;
+      }
     } else {
       // Cache is stale, clear it
       console.warn(`Cache expired for ${path}, clearing stale data`);
