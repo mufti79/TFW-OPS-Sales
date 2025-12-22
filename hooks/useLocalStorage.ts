@@ -88,8 +88,8 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
             if (storageError instanceof DOMException && storageError.name === 'QuotaExceededError') {
               console.warn('Storage quota exceeded. Attempting to free up space...');
               try {
-                // Remove old Firebase sync data to free up space, but preserve auth data
-                const authKeys = ['authRole', 'authUser', 'authLastActivity'];
+                // Remove old Firebase sync data to free up space, but preserve auth data and view state
+                const authKeys = ['authRole', 'authUser', 'authLastActivity', 'currentView'];
                 
                 // First, collect all keys to avoid issues with changing indices during removal
                 const allKeys: string[] = [];

@@ -17,6 +17,7 @@ import RideCard from './components/RideCard';
 import Footer from './components/Footer';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import KioskModeWrapper from './components/KioskModeWrapper';
+import useLocalStorage from './hooks/useLocalStorage';
 
 // Lazy load heavy components to reduce initial memory footprint
 const Reports = lazy(() => import('./components/Reports'));
@@ -159,7 +160,9 @@ const AppComponent: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedFloor, setSelectedFloor] = useState('');
     const [selectedRideForEdit, setSelectedRideForEdit] = useState<Ride | null>(null);
-    const [currentView, setCurrentView] = useState<View>('counter');
+    // Persist current view across page reloads and sessions to maintain navigation state
+    // This fixes the issue where mobile shows from beginning after navigating on desktop
+    const [currentView, setCurrentView] = useLocalStorage<View>('currentView', 'counter');
     const [currentModal, setCurrentModal] = useState<Modal>(null);
 
     // Use ref to persist lastVisibilityCheck across renders
@@ -366,11 +369,18 @@ const AppComponent: React.FC = () => {
         const success = login(newRole, payload);
         if (success) {
             logAction('LOGIN', `User logged in as ${newRole}.`);
+            // Set default view based on role, but preserve view if user is returning to same role
             if (newRole === 'operator') setCurrentView('roster');
             else if (newRole === 'ticket-sales') setCurrentView('ts-roster');
             else if (newRole === 'sales-officer') setCurrentView('sales-officer-dashboard');
             else if (newRole === 'security') setCurrentView('security-entry');
-            else setCurrentView('dashboard');
+            else if (newRole === 'admin' || newRole === 'operation-officer') {
+                // For managers, only set dashboard if coming from a non-manager role
+                // This allows them to continue where they left off if already logged in
+                if (currentView === 'counter' || currentView === 'roster' || currentView === 'ts-roster') {
+                    setCurrentView('dashboard');
+                }
+            }
         }
         return success;
     };
@@ -378,7 +388,9 @@ const AppComponent: React.FC = () => {
     const handleLogout = useCallback(() => {
         if (currentUser) logAction('LOGOUT', `User ${currentUser.name} logged out.`);
         logout();
-    }, [currentUser, logout, logAction]);
+        // Reset view to default (counter) on logout to ensure clean state for next login
+        setCurrentView('counter');
+    }, [currentUser, logout, logAction, setCurrentView]);
     
     const handleDateChange = (date: string) => {
         setSelectedDate(date);
@@ -746,20 +758,26 @@ const AppComponent: React.FC = () => {
 
     // Clear cache handler - removes all localStorage cache and service worker cache, then reloads from Firebase
     const handleClearCache = useCallback(() => {
-        if (window.confirm('This will clear all cached data and reload from the server. Your login session will be preserved. Continue?')) {
+        const warningMessage = isFirebaseConfigured 
+            ? 'This will clear all cached data and reload from the cloud server.\n\n✓ Your data is safely stored in the cloud and will be restored automatically.\n✓ Your login session will be preserved.\n✓ Current navigation state will be preserved.\n\nThis is useful if you\'re experiencing sync issues or want to see the latest data.\n\nContinue?'
+            : 'This will clear all cached data. WARNING: You are in offline mode, so data cannot be restored from the cloud.\n\nYour login session and navigation state will be preserved.\n\nContinue?';
+        
+        if (window.confirm(warningMessage)) {
             try {
                 // Collect all TFW-related localStorage keys first before removing any
                 // We collect all keys first to avoid any issues with concurrent modifications
+                // Preserve auth and view state to maintain user session and navigation
+                const preserveKeys = ['authRole', 'authUser', 'authLastActivity', 'currentView'];
                 const keysToRemove: string[] = [];
                 const totalKeys = localStorage.length;
                 for (let i = 0; i < totalKeys; i++) {
                     const key = localStorage.key(i);
-                    if (key && key.startsWith('tfw_')) {
+                    if (key && key.startsWith('tfw_') && !preserveKeys.includes(key)) {
                         keysToRemove.push(key);
                     }
                 }
                 
-                // Remove all collected keys from localStorage
+                // Remove all collected keys from localStorage (except preserved auth and view state)
                 keysToRemove.forEach(key => localStorage.removeItem(key));
                 
                 // Also clear service worker cache if available
@@ -767,7 +785,11 @@ const AppComponent: React.FC = () => {
                     navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
                 }
                 
-                showNotification('Cache cleared successfully! Reloading...', 'success', CACHE_CLEAR_RELOAD_DELAY);
+                const reloadMessage = isFirebaseConfigured
+                    ? 'Cache cleared successfully! Reloading and restoring your data from the cloud...'
+                    : 'Cache cleared successfully! Reloading...';
+                
+                showNotification(reloadMessage, 'success', CACHE_CLEAR_RELOAD_DELAY);
                 
                 // Reload the page after a short delay to allow notification to show
                 setTimeout(() => {
@@ -778,7 +800,7 @@ const AppComponent: React.FC = () => {
                 showNotification('Failed to clear cache. Please try again.', 'error');
             }
         }
-    }, [showNotification]);
+    }, [showNotification, isFirebaseConfigured]);
 
     // Note: We deliberately allow the app to run even if not configured to support offline mode.
     
