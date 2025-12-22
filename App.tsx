@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useCallback, useEffect, ReactNode, useRef, lazy, Suspense } from 'react';
-import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY } from './constants';
+import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY, PRESERVE_STORAGE_KEYS } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync from './hooks/useFirebaseSync';
@@ -8,6 +8,7 @@ import { isFirebaseConfigured, database } from './firebaseConfig';
 import { ref, onValue, get } from 'firebase/database';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
 import NotificationComponent from './components/AttendanceCheckin';
+
 
 
 
@@ -86,6 +87,28 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
+
+// Helper to determine default view for a role
+const getDefaultViewForRole = (role: Exclude<Role, null>): View => {
+    switch (role) {
+        case 'operator': return 'roster';
+        case 'ticket-sales': return 'ts-roster';
+        case 'sales-officer': return 'sales-officer-dashboard';
+        case 'security': return 'security-entry';
+        case 'admin':
+        case 'operation-officer':
+        default: return 'dashboard';
+    }
+};
+
+// Helper to check if view should be reset for role
+const shouldResetViewForRole = (currentView: View, role: Exclude<Role, null>): boolean => {
+    const nonManagerViews: View[] = ['counter', 'roster', 'ts-roster', 'my-sales', 'security-entry'];
+    const isManager = role === 'admin' || role === 'operation-officer';
+    // Reset view if manager is on a non-manager view
+    return isManager && nonManagerViews.includes(currentView);
+};
+
 
 // Constants for session management and date checking
 const DATE_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -381,18 +404,15 @@ const AppComponent: React.FC = () => {
         const success = login(newRole, payload);
         if (success) {
             logAction('LOGIN', `User logged in as ${newRole}.`);
-            // Set default view based on role, but preserve view if user is returning to same role
-            if (newRole === 'operator') setCurrentView('roster');
-            else if (newRole === 'ticket-sales') setCurrentView('ts-roster');
-            else if (newRole === 'sales-officer') setCurrentView('sales-officer-dashboard');
-            else if (newRole === 'security') setCurrentView('security-entry');
-            else if (newRole === 'admin' || newRole === 'operation-officer') {
-                // For managers, only set dashboard if coming from a non-manager role
-                // This allows them to continue where they left off if already logged in
-                if (currentView === 'counter' || currentView === 'roster' || currentView === 'ts-roster') {
-                    setCurrentView('dashboard');
-                }
+            // Set view based on role, with smart restoration for managers
+            if (shouldResetViewForRole(currentView, newRole)) {
+                // Reset to default view if current view is inappropriate for role
+                setCurrentView(getDefaultViewForRole(newRole));
+            } else if (currentView === 'counter') {
+                // Always set a specific view if currently on generic counter view
+                setCurrentView(getDefaultViewForRole(newRole));
             }
+            // Otherwise, preserve the current view (e.g., manager returning to reports)
         }
         return success;
     };
@@ -784,12 +804,11 @@ const AppComponent: React.FC = () => {
                 // Collect all TFW-related localStorage keys first before removing any
                 // We collect all keys first to avoid any issues with concurrent modifications
                 // Preserve auth and view state to maintain user session and navigation
-                const preserveKeys = ['authRole', 'authUser', 'authLastActivity', 'currentView'];
                 const keysToRemove: string[] = [];
                 const totalKeys = localStorage.length;
                 for (let i = 0; i < totalKeys; i++) {
                     const key = localStorage.key(i);
-                    if (key && key.startsWith('tfw_') && !preserveKeys.includes(key)) {
+                    if (key && key.startsWith('tfw_') && !PRESERVE_STORAGE_KEYS.includes(key)) {
                         keysToRemove.push(key);
                     }
                 }

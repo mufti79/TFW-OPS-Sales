@@ -1,6 +1,9 @@
 
 import { Ride, Operator, Counter } from './types';
 
+// Storage keys that should be preserved during cache clear and quota cleanup
+export const PRESERVE_STORAGE_KEYS = ['authRole', 'authUser', 'authLastActivity', 'currentView'];
+
 // Utility function to convert array to an object with IDs as keys, which is a Firebase best practice.
 const arrayToObjectById = <T extends { id: number }>(arr: T[]): Record<number, Omit<T, 'id'>> => {
   return arr.reduce((acc, item) => {
