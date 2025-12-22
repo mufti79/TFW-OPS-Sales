@@ -3,10 +3,10 @@ import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } fr
 import { database, isFirebaseConfigured } from '../firebaseConfig';
 import { ref, onValue, set, off } from 'firebase/database';
 
-// Cache expiration time: 24 hours
-// This prevents users from seeing stale cached data for too long while still maintaining
-// good offline support and reducing unnecessary Firebase reads
-const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000;
+// Cache expiration time: 1 hour
+// This ensures users see fresh data more quickly while still maintaining
+// good offline support. Cached data older than 1 hour is refreshed from Firebase.
+const CACHE_EXPIRATION_MS = 1 * 60 * 60 * 1000;
 
 /**
  * Validates and retrieves cached data from localStorage
@@ -36,7 +36,10 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     // Only use cached data if it's less than CACHE_EXPIRATION_MS old
     if (now - timestamp < CACHE_EXPIRATION_MS) {
       try {
-        return JSON.parse(item);
+        const parsedData = JSON.parse(item);
+        const ageMinutes = Math.floor((now - timestamp) / (60 * 1000));
+        console.log(`✓ Using cached data for ${path} (age: ${ageMinutes} minutes)`);
+        return parsedData;
       } catch (parseError) {
         console.warn(`Failed to parse cached data for ${path}, clearing cache:`, parseError);
         window.localStorage.removeItem(localKey);
@@ -45,7 +48,8 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
       }
     } else {
       // Cache is stale, clear it
-      console.warn(`Cache expired for ${path}, clearing stale data`);
+      const ageHours = Math.floor((now - timestamp) / (60 * 60 * 1000));
+      console.warn(`Cache expired for ${path} (age: ${ageHours} hours), will refresh from Firebase`);
       window.localStorage.removeItem(localKey);
       window.localStorage.removeItem(localKeyTimestamp);
       return null;
@@ -101,6 +105,7 @@ function useFirebaseSync<T>(
         try {
             window.localStorage.setItem(localKey, JSON.stringify(val));
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
+            console.log(`✓ Firebase data synced for ${path}`);
         } catch (e) {
             console.warn("Failed to update localStorage from Firebase sync", e);
         }
@@ -111,6 +116,7 @@ function useFirebaseSync<T>(
         try {
             window.localStorage.removeItem(localKey);
             window.localStorage.removeItem(localKeyTimestamp);
+            console.log(`✓ Firebase data cleared for ${path} (data does not exist)`);
         } catch (e) {
             console.warn("Failed to clear localStorage from Firebase sync", e);
         }
@@ -137,6 +143,7 @@ function useFirebaseSync<T>(
         try {
             window.localStorage.setItem(localKey, JSON.stringify(valueToStore));
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
+            console.log(`✓ Data cached locally for ${path}`);
         } catch (error) {
             console.error(`Error saving to localStorage for key "${localKey}":`, error);
         }
@@ -146,9 +153,13 @@ function useFirebaseSync<T>(
             // We use set() which handles queuing if the network is temporarily flaky,
             // but assumes the app stays open long enough to reconnect.
             const dbRef = ref(database, path);
-            set(dbRef, valueToStore).catch(error => {
-                console.error(`Firebase write error at path "${path}":`, error);
-            });
+            set(dbRef, valueToStore)
+                .then(() => {
+                    console.log(`✓ Data synced to Firebase for ${path}`);
+                })
+                .catch(error => {
+                    console.error(`Firebase write error at path "${path}":`, error);
+                });
         }
         
         return valueToStore;
