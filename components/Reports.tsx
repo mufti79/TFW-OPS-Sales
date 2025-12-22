@@ -329,22 +329,46 @@ const Reports: React.FC<ReportsProps> = ({ dailyCounts, dailyRideDetails, rides 
   };
 
 
+  // Handler for month/year picker change
+  const handleMonthYearPickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value; // Format: YYYY-MM
+    if (value) {
+      const [year, month] = value.split('-').map(Number);
+      setCurrentDate(new Date(year, month - 1, 1));
+      setSelectedRange({ start: null, end: null }); // Clear range on manual date change
+    }
+  };
+
+  // Format current date for the month picker input (YYYY-MM format)
+  const currentMonthValue = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
   return (
     <div className="flex flex-col animate-fade-in-down">
        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
             <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
                 Operational Report
             </h1>
-            <div className="flex items-center gap-4">
-                <button onClick={() => handleMonthChange(-1)} className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                </button>
-                <span className="text-xl font-semibold w-48 text-center text-gray-200">
-                    {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-                </span>
-                <button onClick={() => handleMonthChange(1)} className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                </button>
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                {/* Month/Year Picker */}
+                <input 
+                    type="month" 
+                    value={currentMonthValue}
+                    onChange={handleMonthYearPickerChange}
+                    className="px-4 py-2 bg-gray-700 text-gray-200 rounded-lg border border-gray-600 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors cursor-pointer"
+                    title="Select month and year"
+                />
+                {/* Navigation Buttons */}
+                <div className="flex items-center gap-2">
+                    <button onClick={() => handleMonthChange(-1)} className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors" title="Previous month">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <span className="text-xl font-semibold w-48 text-center text-gray-200">
+                        {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button onClick={() => handleMonthChange(1)} className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors" title="Next month">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                </div>
             </div>
             <button onClick={() => setSelectedRange({start: null, end: null})} className="text-sm text-gray-400 hover:text-white">Clear Selection</button>
         </div>
