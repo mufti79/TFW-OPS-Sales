@@ -3,10 +3,15 @@ import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } fr
 import { database, isFirebaseConfigured } from '../firebaseConfig';
 import { ref, onValue, set, off } from 'firebase/database';
 
-// Cache expiration time: 1 hour
-// This ensures users see fresh data more quickly while still maintaining
-// good offline support. Cached data older than 1 hour is refreshed from Firebase.
+// Cache expiration time: 1 hour for regular data
+// Config data (logo, rides, operators) uses shorter 5-minute cache for real-time updates
+// This ensures users see fresh data quickly while still maintaining good offline support
+// Regular data cached for 1 hour, config data cached for 5 minutes
 const CACHE_EXPIRATION_MS = 1 * 60 * 60 * 1000;
+
+// Shorter cache for config data like logo and rides to ensure changes appear quickly
+// Config data cached for only 5 minutes to provide near-real-time updates across browsers
+const CONFIG_CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
 /**
  * Validates and retrieves cached data from localStorage
@@ -33,12 +38,16 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     
     const now = Date.now();
     
-    // Only use cached data if it's less than CACHE_EXPIRATION_MS old
-    if (now - timestamp < CACHE_EXPIRATION_MS) {
+    // Use shorter cache for config paths (logo, rides, etc.) to ensure changes appear quickly
+    const isConfigPath = path.startsWith('config/');
+    const expirationTime = isConfigPath ? CONFIG_CACHE_EXPIRATION_MS : CACHE_EXPIRATION_MS;
+    
+    // Only use cached data if it's less than expiration time old
+    if (now - timestamp < expirationTime) {
       try {
         const parsedData = JSON.parse(item);
         const ageMinutes = Math.floor((now - timestamp) / (60 * 1000));
-        console.log(`✓ Using cached data for ${path} (age: ${ageMinutes} minutes)`);
+        console.log(`✓ Using cached data for ${path} (age: ${ageMinutes} minutes, type: ${isConfigPath ? 'config' : 'data'})`);
         return parsedData;
       } catch (parseError) {
         console.warn(`Failed to parse cached data for ${path}, clearing cache:`, parseError);
@@ -49,7 +58,9 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     } else {
       // Cache is stale, clear it
       const ageHours = Math.floor((now - timestamp) / (60 * 60 * 1000));
-      console.warn(`Cache expired for ${path} (age: ${ageHours} hours), will refresh from Firebase`);
+      const ageMinutes = Math.floor((now - timestamp) / (60 * 1000));
+      const ageDisplay = ageHours > 0 ? `${ageHours} hours` : `${ageMinutes} minutes`;
+      console.warn(`Cache expired for ${path} (age: ${ageDisplay}), will refresh from Firebase`);
       window.localStorage.removeItem(localKey);
       window.localStorage.removeItem(localKeyTimestamp);
       return null;
@@ -79,6 +90,8 @@ function useFirebaseSync<T>(
   });
 
   const [loading, setLoading] = useState(isFirebaseConfigured);
+  // Use a ref to track if we've already set up the listener to avoid re-subscribing
+  const listenerSetup = useRef(false);
 
   useEffect(() => {
     // Safety check: if firebase is not configured OR if database failed to initialize
@@ -87,14 +100,24 @@ function useFirebaseSync<T>(
         return;
     }
     
+    // Avoid setting up multiple listeners for the same path
+    if (listenerSetup.current) {
+      return;
+    }
+    listenerSetup.current = true;
+    
     const dbRef = ref(database, path);
 
     // Reduced timeout to 2.5s to let offline users start working faster
     const timeoutId = setTimeout(() => {
-        if (loading) {
-            console.log(`Firebase load timed out for ${path}, using local data.`);
-            setLoading(false);
-        }
+        // Only update loading state if still loading to avoid unnecessary state updates
+        setLoading((currentLoading) => {
+            if (currentLoading) {
+                console.log(`Firebase load timed out for ${path}, using local data.`);
+                return false;
+            }
+            return currentLoading;
+        });
     }, 2500);
 
     const unsubscribe = onValue(dbRef, (snapshot) => {
@@ -131,8 +154,9 @@ function useFirebaseSync<T>(
     return () => {
       clearTimeout(timeoutId);
       unsubscribe();
+      listenerSetup.current = false;
     };
-  }, [path, localKey, localKeyTimestamp, loading, initialValue]);
+  }, [path, localKey, localKeyTimestamp, initialValue]);
 
   const setValue: Dispatch<SetStateAction<T>> = useCallback((value) => {
     setStoredValue((prev) => {

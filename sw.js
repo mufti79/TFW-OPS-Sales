@@ -1,8 +1,8 @@
 // Service Worker for Progressive Web App
 // Implements caching strategies to reduce memory usage and improve performance
 
-const CACHE_NAME = 'tfw-ops-sales-v2';
-const RUNTIME_CACHE = 'tfw-runtime-cache-v2';
+const CACHE_NAME = 'tfw-ops-sales-v3';
+const RUNTIME_CACHE = 'tfw-runtime-cache-v3';
 
 // Resources to cache on install
 const STATIC_ASSETS = [
@@ -60,7 +60,10 @@ self.addEventListener('fetch', (event) => {
                         url.hostname === 'firebasestorage.googleapis.com' ||
                         url.hostname.endsWith('.cloudfunctions.net');
   
-  if (isApiCall || isFirebaseCall) {
+  // Use network-first for HTML files to ensure users get latest app version
+  const isHtmlFile = url.pathname === '/' || url.pathname.endsWith('.html');
+  
+  if (isApiCall || isFirebaseCall || isHtmlFile) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -86,7 +89,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets, use cache-first strategy
+  // For static assets (JS, CSS, images), use cache-first strategy
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
