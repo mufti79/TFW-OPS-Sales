@@ -88,6 +88,19 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
+// Views that are specific to non-manager roles and should trigger a reset when a manager logs in
+const NON_MANAGER_VIEWS: View[] = ['counter', 'roster', 'ts-roster', 'my-sales', 'security-entry'];
+
+// Cache clear confirmation messages
+const CACHE_CLEAR_MESSAGES = {
+    online: 'This will clear all cached data and reload from the cloud server.\n\n✓ Your data is safely stored in the cloud and will be restored automatically.\n✓ Your login session will be preserved.\n✓ Current navigation state will be preserved.\n\nThis is useful if you\'re experiencing sync issues or want to see the latest data.\n\nContinue?',
+    offline: 'This will clear all cached data. WARNING: You are in offline mode, so data cannot be restored from the cloud.\n\nYour login session and navigation state will be preserved.\n\nContinue?',
+    success: {
+        online: 'Cache cleared successfully! Reloading and restoring your data from the cloud...',
+        offline: 'Cache cleared successfully! Reloading...'
+    }
+};
+
 // Helper to determine default view for a role
 const getDefaultViewForRole = (role: Exclude<Role, null>): View => {
     switch (role) {
@@ -103,10 +116,9 @@ const getDefaultViewForRole = (role: Exclude<Role, null>): View => {
 
 // Helper to check if view should be reset for role
 const shouldResetViewForRole = (currentView: View, role: Exclude<Role, null>): boolean => {
-    const nonManagerViews: View[] = ['counter', 'roster', 'ts-roster', 'my-sales', 'security-entry'];
     const isManager = role === 'admin' || role === 'operation-officer';
     // Reset view if manager is on a non-manager view
-    return isManager && nonManagerViews.includes(currentView);
+    return isManager && NON_MANAGER_VIEWS.includes(currentView);
 };
 
 
@@ -791,8 +803,8 @@ const AppComponent: React.FC = () => {
     // Clear cache handler - removes all localStorage cache and service worker cache, then reloads from Firebase
     const handleClearCache = useCallback(() => {
         const warningMessage = isFirebaseConfigured 
-            ? 'This will clear all cached data and reload from the cloud server.\n\n✓ Your data is safely stored in the cloud and will be restored automatically.\n✓ Your login session will be preserved.\n✓ Current navigation state will be preserved.\n\nThis is useful if you\'re experiencing sync issues or want to see the latest data.\n\nContinue?'
-            : 'This will clear all cached data. WARNING: You are in offline mode, so data cannot be restored from the cloud.\n\nYour login session and navigation state will be preserved.\n\nContinue?';
+            ? CACHE_CLEAR_MESSAGES.online
+            : CACHE_CLEAR_MESSAGES.offline;
         
         if (window.confirm(warningMessage)) {
             try {
@@ -822,8 +834,8 @@ const AppComponent: React.FC = () => {
                 }
                 
                 const reloadMessage = isFirebaseConfigured
-                    ? 'Cache cleared successfully! Reloading and restoring your data from the cloud...'
-                    : 'Cache cleared successfully! Reloading...';
+                    ? CACHE_CLEAR_MESSAGES.success.online
+                    : CACHE_CLEAR_MESSAGES.success.offline;
                 
                 showNotification(reloadMessage, 'success', CACHE_CLEAR_RELOAD_DELAY);
                 
