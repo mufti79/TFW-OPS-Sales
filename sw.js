@@ -50,11 +50,15 @@ self.addEventListener('fetch', (event) => {
   // Use hostname check to prevent URL manipulation attacks
   const url = new URL(event.request.url);
   const isApiCall = url.pathname.includes('/api/');
-  // Check for all Firebase-related domains including Realtime Database, Storage, and other services
+  // Check for all Firebase-related domains with specific patterns to avoid matching malicious domains
+  // Only match exact Firebase subdomains to prevent security issues
   const isFirebaseCall = url.hostname.endsWith('.firebaseio.com') || 
                         url.hostname === 'firebaseio.com' ||
-                        url.hostname.endsWith('.googleapis.com') ||
-                        url.hostname.includes('firebase');
+                        url.hostname.endsWith('.firebaseapp.com') ||
+                        url.hostname === 'firebaseapp.com' ||
+                        url.hostname.endsWith('.firebasestorage.googleapis.com') ||
+                        url.hostname === 'firebasestorage.googleapis.com' ||
+                        url.hostname.endsWith('.cloudfunctions.net');
   
   if (isApiCall || isFirebaseCall) {
     event.respondWith(

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RideWithCount } from '../types';
 import SplitCounter from './SplitCounter';
 import { Role } from '../hooks/useAuth';
@@ -13,6 +13,11 @@ interface RideCardProps {
 const RideCard: React.FC<RideCardProps> = ({ ride, onCountChange, role, onChangePicture }) => {
   const canChangePicture = role === 'admin' || role === 'operation-officer';
   const [imageError, setImageError] = useState(false);
+
+  // Reset error state when the image URL changes to allow retry with new URL
+  useEffect(() => {
+    setImageError(false);
+  }, [ride.imageUrl]);
 
   const handleSplitChange = (tickets: number, packages: number) => {
     onCountChange(ride.id, tickets + packages, { tickets, packages });
