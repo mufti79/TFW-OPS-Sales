@@ -4,14 +4,14 @@ import { database, isFirebaseConfigured } from '../firebaseConfig';
 import { ref, onValue, set, off } from 'firebase/database';
 
 // Cache expiration time: 1 hour for regular data
-// Config data (logo, rides, operators) uses very short cache for real-time updates
+// Config data (logo, rides, operators) uses short cache for real-time updates
 // This ensures users see fresh data quickly while still maintaining good offline support
 // Regular data cached for 1 hour, config data cached for 30 seconds
 const CACHE_EXPIRATION_MS = 1 * 60 * 60 * 1000;
 
-// Very short cache for config data like logo and rides to ensure changes appear almost immediately
-// Logo specifically has no cache to ensure instant updates across browsers
-// Config data cached for only 30 seconds to provide real-time updates across browsers
+// Short cache for config data like logo, rides, and operators to ensure changes appear quickly
+// Config data cached for 30 seconds provides near real-time updates while preserving data during cache clear
+// Firebase real-time listeners provide instant updates for active tabs regardless of cache expiration
 const CONFIG_CACHE_EXPIRATION_MS = 30 * 1000;
 
 /**
@@ -40,17 +40,16 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     const now = Date.now();
     
     // Use shorter cache for config paths (logo, rides, etc.) to ensure changes appear quickly
+    // All config data uses 30-second cache for near real-time updates while preserving during cache clear
     const isConfigPath = path.startsWith('config/');
-    // Logo has NO cache to ensure immediate updates across all browsers
-    const isLogoPath = path === 'config/appLogo';
-    const expirationTime = isLogoPath ? 0 : (isConfigPath ? CONFIG_CACHE_EXPIRATION_MS : CACHE_EXPIRATION_MS);
+    const expirationTime = isConfigPath ? CONFIG_CACHE_EXPIRATION_MS : CACHE_EXPIRATION_MS;
     
-    // Only use cached data if it's less than expiration time old (logo always expires immediately)
+    // Only use cached data if it's less than expiration time old
     if (now - timestamp < expirationTime) {
       try {
         const parsedData = JSON.parse(item);
         const ageSeconds = Math.floor((now - timestamp) / 1000);
-        const cacheType = isLogoPath ? 'logo (no-cache)' : (isConfigPath ? 'config' : 'data');
+        const cacheType = isConfigPath ? 'config' : 'data';
         console.log(`✓ Using cached data for ${path} (age: ${ageSeconds}s, type: ${cacheType})`);
         return parsedData;
       } catch (parseError) {
@@ -65,8 +64,7 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
       const ageMinutes = Math.floor((now - timestamp) / (60 * 1000));
       const ageSeconds = Math.floor((now - timestamp) / 1000);
       const ageDisplay = ageHours > 0 ? `${ageHours} hours` : (ageMinutes > 0 ? `${ageMinutes} minutes` : `${ageSeconds} seconds`);
-      const reason = isLogoPath ? '(logo always fetches fresh)' : '(expired)';
-      console.warn(`Cache ${reason} for ${path} (age: ${ageDisplay}), will refresh from Firebase`);
+      console.warn(`Cache expired for ${path} (age: ${ageDisplay}), will refresh from Firebase`);
       window.localStorage.removeItem(localKey);
       window.localStorage.removeItem(localKeyTimestamp);
       return null;

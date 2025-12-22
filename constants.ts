@@ -8,8 +8,10 @@ import { Ride, Operator, Counter } from './types';
  * - authUser: User's profile information
  * - authLastActivity: Timestamp of last user activity
  * - currentView: Current navigation state for view persistence
+ * - tfw_data_config_appLogo: Application logo image data
+ * - tfw_data_config_appLogo_timestamp: Logo cache timestamp
  */
-export const PRESERVE_STORAGE_KEYS = ['authRole', 'authUser', 'authLastActivity', 'currentView'];
+export const PRESERVE_STORAGE_KEYS = ['authRole', 'authUser', 'authLastActivity', 'currentView', 'tfw_data_config_appLogo', 'tfw_data_config_appLogo_timestamp'];
 
 // Utility function to convert array to an object with IDs as keys, which is a Firebase best practice.
 const arrayToObjectById = <T extends { id: number }>(arr: T[]): Record<number, Omit<T, 'id'>> => {
