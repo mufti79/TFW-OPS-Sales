@@ -219,6 +219,18 @@ const AppComponent: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); // Only run once on mount
     
+    // Notify user when Firebase connection is established and data is being loaded
+    useEffect(() => {
+        if (connectionStatus === 'connected' && role && currentUser) {
+            // Check if this is a recovery from cache clear or fresh login
+            const wasCleared = sessionStorage.getItem('TFW_CACHE_CLEARED');
+            if (wasCleared) {
+                showNotification('✓ Connected to cloud. Your data is being restored...', 'success', 3000);
+                sessionStorage.removeItem('TFW_CACHE_CLEARED');
+            }
+        }
+    }, [connectionStatus, role, currentUser, showNotification]);
+    
     useEffect(() => {
         if (isFirebaseConfigured && database) {
             const connectedRef = ref(database, '.info/connected');
@@ -764,6 +776,11 @@ const AppComponent: React.FC = () => {
         
         if (window.confirm(warningMessage)) {
             try {
+                // Set a flag to indicate cache was cleared so we can notify user on reconnect
+                if (isFirebaseConfigured) {
+                    sessionStorage.setItem('TFW_CACHE_CLEARED', 'true');
+                }
+                
                 // Collect all TFW-related localStorage keys first before removing any
                 // We collect all keys first to avoid any issues with concurrent modifications
                 // Preserve auth and view state to maintain user session and navigation
