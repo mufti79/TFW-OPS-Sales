@@ -2,6 +2,7 @@
 // This resolves the module not found errors in useAuth.ts and DailySalesEntry.tsx.
 // Enhanced with better error handling and persistence mechanisms to prevent auto-logout.
 import { useState, useCallback, Dispatch, SetStateAction, useEffect, useRef } from 'react';
+import { PRESERVE_STORAGE_KEYS } from '../constants';
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetStateAction<T>>] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -88,8 +89,8 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
             if (storageError instanceof DOMException && storageError.name === 'QuotaExceededError') {
               console.warn('Storage quota exceeded. Attempting to free up space...');
               try {
-                // Remove old Firebase sync data to free up space, but preserve auth data
-                const authKeys = ['authRole', 'authUser', 'authLastActivity'];
+                // Remove old Firebase sync data to free up space, but preserve auth data and view state
+                // Using shared constant to maintain consistency with cache clear operation
                 
                 // First, collect all keys to avoid issues with changing indices during removal
                 const allKeys: string[] = [];
@@ -102,7 +103,7 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, Dispatch<SetState
                 
                 // Filter to find non-critical keys that can be removed
                 const keysToRemove = allKeys.filter(
-                  k => !authKeys.includes(k) && !k.startsWith('tfw_')
+                  k => !PRESERVE_STORAGE_KEYS.includes(k) && !k.startsWith('tfw_')
                 );
                 
                 // Now safely remove non-critical keys

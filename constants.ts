@@ -1,6 +1,16 @@
 
 import { Ride, Operator, Counter } from './types';
 
+/**
+ * Storage keys that should be preserved during cache clear operations and quota cleanup.
+ * These keys contain critical user session data that must persist across cache operations:
+ * - authRole: User's role/permission level
+ * - authUser: User's profile information
+ * - authLastActivity: Timestamp of last user activity
+ * - currentView: Current navigation state for view persistence
+ */
+export const PRESERVE_STORAGE_KEYS = ['authRole', 'authUser', 'authLastActivity', 'currentView'];
+
 // Utility function to convert array to an object with IDs as keys, which is a Firebase best practice.
 const arrayToObjectById = <T extends { id: number }>(arr: T[]): Record<number, Omit<T, 'id'>> => {
   return arr.reduce((acc, item) => {
