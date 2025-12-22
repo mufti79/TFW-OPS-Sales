@@ -21,6 +21,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   const [securityError, setSecurityError] = useState('');
   const [logoError, setLogoError] = useState(false);
   
+  // Reset logo error state when appLogo changes
+  React.useEffect(() => {
+    setLogoError(false);
+  }, [appLogo]);
+  
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
   const [selectedTicketSalesId, setSelectedTicketSalesId] = useState<string>('');
 

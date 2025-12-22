@@ -40,6 +40,12 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  
+  // Reset logo error state when appLogo changes
+  React.useEffect(() => {
+    setLogoError(false);
+  }, [appLogo]);
+  
   const isManager = role === 'admin' || role === 'operation-officer';
   const isSalesManager = role === 'admin' || role === 'sales-officer';
   const isAdmin = role === 'admin';
