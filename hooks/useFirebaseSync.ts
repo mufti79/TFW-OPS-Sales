@@ -3,13 +3,14 @@ import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } fr
 import { database, isFirebaseConfigured } from '../firebaseConfig';
 import { ref, onValue, set, off } from 'firebase/database';
 
-// Cache expiration time: 1 hour for most data
-// This ensures users see fresh data more quickly while still maintaining
-// good offline support. Cached data older than 1 hour is refreshed from Firebase.
+// Cache expiration time: 1 hour for regular data
+// Config data (logo, rides, operators) uses shorter 5-minute cache for real-time updates
+// This ensures users see fresh data quickly while still maintaining good offline support
+// Regular data cached for 1 hour, config data cached for 5 minutes
 const CACHE_EXPIRATION_MS = 1 * 60 * 60 * 1000;
 
 // Shorter cache for config data like logo and rides to ensure changes appear quickly
-// Config data cached for only 5 minutes
+// Config data cached for only 5 minutes to provide near-real-time updates across browsers
 const CONFIG_CACHE_EXPIRATION_MS = 5 * 60 * 1000;
 
 /**
@@ -109,8 +110,14 @@ function useFirebaseSync<T>(
 
     // Reduced timeout to 2.5s to let offline users start working faster
     const timeoutId = setTimeout(() => {
-        setLoading(false);
-        console.log(`Firebase load timed out for ${path}, using local data.`);
+        // Only update loading state if still loading to avoid unnecessary state updates
+        setLoading((currentLoading) => {
+            if (currentLoading) {
+                console.log(`Firebase load timed out for ${path}, using local data.`);
+                return false;
+            }
+            return currentLoading;
+        });
     }, 2500);
 
     const unsubscribe = onValue(dbRef, (snapshot) => {
