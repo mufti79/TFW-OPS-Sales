@@ -744,7 +744,7 @@ const AppComponent: React.FC = () => {
 
     const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
 
-    // Clear cache handler - removes all localStorage cache and reloads from Firebase
+    // Clear cache handler - removes all localStorage cache and service worker cache, then reloads from Firebase
     const handleClearCache = useCallback(() => {
         if (window.confirm('This will clear all cached data and reload from the server. Your login session will be preserved. Continue?')) {
             try {
@@ -759,8 +759,13 @@ const AppComponent: React.FC = () => {
                     }
                 }
                 
-                // Remove all collected keys
+                // Remove all collected keys from localStorage
                 keysToRemove.forEach(key => localStorage.removeItem(key));
+                
+                // Also clear service worker cache if available
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
+                }
                 
                 showNotification('Cache cleared successfully! Reloading...', 'success', CACHE_CLEAR_RELOAD_DELAY);
                 

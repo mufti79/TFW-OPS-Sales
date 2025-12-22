@@ -1,8 +1,8 @@
 // Service Worker for Progressive Web App
 // Implements caching strategies to reduce memory usage and improve performance
 
-const CACHE_NAME = 'tfw-ops-sales-v1';
-const RUNTIME_CACHE = 'tfw-runtime-cache';
+const CACHE_NAME = 'tfw-ops-sales-v2';
+const RUNTIME_CACHE = 'tfw-runtime-cache-v2';
 
 // Resources to cache on install
 const STATIC_ASSETS = [
@@ -50,7 +50,15 @@ self.addEventListener('fetch', (event) => {
   // Use hostname check to prevent URL manipulation attacks
   const url = new URL(event.request.url);
   const isApiCall = url.pathname.includes('/api/');
-  const isFirebaseCall = url.hostname.endsWith('.firebaseio.com') || url.hostname === 'firebaseio.com';
+  // Check for all Firebase-related domains with specific patterns to avoid matching malicious domains
+  // Only match exact Firebase subdomains to prevent security issues
+  const isFirebaseCall = url.hostname.endsWith('.firebaseio.com') || 
+                        url.hostname === 'firebaseio.com' ||
+                        url.hostname.endsWith('.firebaseapp.com') ||
+                        url.hostname === 'firebaseapp.com' ||
+                        url.hostname.endsWith('.firebasestorage.googleapis.com') ||
+                        url.hostname === 'firebasestorage.googleapis.com' ||
+                        url.hostname.endsWith('.cloudfunctions.net');
   
   if (isApiCall || isFirebaseCall) {
     event.respondWith(
