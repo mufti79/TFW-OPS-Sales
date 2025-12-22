@@ -1,8 +1,8 @@
 // Service Worker for Progressive Web App
 // Implements caching strategies to reduce memory usage and improve performance
 
-const CACHE_NAME = 'tfw-ops-sales-v3';
-const RUNTIME_CACHE = 'tfw-runtime-cache-v3';
+const CACHE_NAME = 'tfw-ops-sales-v4';
+const RUNTIME_CACHE = 'tfw-runtime-cache-v4';
 
 // Resources to cache on install
 const STATIC_ASSETS = [
@@ -41,8 +41,10 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - implement network-first strategy for dynamic content
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests and chrome-extension requests
-  if (event.request.method !== 'GET' || event.request.url.startsWith('chrome-extension://')) {
+  // Skip non-GET requests, chrome-extension requests, and data URLs (base64 images)
+  if (event.request.method !== 'GET' || 
+      event.request.url.startsWith('chrome-extension://') ||
+      event.request.url.startsWith('data:')) {
     return;
   }
 
