@@ -19,6 +19,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   const [salesOfficerError, setSalesOfficerError] = useState('');
   const [securityPin, setSecurityPin] = useState('');
   const [securityError, setSecurityError] = useState('');
+  const [logoError, setLogoError] = useState(false);
   
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
   const [selectedTicketSalesId, setSelectedTicketSalesId] = useState<string>('');
@@ -87,8 +88,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 p-4 relative">
       <div className="mb-12 flex flex-col items-center justify-center text-center">
-        {appLogo ? (
-            <img src={appLogo} alt="Toggi Fun World Logo" className="mb-2 w-20 h-20 md:w-24 md:h-24 object-contain" />
+        {appLogo && !logoError ? (
+            <img 
+              src={appLogo} 
+              alt="Toggi Fun World Logo" 
+              className="mb-2 w-20 h-20 md:w-24 md:h-24 object-contain" 
+              onError={() => setLogoError(true)}
+            />
         ) : (
             <div className="mb-2 w-20 h-20 md:w-24 md:h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
                 <span className="text-gray-600 font-bold">Logo</span>

@@ -3,9 +3,10 @@ import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } fr
 import { database, isFirebaseConfigured } from '../firebaseConfig';
 import { ref, onValue, set, off } from 'firebase/database';
 
-// Cache expiration time: 5 minutes
-// This prevents users from seeing stale cached data for too long
-const CACHE_EXPIRATION_MS = 5 * 60 * 1000;
+// Cache expiration time: 24 hours
+// This prevents users from seeing stale cached data for too long while still maintaining
+// good offline support and reducing unnecessary Firebase reads
+const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Validates and retrieves cached data from localStorage

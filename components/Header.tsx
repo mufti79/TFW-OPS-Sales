@@ -39,6 +39,7 @@ const Header: React.FC<HeaderProps> = ({
   onClearCache,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const isManager = role === 'admin' || role === 'operation-officer';
   const isSalesManager = role === 'admin' || role === 'sales-officer';
   const isAdmin = role === 'admin';
@@ -118,8 +119,13 @@ const Header: React.FC<HeaderProps> = ({
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            {appLogo ? (
-              <img src={appLogo} alt="App Logo" className="h-10 w-10 object-contain mr-3" />
+            {appLogo && !logoError ? (
+              <img 
+                src={appLogo} 
+                alt="App Logo" 
+                className="h-10 w-10 object-contain mr-3" 
+                onError={() => setLogoError(true)}
+              />
             ) : (
               <div className="w-10 h-10 bg-gray-700 border-2 border-dashed border-gray-500 rounded-md flex items-center justify-center mr-3">
                 <span className="text-gray-500 text-xs font-bold">Logo</span>
