@@ -85,7 +85,7 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     // Logo: Never expires (1 year) for permanent persistence
     // Config: 30 seconds for near real-time updates
     // Data: 1 hour for good offline support
-    const isLogoPath = path === 'config/appLogo';
+    const isLogoPath = path === LOGO_PATH;
     const isConfigPath = path.startsWith('config/');
     
     let expirationTime: number;
