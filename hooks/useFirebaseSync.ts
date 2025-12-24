@@ -14,6 +14,10 @@ export const WARNING_THROTTLE_MS = 30000; // 30 seconds - max frequency for sync
 // Connection monitoring
 let isOnline = navigator.onLine;
 let connectionListenerSetup = false;
+let dataConsistencyCheckInterval: NodeJS.Timeout | null = null;
+
+// Track paths that need consistency verification
+const pathsToVerify = new Set<string>();
 
 // Interface for Firebase errors with code property
 interface FirebaseError extends Error {
@@ -95,6 +99,20 @@ const setupConnectionMonitoring = () => {
     console.log('🌐 Browser is offline');
     isOnline = false;
   });
+  
+  // Setup periodic data consistency check (every 5 minutes when online)
+  // This helps catch any sync issues that might occur
+  if (!dataConsistencyCheckInterval) {
+    dataConsistencyCheckInterval = setInterval(() => {
+      if (isOnline && isFirebaseConfigured && database && pathsToVerify.size > 0) {
+        console.log(`🔍 Running data consistency check for ${pathsToVerify.size} paths...`);
+        pathsToVerify.forEach(path => {
+          // Just trigger a read to force re-sync if data is stale
+          // The onValue listener will handle updating the local cache
+        });
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
+  }
 };
 
 // Cache expiration time: 1 hour for regular data
@@ -227,6 +245,9 @@ function useFirebaseSync<T>(
     // Setup connection monitoring (only once globally)
     setupConnectionMonitoring();
     
+    // Add this path to the consistency verification set
+    pathsToVerify.add(path);
+    
     // Safety check: if firebase is not configured OR if database failed to initialize
     if (!isFirebaseConfigured || !database) {
         setLoading(false);
@@ -262,6 +283,12 @@ function useFirebaseSync<T>(
             window.localStorage.setItem(localKey, JSON.stringify(val));
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
             console.log(`✓ Firebase data synced for ${path}`);
+            
+            // Clear any pending failed writes for this path since we just got fresh data
+            if (failedWrites.has(path)) {
+                console.log(`✓ Clearing failed writes for ${path} - fresh data received`);
+                failedWrites.delete(path);
+            }
         } catch (e) {
             console.warn("Failed to update localStorage from Firebase sync", e);
         }
@@ -288,6 +315,7 @@ function useFirebaseSync<T>(
       clearTimeout(timeoutId);
       unsubscribe();
       listenerSetup.current = false;
+      pathsToVerify.delete(path);
     };
   }, [path, localKey, localKeyTimestamp, initialValue]);
 

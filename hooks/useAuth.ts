@@ -10,21 +10,26 @@ export const OPERATION_OFFICER_PIN = '4321';
 export const SALES_OFFICER_PIN = '5678';
 export const SECURITY_PIN = '1234';
 
+// Track session across tabs/devices
+const SESSION_ID_KEY = 'authSessionId';
+const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
 export const useAuth = () => {
   const [role, setRole] = useLocalStorage<Role>('authRole', null);
   const [currentUser, setCurrentUser] = useLocalStorage<Operator | null>('authUser', null);
   const [lastActivity, setLastActivity] = useLocalStorage<number>('authLastActivity', Date.now());
+  const [sessionId, setSessionId] = useLocalStorage<string>(SESSION_ID_KEY, generateSessionId());
 
   // Backup auth data to sessionStorage as additional protection against localStorage clearing
   useEffect(() => {
     if (role && currentUser) {
       try {
-        sessionStorage.setItem('authBackup', JSON.stringify({ role, currentUser, lastActivity }));
+        sessionStorage.setItem('authBackup', JSON.stringify({ role, currentUser, lastActivity, sessionId }));
       } catch (error) {
         console.warn('Failed to backup auth to sessionStorage:', error);
       }
     }
-  }, [role, currentUser, lastActivity]);
+  }, [role, currentUser, lastActivity, sessionId]);
 
   // Attempt to recover auth from sessionStorage if localStorage is empty but session exists
   useEffect(() => {
@@ -39,6 +44,12 @@ export const useAuth = () => {
             setRole(parsed.role);
             setCurrentUser(parsed.currentUser);
             setLastActivity(Date.now());
+            // Restore or generate new session ID
+            if (parsed.sessionId) {
+              setSessionId(parsed.sessionId);
+            } else {
+              setSessionId(generateSessionId());
+            }
           } else {
             // Backup is too old, clear it
             sessionStorage.removeItem('authBackup');
@@ -90,12 +101,17 @@ export const useAuth = () => {
     newRole: 'admin' | 'operator' | 'operation-officer' | 'ticket-sales' | 'sales-officer' | 'security', 
     payload?: string | Operator
   ): boolean => {
+    // Generate a new session ID for this login
+    const newSessionId = generateSessionId();
+    
     switch (newRole) {
       case 'admin':
         if (payload === ADMIN_PIN) {
           setRole('admin');
           setCurrentUser({ id: 0, name: 'Admin' });
           setLastActivity(Date.now());
+          setSessionId(newSessionId);
+          console.log(`✓ Admin logged in with session: ${newSessionId}`);
           return true;
         }
         return false;
@@ -104,6 +120,8 @@ export const useAuth = () => {
           setRole('operation-officer');
           setCurrentUser({ id: -1, name: 'Operation Officer' });
           setLastActivity(Date.now());
+          setSessionId(newSessionId);
+          console.log(`✓ Operation Officer logged in with session: ${newSessionId}`);
           return true;
         }
         return false;
@@ -112,6 +130,8 @@ export const useAuth = () => {
           setRole('sales-officer');
           setCurrentUser({ id: -2, name: 'Sales Officer' });
           setLastActivity(Date.now());
+          setSessionId(newSessionId);
+          console.log(`✓ Sales Officer logged in with session: ${newSessionId}`);
           return true;
         }
         return false;
@@ -120,6 +140,8 @@ export const useAuth = () => {
           setRole('security');
           setCurrentUser({ id: -3, name: 'Security' });
           setLastActivity(Date.now());
+          setSessionId(newSessionId);
+          console.log(`✓ Security logged in with session: ${newSessionId}`);
           return true;
         }
         return false;
@@ -130,13 +152,15 @@ export const useAuth = () => {
           setRole(newRole);
           setCurrentUser(payload as Operator);
           setLastActivity(Date.now());
+          setSessionId(newSessionId);
+          console.log(`✓ ${newRole} logged in: ${(payload as Operator).name} with session: ${newSessionId}`);
           return true;
         }
         return false;
       default:
         return false;
     }
-  }, [setRole, setCurrentUser, setLastActivity]);
+  }, [setRole, setCurrentUser, setLastActivity, setSessionId]);
 
   const logout = useCallback(() => {
     setRole(null);
