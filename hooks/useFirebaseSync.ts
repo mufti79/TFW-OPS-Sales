@@ -3,6 +3,11 @@ import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } fr
 import { database, isFirebaseConfigured } from '../firebaseConfig';
 import { ref, onValue, set, off } from 'firebase/database';
 
+// Track failed writes for retry mechanism
+const failedWrites = new Map<string, { value: any; retryCount: number; lastAttempt: number }>();
+const MAX_RETRY_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 5000; // 5 seconds between retries
+
 // Cache expiration time: 1 hour for regular data
 // Config data (logo, rides, operators) uses short cache for real-time updates
 // This ensures users see fresh data quickly while still maintaining good offline support
@@ -173,21 +178,54 @@ function useFirebaseSync<T>(
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
             console.log(`✓ Data cached locally for ${path}`);
         } catch (error) {
-            console.error(`Error saving to localStorage for key "${localKey}":`, error);
+            console.error(`❌ Error saving to localStorage for key "${localKey}":`, error);
         }
 
-        // 2. Save to Firebase (Online Sync)
+        // 2. Save to Firebase (Online Sync) with retry mechanism
         if (isFirebaseConfigured && database) {
-            // We use set() which handles queuing if the network is temporarily flaky,
-            // but assumes the app stays open long enough to reconnect.
             const dbRef = ref(database, path);
-            set(dbRef, valueToStore)
-                .then(() => {
-                    console.log(`✓ Data synced to Firebase for ${path}`);
-                })
-                .catch(error => {
-                    console.error(`Firebase write error at path "${path}":`, error);
-                });
+            
+            const attemptWrite = (retryCount: number = 0) => {
+                set(dbRef, valueToStore)
+                    .then(() => {
+                        console.log(`✓ Data synced to Firebase for ${path}`);
+                        // Clear any failed write tracking on success
+                        failedWrites.delete(path);
+                    })
+                    .catch(error => {
+                        console.error(`❌ Firebase write error at path "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, error);
+                        console.error(`   Error details:`, error.code, error.message);
+                        
+                        // Track failed write for retry
+                        if (retryCount < MAX_RETRY_ATTEMPTS - 1) {
+                            failedWrites.set(path, {
+                                value: valueToStore,
+                                retryCount: retryCount + 1,
+                                lastAttempt: Date.now()
+                            });
+                            
+                            // Schedule retry
+                            console.warn(`⏳ Will retry Firebase write for ${path} in ${RETRY_DELAY_MS/1000} seconds...`);
+                            setTimeout(() => {
+                                const failedWrite = failedWrites.get(path);
+                                if (failedWrite && failedWrite.retryCount === retryCount + 1) {
+                                    console.log(`🔄 Retrying Firebase write for ${path} (attempt ${retryCount + 2}/${MAX_RETRY_ATTEMPTS})`);
+                                    attemptWrite(retryCount + 1);
+                                }
+                            }, RETRY_DELAY_MS);
+                        } else {
+                            console.error(`❌ CRITICAL: Firebase write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
+                            console.error(`   Data is ONLY saved locally and will NOT sync to other devices!`);
+                            console.error(`   Possible causes: Database rules, network issues, or permissions`);
+                            failedWrites.delete(path);
+                        }
+                    });
+            };
+            
+            // Start the write attempt
+            attemptWrite(0);
+        } else {
+            console.warn(`⚠️ Firebase not configured. Data for ${path} saved locally only.`);
         }
         
         return valueToStore;
