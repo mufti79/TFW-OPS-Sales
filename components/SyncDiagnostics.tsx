@@ -51,7 +51,7 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     
     if (isFirebaseConfigured && database) {
       const connectedRef = ref(database, '.info/connected');
-      onValue(connectedRef, (snapshot) => {
+      const unsubscribe = onValue(connectedRef, (snapshot) => {
         connectionStatus = snapshot.val() ? 'connected' : 'disconnected';
         
         setDiagnostics({
@@ -65,6 +65,9 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         });
         
         setIsRefreshing(false);
+        
+        // Unsubscribe immediately after getting the value to prevent memory leak
+        unsubscribe();
       });
     } else {
       setDiagnostics({
@@ -114,11 +117,47 @@ ${diagnostics.cachedPaths.join('\n')}
 User Agent: ${navigator.userAgent}
 Online: ${navigator.onLine ? 'Yes' : 'No'}
 `;
-      navigator.clipboard.writeText(text).then(() => {
+      
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text)
+          .then(() => {
+            alert('Diagnostics copied to clipboard!');
+          })
+          .catch(err => {
+            console.error('Clipboard API failed, trying fallback:', err);
+            copyToClipboardFallback(text);
+          });
+      } else {
+        // Fallback for browsers without clipboard API
+        copyToClipboardFallback(text);
+      }
+    }
+  };
+  
+  const copyToClipboardFallback = (text: string) => {
+    // Create a temporary textarea for fallback copying
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+      const successful = document.execCommand('copy');
+      if (successful) {
         alert('Diagnostics copied to clipboard!');
-      }).catch(err => {
-        console.error('Failed to copy:', err);
-      });
+      } else {
+        alert('Failed to copy. Please manually copy the text from the console.');
+        console.log('=== DIAGNOSTICS REPORT ===\n' + text);
+      }
+    } catch (err) {
+      console.error('Fallback copy failed:', err);
+      alert('Copy failed. Diagnostic report has been logged to console (press F12).');
+      console.log('=== DIAGNOSTICS REPORT ===\n' + text);
+    } finally {
+      document.body.removeChild(textarea);
     }
   };
 

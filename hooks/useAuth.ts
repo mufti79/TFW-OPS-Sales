@@ -12,7 +12,7 @@ export const SECURITY_PIN = '1234';
 
 // Track session across tabs/devices
 const SESSION_ID_KEY = 'authSessionId';
-const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+const generateSessionId = () => `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
 export const useAuth = () => {
   const [role, setRole] = useLocalStorage<Role>('authRole', null);
