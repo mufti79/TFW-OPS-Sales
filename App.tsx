@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, ReactNode, useRef, la
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY, PRESERVE_STORAGE_KEYS } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
-import useFirebaseSync from './hooks/useFirebaseSync';
+import useFirebaseSync, { onSyncError, WARNING_THROTTLE_MS } from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
 import { ref, onValue, get } from 'firebase/database';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
@@ -265,6 +265,50 @@ const AppComponent: React.FC = () => {
             }
         }
     }, [connectionStatus, role, currentUser, showNotification]);
+    
+    // Listen for Firebase sync errors and notify user
+    useEffect(() => {
+        const unsubscribe = onSyncError((path, error, isCritical) => {
+            // Get a user-friendly name for the data path
+            const getDataName = (path: string): string => {
+                if (path.includes('appLogo')) return 'logo';
+                if (path.includes('Assignments') || path.includes('assignments')) return 'roster assignments';
+                if (path.includes('attendance')) return 'attendance data';
+                if (path.includes('packageSales')) return 'sales data';
+                if (path.includes('floorGuestCounts')) return 'guest counts';
+                return 'data';
+            };
+            
+            const dataName = getDataName(path);
+            
+            if (isCritical) {
+                // Show critical error when all retries failed
+                showNotification(
+                    `⚠️ Failed to sync ${dataName} to cloud! Data saved locally only. Check your connection or database permissions.`,
+                    'error',
+                    8000
+                );
+            } else {
+                // Show warning for non-critical errors (will retry)
+                // Only show this once per path to avoid spam
+                const lastWarning = sessionStorage.getItem(`syncWarning_${path}`);
+                const now = Date.now();
+                const lastWarningTime = lastWarning ? parseInt(lastWarning, 10) : 0;
+                
+                // Show notification if enough time has passed or if lastWarning was missing/invalid
+                if (!lastWarning || now - lastWarningTime > WARNING_THROTTLE_MS) {
+                    showNotification(
+                        `Sync issue for ${dataName}. Retrying...`,
+                        'warning',
+                        3000
+                    );
+                    sessionStorage.setItem(`syncWarning_${path}`, now.toString());
+                }
+            }
+        });
+        
+        return unsubscribe;
+    }, [showNotification]);
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
