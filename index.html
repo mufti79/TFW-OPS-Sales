@@ -3,13 +3,34 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     
     <title>Toggi Fun World - Feel The Thrill</title>
     <!-- External libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
     <style>
+      /* Prevent zoom and ensure consistent view across all devices */
+      * {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      html, body {
+        touch-action: manipulation;
+        -webkit-touch-callout: none;
+        overscroll-behavior: none;
+        width: 100%;
+        overflow-x: hidden;
+      }
+      
+      /* Prevent double-tap zoom on buttons and inputs */
+      button, input, select, textarea {
+        touch-action: manipulation;
+      }
+      
       /* Custom scrollbar for a better look */
       ::-webkit-scrollbar {
         width: 8px;
