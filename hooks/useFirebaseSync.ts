@@ -8,6 +8,30 @@ const failedWrites = new Map<string, { value: any; retryCount: number; lastAttem
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5000; // 5 seconds between retries
 
+// Global event emitter for Firebase sync errors (used to show user notifications)
+type SyncErrorCallback = (path: string, error: any, isCritical: boolean) => void;
+const syncErrorListeners: SyncErrorCallback[] = [];
+
+export const onSyncError = (callback: SyncErrorCallback) => {
+  syncErrorListeners.push(callback);
+  return () => {
+    const index = syncErrorListeners.indexOf(callback);
+    if (index > -1) {
+      syncErrorListeners.splice(index, 1);
+    }
+  };
+};
+
+const notifySyncError = (path: string, error: any, isCritical: boolean) => {
+  syncErrorListeners.forEach(listener => {
+    try {
+      listener(path, error, isCritical);
+    } catch (err) {
+      console.error('Error in sync error listener:', err);
+    }
+  });
+};
+
 // Cache expiration time: 1 hour for regular data
 // Config data (logo, rides, operators) uses short cache for real-time updates
 // This ensures users see fresh data quickly while still maintaining good offline support
@@ -204,6 +228,9 @@ function useFirebaseSync<T>(
                                 lastAttempt: Date.now()
                             });
                             
+                            // Notify listeners about non-critical sync error (will retry)
+                            notifySyncError(path, error, false);
+                            
                             // Schedule retry
                             console.warn(`⏳ Will retry Firebase write for ${path} in ${RETRY_DELAY_MS/1000} seconds...`);
                             setTimeout(() => {
@@ -217,6 +244,10 @@ function useFirebaseSync<T>(
                             console.error(`❌ CRITICAL: Firebase write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
                             console.error(`   Data is ONLY saved locally and will NOT sync to other devices!`);
                             console.error(`   Possible causes: Database rules, network issues, or permissions`);
+                            
+                            // Notify listeners about critical sync error (all retries failed)
+                            notifySyncError(path, error, true);
+                            
                             failedWrites.delete(path);
                         }
                     });
