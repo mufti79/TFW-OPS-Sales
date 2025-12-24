@@ -80,12 +80,21 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     
     const now = Date.now();
     
-    // Use shorter cache for config paths (logo, rides, etc.) to ensure changes appear quickly
-    // All config data uses 30-second cache for near real-time updates while preserving during cache clear
-    // Logo has special handling: never expires to ensure persistence across devices and sessions
+    // Determine cache expiration based on path type
+    // Logo: Never expires (1 year) for permanent persistence
+    // Config: 30 seconds for near real-time updates
+    // Data: 1 hour for good offline support
     const isLogoPath = path === 'config/appLogo';
     const isConfigPath = path.startsWith('config/');
-    const expirationTime = isLogoPath ? LOGO_CACHE_EXPIRATION_MS : (isConfigPath ? CONFIG_CACHE_EXPIRATION_MS : CACHE_EXPIRATION_MS);
+    
+    let expirationTime: number;
+    if (isLogoPath) {
+      expirationTime = NEVER_EXPIRES;
+    } else if (isConfigPath) {
+      expirationTime = CONFIG_CACHE_EXPIRATION_MS;
+    } else {
+      expirationTime = CACHE_EXPIRATION_MS;
+    }
     
     // Only use cached data if it's less than expiration time old
     if (now - timestamp < expirationTime) {
