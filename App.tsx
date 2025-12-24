@@ -293,7 +293,10 @@ const AppComponent: React.FC = () => {
                 // Only show this once per path to avoid spam
                 const lastWarning = sessionStorage.getItem(`syncWarning_${path}`);
                 const now = Date.now();
-                if (!lastWarning || now - parseInt(lastWarning) > WARNING_THROTTLE_MS) {
+                const lastWarningTime = lastWarning ? parseInt(lastWarning, 10) : 0;
+                
+                // Only show notification if enough time has passed since last warning (or if invalid/missing)
+                if (isNaN(lastWarningTime) || now - lastWarningTime > WARNING_THROTTLE_MS) {
                     showNotification(
                         `Sync issue for ${dataName}. Retrying...`,
                         'warning',

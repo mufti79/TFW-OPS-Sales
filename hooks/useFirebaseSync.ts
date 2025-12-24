@@ -4,13 +4,14 @@ import { database, isFirebaseConfigured } from '../firebaseConfig';
 import { ref, onValue, set, off } from 'firebase/database';
 
 // Track failed writes for retry mechanism
-const failedWrites = new Map<string, { value: any; retryCount: number; lastAttempt: number }>();
+const failedWrites = new Map<string, { value: unknown; retryCount: number; lastAttempt: number }>();
 const MAX_RETRY_ATTEMPTS = 3;
+const FINAL_RETRY_ATTEMPT = MAX_RETRY_ATTEMPTS - 1; // Last attempt before giving up
 const RETRY_DELAY_MS = 5000; // 5 seconds between retries
 export const WARNING_THROTTLE_MS = 30000; // 30 seconds - max frequency for sync warnings
 
 // Global event emitter for Firebase sync errors (used to show user notifications)
-type SyncErrorCallback = (path: string, error: any, isCritical: boolean) => void;
+type SyncErrorCallback = (path: string, error: Error, isCritical: boolean) => void;
 const syncErrorListeners: SyncErrorCallback[] = [];
 
 export const onSyncError = (callback: SyncErrorCallback) => {
@@ -23,11 +24,11 @@ export const onSyncError = (callback: SyncErrorCallback) => {
   };
 };
 
-const notifySyncError = (path: string, error: any, isCritical: boolean) => {
+const notifySyncError = (path: string, error: Error, isCritical: boolean) => {
   syncErrorListeners.forEach(listener => {
     try {
       listener(path, error, isCritical);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error in sync error listener:', err);
     }
   });
@@ -217,12 +218,15 @@ function useFirebaseSync<T>(
                         // Clear any failed write tracking on success
                         failedWrites.delete(path);
                     })
-                    .catch(error => {
-                        console.error(`❌ Firebase write error at path "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, error);
-                        console.error(`   Error details:`, error.code, error.message);
+                    .catch((error: unknown) => {
+                        // Convert error to Error type for better handling
+                        const err = error instanceof Error ? error : new Error(String(error));
+                        
+                        console.error(`❌ Firebase write error at path "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, err);
+                        console.error(`   Error details:`, (err as any).code, err.message);
                         
                         // Track failed write for retry
-                        if (retryCount < MAX_RETRY_ATTEMPTS - 1) {
+                        if (retryCount < FINAL_RETRY_ATTEMPT) {
                             const nextRetryCount = retryCount + 1;
                             failedWrites.set(path, {
                                 value: valueToStore,
@@ -231,7 +235,7 @@ function useFirebaseSync<T>(
                             });
                             
                             // Notify listeners about non-critical sync error (will retry)
-                            notifySyncError(path, error, false);
+                            notifySyncError(path, err, false);
                             
                             // Schedule retry
                             console.warn(`⏳ Will retry Firebase write for ${path} in ${RETRY_DELAY_MS/1000} seconds...`);
@@ -249,7 +253,7 @@ function useFirebaseSync<T>(
                             console.error(`   Possible causes: Database rules, network issues, or permissions`);
                             
                             // Notify listeners about critical sync error (all retries failed)
-                            notifySyncError(path, error, true);
+                            notifySyncError(path, err, true);
                             
                             failedWrites.delete(path);
                         }
