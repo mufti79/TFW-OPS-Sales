@@ -1,7 +1,7 @@
 
 import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } from 'react';
-import { database, isFirebaseConfigured } from '../firebaseConfig';
-import { ref, onValue, set, off, onDisconnect, goOnline, goOffline } from 'firebase/database';
+import { database, isFirebaseConfigured, firebaseProjectId } from '../firebaseConfig';
+import { ref, onValue, set, off } from 'firebase/database';
 
 // Track failed writes for retry mechanism
 const failedWrites = new Map<string, { value: unknown; retryCount: number; lastAttempt: number }>();
@@ -333,7 +333,7 @@ function useFirebaseSync<T>(
                         if (isPermissionError) {
                             console.error(`   ⚠️ PERMISSION DENIED - Check Firebase database rules!`);
                             console.error(`   Database rules may be blocking writes to: ${path}`);
-                            console.error(`   Visit: https://console.firebase.google.com/project/toggifunworld-app/database/rules`);
+                            console.error(`   Visit: https://console.firebase.google.com/project/${firebaseProjectId}/database/rules`);
                         }
                         
                         if (isNetworkError && !isOnline) {
@@ -380,7 +380,7 @@ function useFirebaseSync<T>(
                             if (isPermissionError) {
                                 console.error(`   CAUSE: Database permission rules are blocking writes`);
                                 console.error(`   FIX: Update Firebase Realtime Database rules at:`);
-                                console.error(`   https://console.firebase.google.com/project/toggifunworld-app/database/rules`);
+                                console.error(`   https://console.firebase.google.com/project/${firebaseProjectId}/database/rules`);
                             } else {
                                 console.error(`   Possible causes: Database rules, network issues, or permissions`);
                             }
