@@ -6,7 +6,7 @@ import { Operator } from '../types';
 import ConnectionStatus from './ConnectionStatus';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
-type Modal = 'ai-assistant' | 'operators' | 'backup' | null;
+type Modal = 'ai-assistant' | 'operators' | 'backup' | 'diagnostics' | null;
 type Connection = 'connecting' | 'connected' | 'disconnected' | 'sdk-error';
 
 interface HeaderProps {
@@ -191,6 +191,17 @@ const Header: React.FC<HeaderProps> = ({
               </button>
             )}
             
+            <button 
+              onClick={() => onShowModal('diagnostics')}
+              className="px-3 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 active:scale-95 transition-all text-xs flex items-center gap-2"
+              title="View sync diagnostics"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+              Diagnostics
+            </button>
+            
             {isAdmin && <button onClick={() => onShowModal('ai-assistant')} className={navLinkClasses}>AI Assistant</button>}
             {isAdmin && <button onClick={() => onShowModal('operators')} className={navLinkClasses}>Operators</button>}
             {isAdmin && <button onClick={() => onShowModal('backup')} className={navLinkClasses}>Backup</button>}
@@ -246,6 +257,16 @@ const Header: React.FC<HeaderProps> = ({
                      Clear Cache & Refresh
                    </button>
                  )}
+                 <button 
+                   onClick={() => { onShowModal('diagnostics'); setMenuOpen(false); }}
+                   className={`${navLinkClasses} w-full text-left block bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2`}
+                   title="View sync diagnostics"
+                 >
+                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                   </svg>
+                   View Diagnostics
+                 </button>
                  {isAdmin && <button onClick={() => { onShowModal('ai-assistant'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>AI Assistant</button>}
                  {isAdmin && <button onClick={() => { onShowModal('operators'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>Operators</button>}
                  {isAdmin && <button onClick={() => { onShowModal('backup'); setMenuOpen(false); }} className={`${navLinkClasses} w-full text-left block`}>Backup</button>}
