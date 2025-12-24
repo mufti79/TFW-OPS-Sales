@@ -50,6 +50,11 @@ const CACHE_EXPIRATION_MS = 1 * 60 * 60 * 1000;
 // Firebase real-time listeners provide instant updates for active tabs regardless of cache expiration
 const CONFIG_CACHE_EXPIRATION_MS = 30 * 1000;
 
+// Logo cache never expires to ensure it's always available across devices and sessions
+// Real-time Firebase listeners still provide instant updates when logo changes
+// This guarantees logo persistence as requested: "it should be fix always and data should be save properly"
+const LOGO_CACHE_EXPIRATION_MS = Number.MAX_SAFE_INTEGER; // Effectively never expires
+
 /**
  * Validates and retrieves cached data from localStorage
  * @returns The cached value if valid and not expired, or null if invalid/expired
@@ -77,15 +82,17 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     
     // Use shorter cache for config paths (logo, rides, etc.) to ensure changes appear quickly
     // All config data uses 30-second cache for near real-time updates while preserving during cache clear
+    // Logo has special handling: never expires to ensure persistence across devices and sessions
+    const isLogoPath = path === 'config/appLogo';
     const isConfigPath = path.startsWith('config/');
-    const expirationTime = isConfigPath ? CONFIG_CACHE_EXPIRATION_MS : CACHE_EXPIRATION_MS;
+    const expirationTime = isLogoPath ? LOGO_CACHE_EXPIRATION_MS : (isConfigPath ? CONFIG_CACHE_EXPIRATION_MS : CACHE_EXPIRATION_MS);
     
     // Only use cached data if it's less than expiration time old
     if (now - timestamp < expirationTime) {
       try {
         const parsedData = JSON.parse(item);
         const ageSeconds = Math.floor((now - timestamp) / 1000);
-        const cacheType = isConfigPath ? 'config' : 'data';
+        const cacheType = isLogoPath ? 'logo (never expires)' : (isConfigPath ? 'config' : 'data');
         console.log(`✓ Using cached data for ${path} (age: ${ageSeconds}s, type: ${cacheType})`);
         return parsedData;
       } catch (parseError) {
