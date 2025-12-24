@@ -39,6 +39,7 @@ const Dashboard = lazy(() => import('./components/Dashboard'));
 const SecurityView = lazy(() => import('./components/SecurityView'));
 const ManagementView = lazy(() => import('./components/ManagementView'));
 const ManagementHub = lazy(() => import('./components/ManagementHub'));
+const SyncDiagnostics = lazy(() => import('./components/SyncDiagnostics'));
 
 // Loading component for lazy-loaded modules
 const LoadingFallback: React.FC = () => (
@@ -86,7 +87,7 @@ const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
-type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
+type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | 'diagnostics' | null;
 
 // Views that are specific to non-manager roles and should trigger a reset when a manager logs in
 const NON_MANAGER_VIEWS: View[] = ['counter', 'roster', 'ts-roster', 'my-sales', 'security-entry'];
@@ -960,6 +961,7 @@ const AppComponent: React.FC = () => {
         {currentModal === 'ai-assistant' && <Suspense fallback={<LoadingFallback />}><CodeAssistant rides={RIDES_ARRAY} dailyCounts={dailyCounts || {}} onClose={() => setCurrentModal(null)}/></Suspense>}
         {currentModal === 'operators' && <Suspense fallback={<LoadingFallback />}><OperatorManager operators={operatorsArray} onClose={() => setCurrentModal(null)} onAddOperator={handleAddOperator} onDeleteOperators={handleDeleteOperators} onImport={handleImportOperators}/></Suspense>}
         {currentModal === 'backup' && <Suspense fallback={<LoadingFallback />}><BackupManager onClose={() => setCurrentModal(null)} onExport={() => { const json = JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), data: { dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments }}, null, 2); const blob = new Blob([json], { type: 'application/json' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `TFW_Backup_${new Date().toISOString().split('T')[0]}.json`; link.click(); logAction('EXPORT_BACKUP', 'Exported a full application backup.'); }} onImport={(json) => { if (window.confirm("WARNING: This will overwrite ALL current data. Are you sure?")) { try { const backupData = JSON.parse(json); if (backupData.version === 2 && backupData.data) { setDailyCounts(backupData.data.dailyCounts || {}); setDailyRideDetails(backupData.data.dailyRideDetails || {}); setRides(backupData.data.rides || RIDES); setOperators(backupData.data.operators || OPERATORS); setAttendanceData(backupData.data.attendanceData || {}); setTSAssignments(backupData.data.tsAssignments || {}); setHistory(backupData.data.history || []); setPackageSalesData(backupData.data.packageSalesData || {}); setAppLogo(backupData.data.appLogo || null); setOtherSalesCategories(backupData.data.otherSalesCategories || []); setDailyAssignments(backupData.data.dailyAssignments || {}); showNotification('Backup restored successfully!', 'success'); logAction('IMPORT_BACKUP', 'Restored data from a backup file.'); } else { alert("Invalid backup file format."); } } catch (e) { alert("Failed to parse backup file."); } } }} appLogo={appLogo} onLogoChange={setAppLogo} otherSalesCategories={otherSalesCategories} onRenameCategory={handleRenameOtherSalesCategory} onDeleteCategory={handleDeleteOtherSalesCategory} obsoleteRides={Object.values(rides || {}).map((r,i) => ({...r, id: Number(Object.keys(rides || {})[i])})).filter(r => !RIDES_ARRAY.some(staticRide => staticRide.id === r.id))} onRemoveObsoleteRides={handleRemoveObsoleteRides} estimatedDbSize={estimatedDbSize} onResetDay={handleResetDay} /></Suspense>}
+        {currentModal === 'diagnostics' && <Suspense fallback={<LoadingFallback />}><SyncDiagnostics onClose={() => setCurrentModal(null)} /></Suspense>}
       </div>
     );
 }
