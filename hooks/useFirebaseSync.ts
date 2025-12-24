@@ -1,14 +1,19 @@
 
 import { useState, useEffect, Dispatch, SetStateAction, useCallback, useRef } from 'react';
-import { database, isFirebaseConfigured } from '../firebaseConfig';
+import { database, isFirebaseConfigured, firebaseProjectId } from '../firebaseConfig';
 import { ref, onValue, set, off } from 'firebase/database';
 
 // Track failed writes for retry mechanism
 const failedWrites = new Map<string, { value: unknown; retryCount: number; lastAttempt: number }>();
-const MAX_RETRY_ATTEMPTS = 3;
+const MAX_RETRY_ATTEMPTS = 10; // Increased from 3 to 10 for better reliability
 const MAX_RETRY_INDEX = MAX_RETRY_ATTEMPTS - 1; // Last retry index (0-based) before giving up
-const RETRY_DELAY_MS = 5000; // 5 seconds between retries
+const INITIAL_RETRY_DELAY_MS = 2000; // Start with 2 seconds
+const MAX_RETRY_DELAY_MS = 30000; // Cap at 30 seconds
 export const WARNING_THROTTLE_MS = 30000; // 30 seconds - max frequency for sync warnings
+
+// Connection monitoring
+let isOnline = navigator.onLine;
+let connectionListenerSetup = false;
 
 // Interface for Firebase errors with code property
 interface FirebaseError extends Error {
@@ -36,6 +41,59 @@ const notifySyncError = (path: string, error: Error, isCritical: boolean) => {
     } catch (err: unknown) {
       console.error('Error in sync error listener:', err);
     }
+  });
+};
+
+// Function to retry all failed writes (called on reconnection)
+const retryAllFailedWrites = () => {
+  if (failedWrites.size === 0) return;
+  
+  console.log(`🔄 Connection restored! Retrying ${failedWrites.size} failed writes...`);
+  
+  // Create a copy to avoid modification during iteration
+  const failedWritesCopy = new Map(failedWrites);
+  failedWrites.clear(); // Clear the map to prevent double retries
+  
+  failedWritesCopy.forEach((failedWrite, path) => {
+    if (isFirebaseConfigured && database) {
+      const dbRef = ref(database, path);
+      console.log(`🔄 Retrying write for ${path} after reconnection`);
+      
+      set(dbRef, failedWrite.value)
+        .then(() => {
+          console.log(`✓ Successfully synced ${path} after reconnection`);
+        })
+        .catch((error) => {
+          // If still failing, put it back in the queue with reset retry count
+          console.warn(`⚠️ Still failing to sync ${path}, will continue retrying...`);
+          failedWrites.set(path, {
+            value: failedWrite.value,
+            retryCount: 0,
+            lastAttempt: Date.now()
+          });
+        });
+    }
+  });
+};
+
+// Setup connection monitoring (only once globally)
+const setupConnectionMonitoring = () => {
+  if (connectionListenerSetup) return;
+  connectionListenerSetup = true;
+  
+  // Monitor browser online/offline events
+  window.addEventListener('online', () => {
+    console.log('🌐 Browser is back online');
+    isOnline = true;
+    // Wait a bit for connection to stabilize, then retry failed writes
+    setTimeout(() => {
+      retryAllFailedWrites();
+    }, 1000);
+  });
+  
+  window.addEventListener('offline', () => {
+    console.log('🌐 Browser is offline');
+    isOnline = false;
   });
 };
 
@@ -166,6 +224,9 @@ function useFirebaseSync<T>(
   const listenerSetup = useRef(false);
 
   useEffect(() => {
+    // Setup connection monitoring (only once globally)
+    setupConnectionMonitoring();
+    
     // Safety check: if firebase is not configured OR if database failed to initialize
     if (!isFirebaseConfigured || !database) {
         setLoading(false);
@@ -263,6 +324,22 @@ function useFirebaseSync<T>(
                         console.error(`❌ Firebase write error at path "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, err);
                         console.error(`   Error details:`, firebaseErr.code || 'unknown', err.message);
                         
+                        // Check for specific error types that need special handling
+                        const isPermissionError = firebaseErr.code === 'PERMISSION_DENIED';
+                        const isNetworkError = firebaseErr.code === 'NETWORK_ERROR' || 
+                                               err.message.includes('network') ||
+                                               err.message.includes('fetch');
+                        
+                        if (isPermissionError) {
+                            console.error(`   ⚠️ PERMISSION DENIED - Check Firebase database rules!`);
+                            console.error(`   Database rules may be blocking writes to: ${path}`);
+                            console.error(`   Visit: https://console.firebase.google.com/project/${firebaseProjectId}/database/rules`);
+                        }
+                        
+                        if (isNetworkError && !isOnline) {
+                            console.warn(`   ℹ️ Browser is offline - data will sync when connection is restored`);
+                        }
+                        
                         // Track failed write for retry
                         if (retryCount < MAX_RETRY_INDEX) {
                             const nextRetryCount = retryCount + 1;
@@ -272,11 +349,22 @@ function useFirebaseSync<T>(
                                 lastAttempt: Date.now()
                             });
                             
-                            // Notify listeners about non-critical sync error (will retry)
-                            notifySyncError(path, err, false);
+                            // Calculate exponential backoff delay: 2s, 4s, 8s, 16s, 30s, 30s, ...
+                            // This provides better resilience against transient network issues
+                            const exponentialDelay = Math.min(
+                                INITIAL_RETRY_DELAY_MS * Math.pow(2, retryCount),
+                                MAX_RETRY_DELAY_MS
+                            );
                             
-                            // Schedule retry
-                            console.warn(`⏳ Will retry Firebase write for ${path} in ${RETRY_DELAY_MS/1000} seconds...`);
+                            // Only show notification for first few retries to avoid spam
+                            // Skip notifications if we're just offline (will auto-retry on reconnect)
+                            if (retryCount < 3 && isOnline) {
+                                // Notify listeners about non-critical sync error (will retry)
+                                notifySyncError(path, err, false);
+                            }
+                            
+                            // Schedule retry with exponential backoff
+                            console.warn(`⏳ Will retry Firebase write for ${path} in ${exponentialDelay/1000} seconds... (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
                             setTimeout(() => {
                                 const failedWrite = failedWrites.get(path);
                                 // Only retry if this is still the current failed write attempt
@@ -284,11 +372,18 @@ function useFirebaseSync<T>(
                                     console.log(`🔄 Retrying Firebase write for ${path} (attempt ${nextRetryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
                                     attemptWrite(nextRetryCount);
                                 }
-                            }, RETRY_DELAY_MS);
+                            }, exponentialDelay);
                         } else {
                             console.error(`❌ CRITICAL: Firebase write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
                             console.error(`   Data is ONLY saved locally and will NOT sync to other devices!`);
-                            console.error(`   Possible causes: Database rules, network issues, or permissions`);
+                            
+                            if (isPermissionError) {
+                                console.error(`   CAUSE: Database permission rules are blocking writes`);
+                                console.error(`   FIX: Update Firebase Realtime Database rules at:`);
+                                console.error(`   https://console.firebase.google.com/project/${firebaseProjectId}/database/rules`);
+                            } else {
+                                console.error(`   Possible causes: Database rules, network issues, or permissions`);
+                            }
                             
                             // Notify listeners about critical sync error (all retries failed)
                             notifySyncError(path, err, true);

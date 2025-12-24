@@ -20,6 +20,9 @@ const firebaseConfig = {
 // Check if the config has been filled out.
 export const isFirebaseConfigured = firebaseConfig.projectId !== "YOUR_PROJECT_ID" && firebaseConfig.apiKey !== "YOUR_API_KEY";
 
+// Export project ID for use in error messages and diagnostics
+export const firebaseProjectId = firebaseConfig.projectId;
+
 let dbInstance = null;
 
 if (isFirebaseConfigured) {
