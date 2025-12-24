@@ -50,6 +50,17 @@ const CACHE_EXPIRATION_MS = 1 * 60 * 60 * 1000;
 // Firebase real-time listeners provide instant updates for active tabs regardless of cache expiration
 const CONFIG_CACHE_EXPIRATION_MS = 30 * 1000;
 
+// Logo cache never expires to ensure it's always available across devices and sessions
+// Real-time Firebase listeners still provide instant updates when logo changes
+// This guarantees logo persistence as requested: "it should be fix always and data should be save properly"
+// Using a very large value (1 year) instead of checking for special case simplifies the expiration logic
+const DAYS_PER_YEAR = 365;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const LOGO_CACHE_DURATION_MS = DAYS_PER_YEAR * MS_PER_DAY; // 1 year - effectively never expires in practical use
+
+// Firebase path for the application logo
+const LOGO_PATH = 'config/appLogo';
+
 /**
  * Validates and retrieves cached data from localStorage
  * @returns The cached value if valid and not expired, or null if invalid/expired
@@ -75,17 +86,38 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     
     const now = Date.now();
     
-    // Use shorter cache for config paths (logo, rides, etc.) to ensure changes appear quickly
-    // All config data uses 30-second cache for near real-time updates while preserving during cache clear
+    // Determine cache expiration based on path type
+    // Logo: Never expires (1 year) for permanent persistence
+    // Config: 30 seconds for near real-time updates
+    // Data: 1 hour for good offline support
+    const isLogoPath = path === LOGO_PATH;
     const isConfigPath = path.startsWith('config/');
-    const expirationTime = isConfigPath ? CONFIG_CACHE_EXPIRATION_MS : CACHE_EXPIRATION_MS;
+    
+    let expirationTime: number;
+    if (isLogoPath) {
+      expirationTime = LOGO_CACHE_DURATION_MS;
+    } else if (isConfigPath) {
+      expirationTime = CONFIG_CACHE_EXPIRATION_MS;
+    } else {
+      expirationTime = CACHE_EXPIRATION_MS;
+    }
     
     // Only use cached data if it's less than expiration time old
     if (now - timestamp < expirationTime) {
       try {
         const parsedData = JSON.parse(item);
         const ageSeconds = Math.floor((now - timestamp) / 1000);
-        const cacheType = isConfigPath ? 'config' : 'data';
+        
+        // Determine cache type for logging
+        let cacheType: string;
+        if (isLogoPath) {
+          cacheType = 'logo (never expires)';
+        } else if (isConfigPath) {
+          cacheType = 'config';
+        } else {
+          cacheType = 'data';
+        }
+        
         console.log(`✓ Using cached data for ${path} (age: ${ageSeconds}s, type: ${cacheType})`);
         return parsedData;
       } catch (parseError) {
