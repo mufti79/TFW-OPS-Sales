@@ -295,8 +295,8 @@ const AppComponent: React.FC = () => {
                 const now = Date.now();
                 const lastWarningTime = lastWarning ? parseInt(lastWarning, 10) : 0;
                 
-                // Only show notification if enough time has passed since last warning (or if invalid/missing)
-                if (isNaN(lastWarningTime) || now - lastWarningTime > WARNING_THROTTLE_MS) {
+                // Show notification if enough time has passed or if lastWarning was missing/invalid
+                if (!lastWarning || now - lastWarningTime > WARNING_THROTTLE_MS) {
                     showNotification(
                         `Sync issue for ${dataName}. Retrying...`,
                         'warning',
