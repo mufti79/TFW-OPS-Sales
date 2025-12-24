@@ -54,7 +54,12 @@ const CONFIG_CACHE_EXPIRATION_MS = 30 * 1000;
 // Real-time Firebase listeners still provide instant updates when logo changes
 // This guarantees logo persistence as requested: "it should be fix always and data should be save properly"
 // Using a very large value (1 year) instead of checking for special case simplifies the expiration logic
-const LOGO_CACHE_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year - effectively never expires in practical use
+const DAYS_PER_YEAR = 365;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const LOGO_CACHE_DURATION_MS = DAYS_PER_YEAR * MS_PER_DAY; // 1 year - effectively never expires in practical use
+
+// Firebase path for the application logo
+const LOGO_PATH = 'config/appLogo';
 
 /**
  * Validates and retrieves cached data from localStorage
