@@ -7,6 +7,7 @@ import { ref, onValue, set, off } from 'firebase/database';
 const failedWrites = new Map<string, { value: any; retryCount: number; lastAttempt: number }>();
 const MAX_RETRY_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5000; // 5 seconds between retries
+export const WARNING_THROTTLE_MS = 30000; // 30 seconds - max frequency for sync warnings
 
 // Global event emitter for Firebase sync errors (used to show user notifications)
 type SyncErrorCallback = (path: string, error: any, isCritical: boolean) => void;
@@ -222,9 +223,10 @@ function useFirebaseSync<T>(
                         
                         // Track failed write for retry
                         if (retryCount < MAX_RETRY_ATTEMPTS - 1) {
+                            const nextRetryCount = retryCount + 1;
                             failedWrites.set(path, {
                                 value: valueToStore,
-                                retryCount: retryCount + 1,
+                                retryCount: nextRetryCount,
                                 lastAttempt: Date.now()
                             });
                             
@@ -235,9 +237,10 @@ function useFirebaseSync<T>(
                             console.warn(`⏳ Will retry Firebase write for ${path} in ${RETRY_DELAY_MS/1000} seconds...`);
                             setTimeout(() => {
                                 const failedWrite = failedWrites.get(path);
-                                if (failedWrite && failedWrite.retryCount === retryCount + 1) {
-                                    console.log(`🔄 Retrying Firebase write for ${path} (attempt ${retryCount + 2}/${MAX_RETRY_ATTEMPTS})`);
-                                    attemptWrite(retryCount + 1);
+                                // Only retry if this is still the current failed write attempt
+                                if (failedWrite && failedWrite.retryCount === nextRetryCount) {
+                                    console.log(`🔄 Retrying Firebase write for ${path} (attempt ${nextRetryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
+                                    attemptWrite(nextRetryCount);
                                 }
                             }, RETRY_DELAY_MS);
                         } else {

@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, ReactNode, useRef, la
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY, PRESERVE_STORAGE_KEYS } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
-import useFirebaseSync, { onSyncError } from './hooks/useFirebaseSync';
+import useFirebaseSync, { onSyncError, WARNING_THROTTLE_MS } from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database } from './firebaseConfig';
 import { ref, onValue, get } from 'firebase/database';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
@@ -293,7 +293,7 @@ const AppComponent: React.FC = () => {
                 // Only show this once per path to avoid spam
                 const lastWarning = sessionStorage.getItem(`syncWarning_${path}`);
                 const now = Date.now();
-                if (!lastWarning || now - parseInt(lastWarning) > 30000) { // Show max once per 30 seconds
+                if (!lastWarning || now - parseInt(lastWarning) > WARNING_THROTTLE_MS) {
                     showNotification(
                         `Sync issue for ${dataName}. Retrying...`,
                         'warning',
