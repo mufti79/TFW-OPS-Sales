@@ -53,8 +53,8 @@ const CONFIG_CACHE_EXPIRATION_MS = 30 * 1000;
 // Logo cache never expires to ensure it's always available across devices and sessions
 // Real-time Firebase listeners still provide instant updates when logo changes
 // This guarantees logo persistence as requested: "it should be fix always and data should be save properly"
-// Using a very large value instead of checking for special case simplifies the expiration logic
-const NEVER_EXPIRES = 365 * 24 * 60 * 60 * 1000; // 1 year - effectively never expires in practical use
+// Using a very large value (1 year) instead of checking for special case simplifies the expiration logic
+const LOGO_CACHE_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 1 year - effectively never expires in practical use
 
 /**
  * Validates and retrieves cached data from localStorage
@@ -90,7 +90,7 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     
     let expirationTime: number;
     if (isLogoPath) {
-      expirationTime = NEVER_EXPIRES;
+      expirationTime = LOGO_CACHE_DURATION_MS;
     } else if (isConfigPath) {
       expirationTime = CONFIG_CACHE_EXPIRATION_MS;
     } else {
@@ -102,7 +102,17 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
       try {
         const parsedData = JSON.parse(item);
         const ageSeconds = Math.floor((now - timestamp) / 1000);
-        const cacheType = isLogoPath ? 'logo (never expires)' : (isConfigPath ? 'config' : 'data');
+        
+        // Determine cache type for logging
+        let cacheType: string;
+        if (isLogoPath) {
+          cacheType = 'logo (never expires)';
+        } else if (isConfigPath) {
+          cacheType = 'config';
+        } else {
+          cacheType = 'data';
+        }
+        
         console.log(`✓ Using cached data for ${path} (age: ${ageSeconds}s, type: ${cacheType})`);
         return parsedData;
       } catch (parseError) {
