@@ -53,7 +53,8 @@ const CONFIG_CACHE_EXPIRATION_MS = 30 * 1000;
 // Logo cache never expires to ensure it's always available across devices and sessions
 // Real-time Firebase listeners still provide instant updates when logo changes
 // This guarantees logo persistence as requested: "it should be fix always and data should be save properly"
-const LOGO_CACHE_EXPIRATION_MS = Number.MAX_SAFE_INTEGER; // Effectively never expires
+// Using a very large value instead of checking for special case simplifies the expiration logic
+const NEVER_EXPIRES = 365 * 24 * 60 * 60 * 1000; // 1 year - effectively never expires in practical use
 
 /**
  * Validates and retrieves cached data from localStorage
