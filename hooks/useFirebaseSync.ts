@@ -583,6 +583,9 @@ export const cleanupConnectionMonitoring = () => {
     dataConsistencyCheckInterval = null;
   }
   
+  // Clear all connection status callbacks to prevent memory leaks
+  connectionStatusCallbacks.length = 0;
+  
   connectionListenerSetup = false;
   console.log('🔧 Global connection monitoring cleaned up');
 };
