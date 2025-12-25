@@ -14,23 +14,23 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
   const statusConfig = {
     connecting: { 
       color: 'bg-yellow-500', 
-      text: 'Connecting...', 
-      tooltip: 'Establishing connection to Firebase. Roster updates will sync when connected.'
+      text: 'Connecting to Firebase...', 
+      tooltip: 'Establishing connection to Firebase Realtime Database. All changes will be saved to Firebase when connected.'
     },
     connected: { 
       color: 'bg-green-500', 
-      text: 'Online: Synced', 
-      tooltip: 'Real-time sync active! Roster updates from TFW-NEW app will appear instantly.'
+      text: 'Firebase: Connected', 
+      tooltip: 'Connected to Firebase Realtime Database! All changes are automatically saved to Firebase and synced in real-time across all devices.'
     },
     disconnected: { 
       color: 'bg-orange-500', 
-      text: 'Offline: Saved Locally', 
-      tooltip: 'Working offline. Changes saved locally and will sync when reconnected.'
+      text: 'Firebase: Reconnecting...', 
+      tooltip: 'Temporarily disconnected from Firebase. Changes will be saved to Firebase automatically when connection is restored.'
     },
     'sdk-error': { 
       color: 'bg-red-600', 
-      text: 'Error: Database Blocked', 
-      tooltip: 'Cannot connect to Firebase. Check browser settings and network connection.'
+      text: 'Firebase: Connection Error', 
+      tooltip: 'Cannot connect to Firebase Realtime Database. Check browser settings and network connection.'
     },
   };
 

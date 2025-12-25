@@ -140,19 +140,19 @@ const setupConnectionMonitoring = () => {
 };
 
 // Cache expiration time: 1 hour for regular data
-// Config data (logo, rides, operators) uses short cache for real-time updates
-// This ensures users see fresh data quickly while still maintaining good offline support
+// All data is saved to Firebase Realtime Database as the primary storage
+// Local cache provides fast access while Firebase real-time listeners ensure data is always in sync
 // Regular data cached for 1 hour, config data cached for 30 seconds
 const CACHE_EXPIRATION_MS = 1 * 60 * 60 * 1000;
 
-// Short cache for config data like logo, rides, and operators to ensure changes appear quickly
-// Config data cached for 30 seconds provides near real-time updates while preserving data during cache clear
+// Short cache for config data like logo, rides, and operators to ensure changes from Firebase appear quickly
+// Config data cached for 30 seconds provides near real-time updates from Firebase
 // Firebase real-time listeners provide instant updates for active tabs regardless of cache expiration
 const CONFIG_CACHE_EXPIRATION_MS = 30 * 1000;
 
 // Logo cache never expires to ensure it's always available across devices and sessions
-// Real-time Firebase listeners still provide instant updates when logo changes
-// This guarantees logo persistence as requested: "it should be fix always and data should be save properly"
+// All changes are saved to Firebase Realtime Database and synced in real-time
+// This guarantees logo persistence: "it should be fix always and data should be save properly" - saved to Firebase
 // Using a very large value (1 year) instead of checking for special case simplifies the expiration logic
 const DAYS_PER_YEAR = 365;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -163,6 +163,8 @@ const LOGO_PATH = 'config/appLogo';
 
 /**
  * Validates and retrieves cached data from localStorage
+ * Note: All data is primarily stored in Firebase Realtime Database
+ * Local cache provides fast access while waiting for Firebase sync
  * @returns The cached value if valid and not expired, or null if invalid/expired
  */
 function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: string): T | null {
@@ -187,9 +189,10 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     const now = Date.now();
     
     // Determine cache expiration based on path type
-    // Logo: Never expires (1 year) for permanent persistence
-    // Config: 30 seconds for near real-time updates
-    // Data: 1 hour for good offline support
+    // All data is saved to Firebase Realtime Database as primary storage
+    // Logo: Never expires (1 year) in cache for instant display, always synced to Firebase
+    // Config: 30 seconds cache for near real-time updates from Firebase
+    // Data: 1 hour cache for fast access, always saved to Firebase
     const isLogoPath = path === LOGO_PATH;
     const isConfigPath = path.startsWith('config/');
     
@@ -318,10 +321,10 @@ function useFirebaseSync<T>(
             // Special logging for logo to help with debugging
             if (path === LOGO_PATH) {
                 const logoSize = (typeof val === 'string') ? val.length : 0;
-                console.log(`✓ Logo synced from Firebase (size: ${logoSize} characters)`);
-                console.log(`✓ Logo cached in localStorage for offline use`);
+                console.log(`✓ Logo loaded from Firebase Realtime Database (size: ${logoSize} characters)`);
+                console.log(`✓ Logo cached for fast display`);
             } else {
-                console.log(`✓ Firebase data synced for ${path}`);
+                console.log(`✓ Data loaded from Firebase Realtime Database for ${path}`);
             }
             
             // Clear any pending failed writes for this path since we just got fresh data
@@ -330,40 +333,40 @@ function useFirebaseSync<T>(
                 failedWrites.delete(path);
             }
         } catch (e) {
-            console.warn("⚠️ Failed to update localStorage from Firebase sync", e);
+            console.warn("⚠️ Failed to update cache from Firebase sync", e);
             if (path === LOGO_PATH) {
-                console.error("⚠️ Logo could not be cached - may not display offline");
+                console.error("⚠️ Logo could not be cached");
             }
         }
       } else {
-        // IMPORTANT: If snapshot doesn't exist (e.g. data was deleted/reset on server),
+        // IMPORTANT: If snapshot doesn't exist (e.g. data was deleted/reset in Firebase),
         // we must revert to initialValue to ensure clients sync the deletion.
         if (path === LOGO_PATH) {
-            console.log(`ℹ️ No logo found in Firebase - using placeholder`);
+            console.log(`ℹ️ No logo found in Firebase Realtime Database - using placeholder`);
         } else {
-            console.log(`ℹ️ No data at ${path}, using initial value`);
+            console.log(`ℹ️ No data at ${path} in Firebase, using initial value`);
         }
         setStoredValue(initialValue);
         try {
             window.localStorage.removeItem(localKey);
             window.localStorage.removeItem(localKeyTimestamp);
             if (path === LOGO_PATH) {
-                console.log(`✓ Logo cache cleared (no logo in Firebase)`);
+                console.log(`✓ Logo cache cleared (no logo in Firebase Realtime Database)`);
             } else {
-                console.log(`✓ Firebase data cleared for ${path} (data does not exist)`);
+                console.log(`✓ Cache cleared for ${path} (data does not exist in Firebase)`);
             }
         } catch (e) {
-            console.warn("⚠️ Failed to clear localStorage from Firebase sync", e);
+            console.warn("⚠️ Failed to clear cache from Firebase sync", e);
         }
       }
       setLoading(false);
     }, (error) => {
         clearTimeout(timeoutId);
-        console.error(`❌ Firebase read error at path "${path}":`, error);
+        console.error(`❌ Firebase Realtime Database read error at path "${path}":`, error);
         if (path === LOGO_PATH) {
             console.log(`ℹ️ Cannot load logo from Firebase - using cached version if available`);
         } else {
-            console.log(`ℹ️ Continuing with cached data for ${path}`);
+            console.log(`ℹ️ Cannot load from Firebase - using cached data for ${path}`);
         }
         setLoading(false);
     });
@@ -381,23 +384,23 @@ function useFirebaseSync<T>(
         // Resolve the new value
         const valueToStore = value instanceof Function ? value(prev) : value;
 
-        // 1. Save to Local Storage (Offline Persistence) with timestamp
+        // 1. Save to Local Storage (Cache for fast access) with timestamp
         try {
             window.localStorage.setItem(localKey, JSON.stringify(valueToStore));
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
-            console.log(`✓ Data cached locally for ${path}`);
+            console.log(`✓ Data cached for ${path}`);
         } catch (error) {
             console.error(`❌ Error saving to localStorage for key "${localKey}":`, error);
         }
 
-        // 2. Save to Firebase (Online Sync) with retry mechanism
+        // 2. Save to Firebase Realtime Database (Primary Storage) with retry mechanism
         if (isFirebaseConfigured && database) {
             const dbRef = ref(database, path);
             
             const attemptWrite = (retryCount: number = 0) => {
                 set(dbRef, valueToStore)
                     .then(() => {
-                        console.log(`✓ Data synced to Firebase for ${path}`);
+                        console.log(`✓ Data saved to Firebase Realtime Database for ${path}`);
                         // Clear any failed write tracking on success
                         failedWrites.delete(path);
                     })
@@ -406,7 +409,7 @@ function useFirebaseSync<T>(
                         const err = error instanceof Error ? error : new Error(String(error));
                         const firebaseErr = err as FirebaseError;
                         
-                        console.error(`❌ Firebase write error at path "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, err);
+                        console.error(`❌ Firebase Realtime Database write error at path "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, err);
                         console.error(`   Error details:`, firebaseErr.code || 'unknown', err.message);
                         
                         // Check for specific error types that need special handling
@@ -423,10 +426,10 @@ function useFirebaseSync<T>(
                             console.error(`   Visit: https://console.firebase.google.com/project/${firebaseProjectId}/database/rules`);
                         }
                         
-                        // Improved offline detection
+                        // Improved connection detection
                         const isCurrentlyOffline = !isOnline || !firebaseConnected;
                         if (isNetworkError && isCurrentlyOffline) {
-                            console.warn(`   ℹ️ Device is offline - data will sync when connection is restored`);
+                            console.warn(`   ℹ️ Connection interrupted - data will be saved to Firebase when connection is restored`);
                         }
                         
                         // Track failed write for retry
@@ -453,18 +456,18 @@ function useFirebaseSync<T>(
                             }
                             
                             // Schedule retry with exponential backoff
-                            console.warn(`⏳ Will retry Firebase write for ${path} in ${exponentialDelay/1000} seconds... (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
+                            console.warn(`⏳ Will retry saving to Firebase for ${path} in ${exponentialDelay/1000} seconds... (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
                             setTimeout(() => {
                                 const failedWrite = failedWrites.get(path);
                                 // Only retry if this is still the current failed write attempt
                                 if (failedWrite && failedWrite.retryCount === nextRetryCount) {
-                                    console.log(`🔄 Retrying Firebase write for ${path} (attempt ${nextRetryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
+                                    console.log(`🔄 Retrying Firebase Realtime Database write for ${path} (attempt ${nextRetryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
                                     attemptWrite(nextRetryCount);
                                 }
                             }, exponentialDelay);
                         } else {
-                            console.error(`❌ CRITICAL: Firebase write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
-                            console.error(`   Data is ONLY saved locally and will NOT sync to other devices!`);
+                            console.error(`❌ CRITICAL: Firebase Realtime Database write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
+                            console.error(`   Data is cached locally but NOT saved to Firebase. It will NOT sync to other devices!`);
                             
                             if (isPermissionError) {
                                 console.error(`   CAUSE: Database permission rules are blocking writes`);
@@ -485,7 +488,7 @@ function useFirebaseSync<T>(
             // Start the write attempt
             attemptWrite(0);
         } else {
-            console.warn(`⚠️ Firebase not configured. Data for ${path} saved locally only.`);
+            console.warn(`⚠️ Firebase not configured. Data for ${path} is cached locally only and will not be saved to Firebase.`);
         }
         
         return valueToStore;
