@@ -8,13 +8,13 @@ import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyAqOf6utAgmO-NXqbPTnBO3BdD7yCUBbW8",
-  authDomain: "toggifunworld-app.firebaseapp.com",
-  databaseURL: "https://toggifunworld-app-default-rtdb.firebaseio.com",
-  projectId: "toggifunworld-app",
-  storageBucket: "toggifunworld-app.firebasestorage.app",
-  messagingSenderId: "718439883778",
-  appId: "1:718439883778:web:6f3ad4977156ab37e7f31b"
+  apiKey: "AIzaSyA9kTKrhiXLVnri6rczHb26Ghl7l4uxJhE",
+  authDomain: "tfw-ops-salesgit-4001335-4685c.firebaseapp.com",
+  databaseURL: "https://tfw-ops-salesgit-4001335-4685c-default-rtdb.firebaseio.com",
+  projectId: "tfw-ops-salesgit-4001335-4685c",
+  storageBucket: "tfw-ops-salesgit-4001335-4685c.firebasestorage.app",
+  messagingSenderId: "890191705352",
+  appId: "1:890191705352:web:9251f92d340a3a977ce8bd"
 };
 
 // Check if the config has been filled out.
