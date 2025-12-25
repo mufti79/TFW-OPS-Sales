@@ -230,6 +230,7 @@ const AppComponent: React.FC = () => {
     const [initialLoading, setInitialLoading] = useState(true);
     const [connectionAttempts, setConnectionAttempts] = useState(0);
     const [lastConnectionCheck, setLastConnectionCheck] = useState(Date.now());
+    const initialDisconnectTimeRef = useRef<number | null>(null);
 
     const { data: dailyCounts, setData: setDailyCounts } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
     const { data: dailyRideDetails, setData: setDailyRideDetails } = useFirebaseSync<Record<string, Record<string, { tickets: number; packages: number }>>>('data/dailyRideDetails', {});
@@ -339,18 +340,25 @@ const AppComponent: React.FC = () => {
                     setConnectionStatus('connected');
                     setConnectionAttempts(0); // Reset attempts on successful connection
                     setLastConnectionCheck(now);
+                    initialDisconnectTimeRef.current = null; // Reset disconnect timer
                     console.log('✅ Firebase Realtime Database connection established');
                     console.log('✓ All data will be saved to Firebase and synced in real-time');
                 } else {
                     setConnectionStatus('disconnected');
                     setConnectionAttempts(prev => prev + 1);
                     setLastConnectionCheck(now);
+                    
+                    // Track when disconnection started (only once)
+                    if (initialDisconnectTimeRef.current === null) {
+                        initialDisconnectTimeRef.current = now;
+                    }
+                    
                     console.log('⚠️ Firebase Realtime Database connection interrupted - attempting to reconnect');
                     console.log('ℹ️ Changes will be saved to Firebase automatically when connection is restored');
                     
                     // If stuck disconnected for too long, provide diagnostic help
-                    const timeSinceLastCheck = now - lastConnectionCheck;
-                    if (connectionAttempts > 5 && timeSinceLastCheck > 30000) {
+                    const timeSinceDisconnect = initialDisconnectTimeRef.current ? now - initialDisconnectTimeRef.current : 0;
+                    if (connectionAttempts > 5 && timeSinceDisconnect > 30000) {
                         console.error('⚠️ Connection issues detected - still disconnected after multiple attempts');
                         console.error('💡 Possible causes:');
                         console.error('   1. Firebase Realtime Database does not exist');
@@ -383,7 +391,10 @@ const AppComponent: React.FC = () => {
                         console.warn('');
                         console.warn('🔧 Troubleshooting steps:');
                         console.warn('   1. Run: firebaseDiagnostics.printReport()');
-                        console.warn('   2. Check Firebase Console: https://console.firebase.google.com/project/' + firebaseProjectId + '/database');
+                        const consoleUrl = firebaseProjectId 
+                            ? `https://console.firebase.google.com/project/${encodeURIComponent(firebaseProjectId)}/database`
+                            : 'https://console.firebase.google.com';
+                        console.warn(`   2. Check Firebase Console: ${consoleUrl}`);
                         console.warn('   3. Verify database URL in firebaseConfig.ts');
                         console.warn('   4. Check browser console for errors');
                         console.warn('   5. Try refreshing the page');

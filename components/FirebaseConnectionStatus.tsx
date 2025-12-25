@@ -13,6 +13,9 @@ interface FirebaseConnectionStatusProps {
   onClose: () => void;
 }
 
+// Delay after reconnection before retesting (in milliseconds)
+const RETEST_DELAY_MS = 3000;
+
 const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onClose }) => {
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -52,7 +55,7 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
       // Re-test connection after reconnection attempt
       setTimeout(() => {
         handleTestConnection();
-      }, 3000);
+      }, RETEST_DELAY_MS);
     } catch (error) {
       console.error('Error forcing reconnection:', error);
       setReconnectMessage('Reconnection failed. Check console for details.');
