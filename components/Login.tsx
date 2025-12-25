@@ -20,10 +20,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
   const [securityPin, setSecurityPin] = useState('');
   const [securityError, setSecurityError] = useState('');
   const [logoError, setLogoError] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
   
-  // Reset logo error state when appLogo changes
+  // Reset logo error and loaded state when appLogo changes
   React.useEffect(() => {
     setLogoError(false);
+    setLogoLoaded(false);
   }, [appLogo]);
   
   const [selectedOperatorId, setSelectedOperatorId] = useState<string>('');
@@ -98,9 +100,20 @@ const Login: React.FC<LoginProps> = ({ onLogin, operators, ticketSalesPersonnel,
               src={appLogo} 
               alt="Toggi Fun World Logo" 
               className="mb-2 w-20 h-20 md:w-24 md:h-24 object-contain" 
-              onError={() => setLogoError(true)}
+              onError={() => {
+                console.error('Failed to load logo on login screen');
+                setLogoError(true);
+              }}
+              onLoad={() => {
+                console.log('Logo loaded successfully on login screen');
+                setLogoLoaded(true);
+              }}
+              style={{
+                display: logoLoaded ? 'block' : 'none'
+              }}
             />
-        ) : (
+        ) : null}
+        {(!appLogo || logoError || !logoLoaded) && (
             <div className="mb-2 w-20 h-20 md:w-24 md:h-24 bg-gray-800 border-2 border-dashed border-gray-600 rounded-lg flex items-center justify-center">
                 <span className="text-gray-600 font-bold">Logo</span>
             </div>

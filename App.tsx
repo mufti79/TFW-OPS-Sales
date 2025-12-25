@@ -220,12 +220,12 @@ const AppComponent: React.FC = () => {
     const { data: dailyRideDetails, setData: setDailyRideDetails } = useFirebaseSync<Record<string, Record<string, { tickets: number; packages: number }>>>('data/dailyRideDetails', {});
     const { data: rides, setData: setRides } = useFirebaseSync<Record<number, Omit<Ride, 'id'>>>('config/rides', RIDES);
     const { data: operators, setData: setOperators } = useFirebaseSync<Record<number, Omit<Operator, 'id'>>>('config/operators', OPERATORS);
-    const { data: attendanceData, setData: setAttendanceData } = useFirebaseSync<AttendanceData>('data/attendance', {});
+    const { data: attendanceData, setData: setAttendanceData, isLoading: isAttendanceLoading } = useFirebaseSync<AttendanceData>('data/attendance', {});
     const { data: tsAssignments, setData: setTSAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/tsAssignments', {});
     const { data: salesAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/salesAssignments', {});
     const { data: history, setData: setHistory } = useFirebaseSync<HistoryRecord[]>('data/history', []);
     const { data: packageSalesData, setData: setPackageSalesData } = useFirebaseSync<PackageSalesData>('data/packageSales', {});
-    const { data: appLogo, setData: setAppLogo } = useFirebaseSync<string | null>('config/appLogo', null);
+    const { data: appLogo, setData: setAppLogo, isLoading: isLogoLoading } = useFirebaseSync<string | null>('config/appLogo', null);
     const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
     const { data: opsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', {});
@@ -810,7 +810,17 @@ const AppComponent: React.FC = () => {
         );
     }, [attendanceData]);
     
-    const hasCheckedInToday = useMemo(() => !currentUser ? false : !!(attendanceData?.[today]?.[currentUser.id]), [attendanceData, today, currentUser]);
+    // Check if current user has checked in today, but wait for attendance data to load from Firebase
+    // This prevents showing the briefing screen when attendance data is still loading
+    // If attendance is loading, assume not checked in (will show loading state or briefing screen)
+    const hasCheckedInToday = useMemo(() => {
+        if (!currentUser) return false;
+        // If attendance is still loading from Firebase, wait before making a decision
+        // This prevents race conditions where different browsers show briefing screen
+        // even though the user already checked in on another device
+        if (isAttendanceLoading) return false;
+        return !!(attendanceData?.[today]?.[currentUser.id]);
+    }, [attendanceData, today, currentUser, isAttendanceLoading]);
     
     const isCheckinAllowed = useMemo(() => new Date().getHours() < 22, []);
 
@@ -918,6 +928,15 @@ const AppComponent: React.FC = () => {
     const isManager = role === 'admin' || role === 'operation-officer';
 
     const renderView = () => {
+        // Show loading state while attendance is being loaded for operator/ticket-sales roles
+        // This prevents briefly showing the briefing screen before attendance data loads
+        if ((role === 'operator' || role === 'ticket-sales') && isAttendanceLoading && currentView === 'roster') {
+            return <LoadingFallback />;
+        }
+        if ((role === 'ticket-sales') && isAttendanceLoading && currentView === 'ts-roster') {
+            return <LoadingFallback />;
+        }
+        
         switch (currentView) {
             case 'reports': return <Suspense fallback={<LoadingFallback />}><Reports dailyCounts={dailyCounts || {}} dailyRideDetails={dailyRideDetails || {}} rides={RIDES_ARRAY} /></Suspense>;
             case 'assignments': return <Suspense fallback={<LoadingFallback />}><AssignmentView rides={RIDES_ARRAY} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} /></Suspense>;
