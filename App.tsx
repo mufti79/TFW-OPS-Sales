@@ -107,11 +107,11 @@ const NON_MANAGER_VIEWS: View[] = ['counter', 'roster', 'ts-roster', 'my-sales',
 
 // Cache clear confirmation messages
 const CACHE_CLEAR_MESSAGES = {
-    online: 'This will clear all cached data and reload from the cloud server.\n\n✓ Your data is safely stored in the cloud and will be restored automatically.\n✓ Your login session will be preserved.\n✓ Current navigation state will be preserved.\n\nThis is useful if you\'re experiencing sync issues or want to see the latest data.\n\nContinue?',
-    offline: 'This will clear all cached data. WARNING: You are in offline mode, so data cannot be restored from the cloud.\n\nYour login session and navigation state will be preserved.\n\nContinue?',
+    online: 'This will clear all cached data and reload from Firebase Realtime Database.\n\n✓ Your data is safely stored in Firebase and will be restored automatically.\n✓ Your login session will be preserved.\n✓ Current navigation state will be preserved.\n\nThis is useful if you\'re experiencing sync issues or want to see the latest data from Firebase.\n\nContinue?',
+    offline: 'This will clear all cached data and reload from Firebase. Note: Connection to Firebase is currently interrupted.\n\nYour login session and navigation state will be preserved.\n\nContinue?',
     success: {
-        online: 'Cache cleared successfully! Reloading and restoring your data from the cloud...',
-        offline: 'Cache cleared successfully! Reloading...'
+        online: 'Cache cleared successfully! Reloading and restoring your data from Firebase Realtime Database...',
+        offline: 'Cache cleared successfully! Reloading and reconnecting to Firebase...'
     }
 };
 
@@ -336,10 +336,10 @@ const AppComponent: React.FC = () => {
                 // Log connection status changes for debugging
                 if (isConnected) {
                     console.log('✅ Firebase Realtime Database connection established');
-                    console.log('✓ Logo and all data will sync automatically');
+                    console.log('✓ All data will be saved to Firebase and synced in real-time');
                 } else {
-                    console.log('⚠️ Firebase Realtime Database disconnected - working in offline mode');
-                    console.log('ℹ️ Using cached data including logo. Changes will sync when reconnected.');
+                    console.log('⚠️ Firebase Realtime Database connection interrupted - attempting to reconnect');
+                    console.log('ℹ️ Changes will be saved to Firebase automatically when connection is restored');
                 }
             }, (error) => {
                 // Handle connection monitoring errors
@@ -366,27 +366,27 @@ const AppComponent: React.FC = () => {
             Promise.race([Promise.all(promises), timeoutPromise])
                 .then(() => {
                     setInitialLoading(false);
-                    console.log('✓ Initial data loaded successfully from Firebase');
-                    console.log('✓ Logo, rides, and operators synced');
+                    console.log('✓ Initial data loaded successfully from Firebase Realtime Database');
+                    console.log('✓ Logo, rides, and operators synced from Firebase');
                 })
                 .catch(error => {
                     console.warn("Firebase load issue:", error.message);
-                    console.log('ℹ️ Using cached data - will sync when connection is available');
-                    console.log('ℹ️ Logo should display from cache if previously saved');
+                    console.log('ℹ️ Loading cached data while Firebase reconnects - all changes will be saved to Firebase');
+                    console.log('ℹ️ Logo will display from cache if previously saved to Firebase');
                     setInitialLoading(false);
                 });
 
             return () => unsubscribe();
         } else {
-            // Offline mode / Not configured / SDK Error
+            // Not configured / SDK Error
             setInitialLoading(false);
             if (!database && typeof window !== 'undefined') {
                 console.error('❌ Firebase database instance is null - check configuration');
                 console.error('💡 Verify firebaseConfig.ts has correct credentials');
                 setConnectionStatus('sdk-error');
             } else {
-                console.log('ℹ️ Firebase not configured - running in offline mode');
-                console.log('ℹ️ Logo and data will be cached locally only');
+                console.log('ℹ️ Firebase not configured - please configure Firebase to enable real-time data sync');
+                console.log('ℹ️ Data will be cached locally until Firebase is configured');
                 setConnectionStatus('disconnected');
             }
         }
@@ -945,7 +945,7 @@ const AppComponent: React.FC = () => {
         }
     }, [showNotification, isFirebaseConfigured]);
 
-    // Note: We deliberately allow the app to run even if not configured to support offline mode.
+    // Note: We deliberately allow the app to run even if Firebase is not configured, with cached data support.
     
     if (initialLoading) {
       return (
