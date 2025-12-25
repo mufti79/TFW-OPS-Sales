@@ -15,9 +15,31 @@ export const WARNING_THROTTLE_MS = 30000; // 30 seconds - max frequency for sync
 let isOnline = navigator.onLine;
 let connectionListenerSetup = false;
 let dataConsistencyCheckInterval: NodeJS.Timeout | null = null;
+let firebaseConnected = false; // Track Firebase-level connection status
 
 // Track paths that need consistency verification
 const pathsToVerify = new Set<string>();
+
+// Monitor Firebase connection status globally
+const setupFirebaseConnectionMonitor = () => {
+  if (!database || !isFirebaseConfigured) return;
+  
+  const connectedRef = ref(database, '.info/connected');
+  onValue(connectedRef, (snapshot) => {
+    const connected = snapshot.val() === true;
+    firebaseConnected = connected;
+    
+    if (connected) {
+      console.log('🔥 Firebase Realtime Database connected');
+      // Retry any failed writes when reconnected
+      setTimeout(() => {
+        retryAllFailedWrites();
+      }, 1000);
+    } else {
+      console.log('🔥 Firebase Realtime Database disconnected');
+    }
+  });
+};
 
 // Interface for Firebase errors with code property
 interface FirebaseError extends Error {
@@ -85,6 +107,9 @@ const setupConnectionMonitoring = () => {
   if (connectionListenerSetup) return;
   connectionListenerSetup = true;
   
+  // Setup Firebase-level connection monitoring
+  setupFirebaseConnectionMonitor();
+  
   // Monitor browser online/offline events
   window.addEventListener('online', () => {
     console.log('🌐 Browser is back online');
@@ -104,7 +129,7 @@ const setupConnectionMonitoring = () => {
   // This helps catch any sync issues that might occur
   if (!dataConsistencyCheckInterval) {
     dataConsistencyCheckInterval = setInterval(() => {
-      if (isOnline && isFirebaseConfigured && database && pathsToVerify.size > 0) {
+      if (isOnline && firebaseConnected && isFirebaseConfigured && database && pathsToVerify.size > 0) {
         console.log(`🔍 Running data consistency check for ${pathsToVerify.size} paths...`);
         // Note: The actual consistency verification is handled by the Firebase real-time listeners
         // This periodic check serves as a heartbeat to ensure the system is responsive
@@ -354,8 +379,10 @@ function useFirebaseSync<T>(
                         // Check for specific error types that need special handling
                         const isPermissionError = firebaseErr.code === 'PERMISSION_DENIED';
                         const isNetworkError = firebaseErr.code === 'NETWORK_ERROR' || 
+                                               firebaseErr.code === 'UNAVAILABLE' ||
                                                err.message.includes('network') ||
-                                               err.message.includes('fetch');
+                                               err.message.includes('fetch') ||
+                                               err.message.includes('offline');
                         
                         if (isPermissionError) {
                             console.error(`   ⚠️ PERMISSION DENIED - Check Firebase database rules!`);
@@ -363,8 +390,10 @@ function useFirebaseSync<T>(
                             console.error(`   Visit: https://console.firebase.google.com/project/${firebaseProjectId}/database/rules`);
                         }
                         
-                        if (isNetworkError && !isOnline) {
-                            console.warn(`   ℹ️ Browser is offline - data will sync when connection is restored`);
+                        // Improved offline detection
+                        const isCurrentlyOffline = !isOnline || !firebaseConnected;
+                        if (isNetworkError && isCurrentlyOffline) {
+                            console.warn(`   ℹ️ Device is offline - data will sync when connection is restored`);
                         }
                         
                         // Track failed write for retry
