@@ -10,6 +10,27 @@ interface ConnectionStatusProps {
 
 const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConnection }) => {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [isStuckReconnecting, setIsStuckReconnecting] = useState(false);
+  const disconnectedTimeRef = React.useRef<number | null>(null);
+
+  // Track how long we've been disconnected
+  React.useEffect(() => {
+    if (status === 'disconnected' || status === 'connecting') {
+      if (disconnectedTimeRef.current === null) {
+        disconnectedTimeRef.current = Date.now();
+      } else {
+        // Check if stuck for more than 30 seconds
+        const timeSinceDisconnect = Date.now() - disconnectedTimeRef.current;
+        if (timeSinceDisconnect > 30000) {
+          setIsStuckReconnecting(true);
+        }
+      }
+    } else {
+      // Reset when connected
+      disconnectedTimeRef.current = null;
+      setIsStuckReconnecting(false);
+    }
+  }, [status]);
 
   const statusConfig = {
     connecting: { 
@@ -56,7 +77,9 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
   return (
     <div className="relative">
       <div 
-        className="flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-full border border-gray-700 shadow-sm cursor-help" 
+        className={`flex items-center gap-2 px-3 py-1 rounded-full border shadow-sm cursor-help ${
+          isStuckReconnecting ? 'bg-red-900 border-red-600 animate-pulse' : 'bg-gray-800 border-gray-700'
+        }`}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
         onClick={() => setShowTooltip(!showTooltip)}
@@ -67,7 +90,9 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
         aria-describedby="connection-status-tooltip"
       >
         <span className={`w-3 h-3 rounded-full ${config.color} ${status === 'connecting' ? 'animate-pulse' : ''}`} />
-        <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">{config.text}</span>
+        <span className="text-xs font-semibold text-gray-300 whitespace-nowrap">
+          {isStuckReconnecting ? 'Connection Issue' : config.text}
+        </span>
       </div>
       
       {showTooltip && (
@@ -82,12 +107,29 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
               ✓ Syncing with TFW-NEW app
             </p>
           )}
+          {isStuckReconnecting && (
+            <div className="mt-2 mb-3 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded">
+              <p className="text-red-400 font-semibold mb-1">⚠️ Connection Stuck</p>
+              <p className="text-red-300 text-[11px]">
+                Unable to connect for 30+ seconds. This may indicate:
+              </p>
+              <ul className="text-red-300 text-[11px] mt-1 ml-3 list-disc">
+                <li>Database doesn't exist</li>
+                <li>Network/firewall issue</li>
+                <li>Wrong database URL</li>
+              </ul>
+            </div>
+          )}
           {onTestConnection && (
             <button
               onClick={handleTestClick}
-              className="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 px-3 rounded transition-colors"
+              className={`mt-3 w-full text-white text-xs py-2 px-3 rounded transition-colors ${
+                isStuckReconnecting 
+                  ? 'bg-red-600 hover:bg-red-700 font-semibold' 
+                  : 'bg-purple-600 hover:bg-purple-700'
+              }`}
             >
-              🔍 Test Firebase Connection
+              {isStuckReconnecting ? '🔧 Diagnose Connection Issue' : '🔍 Test Firebase Connection'}
             </button>
           )}
         </div>

@@ -3,8 +3,8 @@
 // To get this app working, you need to create your own Firebase project and
 // replace the configuration object below with your project's credentials.
 
-import { initializeApp, getApps } from 'firebase/app';
-import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
+import { initializeApp, getApps, getApp, deleteApp } from 'firebase/app';
+import { getDatabase, connectDatabaseEmulator, goOffline, goOnline } from 'firebase/database';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -114,3 +114,46 @@ if (isFirebaseConfigured) {
 
 // Export the database instance.
 export const database = dbInstance;
+
+/**
+ * Force reconnection to Firebase Realtime Database
+ * This can help when the connection gets stuck or fails to establish
+ * @returns Promise that resolves when reconnection is attempted
+ */
+export const forceReconnect = async (): Promise<{ success: boolean; message: string }> => {
+  if (!database || !isFirebaseConfigured) {
+    return { 
+      success: false, 
+      message: 'Firebase is not configured or database instance is not available' 
+    };
+  }
+
+  try {
+    console.log('🔄 Forcing Firebase reconnection...');
+    
+    // First, go offline to close existing connections
+    goOffline(database);
+    console.log('📴 Disconnected from Firebase');
+    
+    // Wait a moment for the disconnection to complete
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Then go back online to force a fresh connection
+    goOnline(database);
+    console.log('📶 Reconnecting to Firebase...');
+    
+    // Wait a moment for the connection to establish
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    return { 
+      success: true, 
+      message: 'Reconnection attempt completed. Check connection status in a moment.' 
+    };
+  } catch (error: any) {
+    console.error('❌ Error during forced reconnection:', error);
+    return { 
+      success: false, 
+      message: `Reconnection failed: ${error.message}` 
+    };
+  }
+};
