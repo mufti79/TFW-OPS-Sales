@@ -255,7 +255,15 @@ function useFirebaseSync<T>(
     if (typeof window !== 'undefined') {
       const cachedValue = getCachedValue<T>(localKey, localKeyTimestamp, path);
       if (cachedValue !== null) {
+        // Special logging for logo
+        if (path === LOGO_PATH) {
+          const logoSize = (typeof cachedValue === 'string') ? cachedValue.length : 0;
+          console.log(`✓ Logo loaded from cache (size: ${logoSize} characters)`);
+          console.log(`ℹ️ Logo will be displayed immediately while Firebase syncs`);
+        }
         return cachedValue;
+      } else if (path === LOGO_PATH) {
+        console.log(`ℹ️ No cached logo found - will load from Firebase or show placeholder`);
       }
     }
     return initialValue;
@@ -306,7 +314,15 @@ function useFirebaseSync<T>(
         try {
             window.localStorage.setItem(localKey, JSON.stringify(val));
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
-            console.log(`✓ Firebase data synced for ${path}`);
+            
+            // Special logging for logo to help with debugging
+            if (path === LOGO_PATH) {
+                const logoSize = (typeof val === 'string') ? val.length : 0;
+                console.log(`✓ Logo synced from Firebase (size: ${logoSize} characters)`);
+                console.log(`✓ Logo cached in localStorage for offline use`);
+            } else {
+                console.log(`✓ Firebase data synced for ${path}`);
+            }
             
             // Clear any pending failed writes for this path since we just got fresh data
             if (failedWrites.has(path)) {
@@ -315,16 +331,27 @@ function useFirebaseSync<T>(
             }
         } catch (e) {
             console.warn("⚠️ Failed to update localStorage from Firebase sync", e);
+            if (path === LOGO_PATH) {
+                console.error("⚠️ Logo could not be cached - may not display offline");
+            }
         }
       } else {
         // IMPORTANT: If snapshot doesn't exist (e.g. data was deleted/reset on server),
         // we must revert to initialValue to ensure clients sync the deletion.
-        console.log(`ℹ️ No data at ${path}, using initial value`);
+        if (path === LOGO_PATH) {
+            console.log(`ℹ️ No logo found in Firebase - using placeholder`);
+        } else {
+            console.log(`ℹ️ No data at ${path}, using initial value`);
+        }
         setStoredValue(initialValue);
         try {
             window.localStorage.removeItem(localKey);
             window.localStorage.removeItem(localKeyTimestamp);
-            console.log(`✓ Firebase data cleared for ${path} (data does not exist)`);
+            if (path === LOGO_PATH) {
+                console.log(`✓ Logo cache cleared (no logo in Firebase)`);
+            } else {
+                console.log(`✓ Firebase data cleared for ${path} (data does not exist)`);
+            }
         } catch (e) {
             console.warn("⚠️ Failed to clear localStorage from Firebase sync", e);
         }
@@ -333,7 +360,11 @@ function useFirebaseSync<T>(
     }, (error) => {
         clearTimeout(timeoutId);
         console.error(`❌ Firebase read error at path "${path}":`, error);
-        console.log(`ℹ️ Continuing with cached data for ${path}`);
+        if (path === LOGO_PATH) {
+            console.log(`ℹ️ Cannot load logo from Firebase - using cached version if available`);
+        } else {
+            console.log(`ℹ️ Continuing with cached data for ${path}`);
+        }
         setLoading(false);
     });
 

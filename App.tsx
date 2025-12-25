@@ -336,12 +336,15 @@ const AppComponent: React.FC = () => {
                 // Log connection status changes for debugging
                 if (isConnected) {
                     console.log('✅ Firebase Realtime Database connection established');
+                    console.log('✓ Logo and all data will sync automatically');
                 } else {
                     console.log('⚠️ Firebase Realtime Database disconnected - working in offline mode');
+                    console.log('ℹ️ Using cached data including logo. Changes will sync when reconnected.');
                 }
             }, (error) => {
                 // Handle connection monitoring errors
                 console.error('❌ Error monitoring Firebase connection:', error);
+                console.error('💡 Check your internet connection and Firebase configuration');
                 setConnectionStatus('sdk-error');
             });
             
@@ -363,11 +366,13 @@ const AppComponent: React.FC = () => {
             Promise.race([Promise.all(promises), timeoutPromise])
                 .then(() => {
                     setInitialLoading(false);
-                    console.log('✓ Initial data loaded successfully');
+                    console.log('✓ Initial data loaded successfully from Firebase');
+                    console.log('✓ Logo, rides, and operators synced');
                 })
                 .catch(error => {
                     console.warn("Firebase load issue:", error.message);
                     console.log('ℹ️ Using cached data - will sync when connection is available');
+                    console.log('ℹ️ Logo should display from cache if previously saved');
                     setInitialLoading(false);
                 });
 
@@ -377,9 +382,11 @@ const AppComponent: React.FC = () => {
             setInitialLoading(false);
             if (!database && typeof window !== 'undefined') {
                 console.error('❌ Firebase database instance is null - check configuration');
+                console.error('💡 Verify firebaseConfig.ts has correct credentials');
                 setConnectionStatus('sdk-error');
             } else {
                 console.log('ℹ️ Firebase not configured - running in offline mode');
+                console.log('ℹ️ Logo and data will be cached locally only');
                 setConnectionStatus('disconnected');
             }
         }
