@@ -257,8 +257,8 @@ function useFirebaseSync<T>(
       if (cachedValue !== null) {
         // Special logging for logo
         if (path === LOGO_PATH) {
-          const logoSize = typeof cachedValue === 'string' ? cachedValue.length : 0;
-          console.log(`✓ Logo loaded from cache (size: ${logoSize} bytes)`);
+          const logoSize = (typeof cachedValue === 'string') ? cachedValue.length : 0;
+          console.log(`✓ Logo loaded from cache (size: ${logoSize} characters)`);
           console.log(`ℹ️ Logo will be displayed immediately while Firebase syncs`);
         }
         return cachedValue;
@@ -317,8 +317,8 @@ function useFirebaseSync<T>(
             
             // Special logging for logo to help with debugging
             if (path === LOGO_PATH) {
-                const logoSize = val ? val.length : 0;
-                console.log(`✓ Logo synced from Firebase (size: ${logoSize} bytes)`);
+                const logoSize = (typeof val === 'string') ? val.length : 0;
+                console.log(`✓ Logo synced from Firebase (size: ${logoSize} characters)`);
                 console.log(`✓ Logo cached in localStorage for offline use`);
             } else {
                 console.log(`✓ Firebase data synced for ${path}`);
