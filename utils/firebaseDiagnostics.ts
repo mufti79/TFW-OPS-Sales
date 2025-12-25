@@ -7,6 +7,7 @@
 
 import { database, isFirebaseConfigured, firebaseProjectId } from '../firebaseConfig';
 import { ref, get, set, onValue, off } from 'firebase/database';
+import { verifyDatabaseURL } from './firebaseConnectionTest';
 
 export interface DiagnosticResult {
   success: boolean;
@@ -18,6 +19,7 @@ export interface DiagnosticResult {
 export interface CompleteDiagnostics {
   configuration: DiagnosticResult;
   databaseInstance: DiagnosticResult;
+  databaseURLCheck: DiagnosticResult;
   connectionStatus: DiagnosticResult;
   readTest: DiagnosticResult;
   writeTest: DiagnosticResult;
@@ -33,6 +35,7 @@ export const runFirebaseDiagnostics = async (): Promise<CompleteDiagnostics> => 
   const results: CompleteDiagnostics = {
     configuration: { success: false, message: '', timestamp: new Date().toISOString() },
     databaseInstance: { success: false, message: '', timestamp: new Date().toISOString() },
+    databaseURLCheck: { success: false, message: '', timestamp: new Date().toISOString() },
     connectionStatus: { success: false, message: '', timestamp: new Date().toISOString() },
     readTest: { success: false, message: '', timestamp: new Date().toISOString() },
     writeTest: { success: false, message: '', timestamp: new Date().toISOString() },
@@ -79,6 +82,58 @@ export const runFirebaseDiagnostics = async (): Promise<CompleteDiagnostics> => 
     details: database.app.options.databaseURL || 'URL not available',
     timestamp: new Date().toISOString()
   };
+
+  // Test 2.5: Check Database URL connectivity
+  try {
+    const urlCheck = await verifyDatabaseURL();
+    
+    if (!urlCheck.valid) {
+      results.databaseURLCheck = {
+        success: false,
+        message: 'Database URL validation failed',
+        details: urlCheck.error || 'Unknown validation error',
+        timestamp: new Date().toISOString()
+      };
+      results.recommendations.push('Database URL format is invalid - check firebaseConfig.ts');
+      results.recommendations.push(`Current URL: ${urlCheck.url}`);
+      return results;
+    } else if (urlCheck.canConnect === false) {
+      results.databaseURLCheck = {
+        success: false,
+        message: 'Cannot connect to database URL',
+        details: urlCheck.error || 'Connection failed',
+        timestamp: new Date().toISOString()
+      };
+      results.recommendations.push('🔴 CRITICAL: Firebase Realtime Database is not accessible');
+      results.recommendations.push('');
+      results.recommendations.push('Possible causes:');
+      results.recommendations.push('  1. Realtime Database not created in Firebase Console');
+      results.recommendations.push('  2. Database URL is incorrect');
+      results.recommendations.push('  3. Network/firewall blocking Firebase');
+      results.recommendations.push('');
+      results.recommendations.push('🔧 How to fix:');
+      results.recommendations.push(`  1. Go to: https://console.firebase.google.com/project/${firebaseProjectId}/database`);
+      results.recommendations.push('  2. If you see "Create Database", click it to create Realtime Database');
+      results.recommendations.push('  3. Copy the database URL from the console');
+      results.recommendations.push('  4. Update databaseURL in firebaseConfig.ts');
+      results.recommendations.push(`  5. Current URL: ${urlCheck.url}`);
+      // Don't return yet - continue with other tests to gather more info
+    } else {
+      results.databaseURLCheck = {
+        success: true,
+        message: 'Database URL is accessible',
+        details: `Successfully connected to ${urlCheck.url}`,
+        timestamp: new Date().toISOString()
+      };
+    }
+  } catch (error: any) {
+    results.databaseURLCheck = {
+      success: false,
+      message: 'Database URL check failed',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    };
+  }
 
   // Test 3: Check Connection Status
   try {
@@ -212,6 +267,7 @@ export const runFirebaseDiagnostics = async (): Promise<CompleteDiagnostics> => 
   // Determine Overall Status
   const allPassed = results.configuration.success &&
                     results.databaseInstance.success &&
+                    results.databaseURLCheck.success &&
                     results.connectionStatus.success &&
                     results.readTest.success &&
                     results.writeTest.success &&
@@ -219,6 +275,7 @@ export const runFirebaseDiagnostics = async (): Promise<CompleteDiagnostics> => 
 
   const somePassed = results.configuration.success ||
                      results.databaseInstance.success ||
+                     results.databaseURLCheck.success ||
                      results.connectionStatus.success ||
                      results.readTest.success;
 
@@ -257,6 +314,9 @@ export const printDiagnosticsReport = async (): Promise<void> => {
   
   console.log(`\n💾 Database Instance: ${results.databaseInstance.success ? '✓' : '✗'} ${results.databaseInstance.message}`);
   if (results.databaseInstance.details) console.log(`   ${results.databaseInstance.details}`);
+  
+  console.log(`\n🔗 Database URL Check: ${results.databaseURLCheck.success ? '✓' : '✗'} ${results.databaseURLCheck.message}`);
+  if (results.databaseURLCheck.details) console.log(`   ${results.databaseURLCheck.details}`);
   
   console.log(`\n🌐 Connection Status: ${results.connectionStatus.success ? '✓' : '✗'} ${results.connectionStatus.message}`);
   if (results.connectionStatus.details) console.log(`   ${results.connectionStatus.details}`);

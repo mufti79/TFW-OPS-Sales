@@ -121,12 +121,14 @@ export const verifyDatabaseURL = async (): Promise<{
   valid: boolean;
   url: string;
   error?: string;
+  canConnect?: boolean;
 }> => {
   if (!database) {
     return {
       valid: false,
       url: '',
-      error: 'Database not initialized'
+      error: 'Database not initialized',
+      canConnect: false
     };
   }
 
@@ -136,7 +138,8 @@ export const verifyDatabaseURL = async (): Promise<{
     return {
       valid: false,
       url: '',
-      error: 'Database URL is not configured'
+      error: 'Database URL is not configured',
+      canConnect: false
     };
   }
 
@@ -148,21 +151,48 @@ export const verifyDatabaseURL = async (): Promise<{
       return {
         valid: false,
         url,
-        error: 'Invalid Firebase database URL format'
+        error: 'Invalid Firebase database URL format',
+        canConnect: false
+      };
+    }
+    
+    // Try to check connectivity by attempting to read .info/connected
+    try {
+      const connectedRef = ref(database, '.info/connected');
+      const snapshot = await Promise.race([
+        get(connectedRef),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 5000))
+      ]);
+      
+      return {
+        valid: true,
+        url,
+        canConnect: true
+      };
+    } catch (connError: any) {
+      // Connection attempt failed - might be DNS, network, or database doesn't exist
+      let errorMsg = 'Cannot connect to database';
+      if (connError.message?.includes('timeout')) {
+        errorMsg = 'Connection timeout - database may not exist or network issue';
+      } else if (connError.code === 'NETWORK_ERROR') {
+        errorMsg = 'Network error - check internet connection or database URL';
+      }
+      
+      return {
+        valid: true, // URL format is valid
+        url,
+        error: errorMsg,
+        canConnect: false
       };
     }
   } catch (e) {
     return {
       valid: false,
       url,
-      error: 'Malformed database URL'
+      error: 'Malformed database URL',
+      canConnect: false
     };
   }
-
-  return {
-    valid: true,
-    url
-  };
 };
 
 /**
