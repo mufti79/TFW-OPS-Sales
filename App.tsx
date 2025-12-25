@@ -376,13 +376,16 @@ const AppComponent: React.FC = () => {
                 setConnectionStatus('sdk-error');
             });
             
+            // Timeout threshold for connection warnings (in milliseconds)
+            const CONNECTION_WARNING_THRESHOLD_MS = 60000; // 60 seconds
+            
             // Add periodic connection health check
             const connectionCheckInterval = setInterval(() => {
                 if (connectionStatus === 'disconnected' || connectionStatus === 'connecting') {
                     const timeSinceLastCheck = Date.now() - lastConnectionCheck;
                     
-                    // If disconnected for more than 60 seconds, something is wrong
-                    if (timeSinceLastCheck > 60000) {
+                    // If disconnected for more than threshold, something is wrong
+                    if (timeSinceLastCheck > CONNECTION_WARNING_THRESHOLD_MS) {
                         console.warn('⚠️ Firebase connection not established after 60 seconds');
                         console.warn('💡 This might indicate:');
                         console.warn('   - Database URL is incorrect or database does not exist');
@@ -392,6 +395,7 @@ const AppComponent: React.FC = () => {
                         console.warn('🔧 Troubleshooting steps:');
                         console.warn('   1. Run: firebaseDiagnostics.printReport()');
                         if (firebaseProjectId) {
+                            // Note: Project ID is logged for debugging only, not exposed to end users
                             const consoleUrl = `https://console.firebase.google.com/project/${encodeURIComponent(firebaseProjectId)}/database`;
                             console.warn(`   2. Check Firebase Console: ${consoleUrl}`);
                         } else {

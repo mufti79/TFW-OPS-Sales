@@ -15,6 +15,8 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
 
   // Track how long we've been disconnected and check periodically
   React.useEffect(() => {
+    let checkInterval: NodeJS.Timeout | undefined;
+    
     if (status === 'disconnected' || status === 'connecting') {
       // Record when disconnection started
       if (disconnectedTimeRef.current === null) {
@@ -23,23 +25,26 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
       }
       
       // Check periodically if we're stuck
-      const checkInterval = setInterval(() => {
+      checkInterval = setInterval(() => {
         if (disconnectedTimeRef.current !== null) {
           const timeSinceDisconnect = Date.now() - disconnectedTimeRef.current;
           if (timeSinceDisconnect > 30000) {
             setIsStuckReconnecting(true);
             // No need to keep checking once stuck is detected
-            clearInterval(checkInterval);
+            if (checkInterval) clearInterval(checkInterval);
           }
         }
       }, 5000); // Check every 5 seconds
-      
-      return () => clearInterval(checkInterval);
     } else {
       // Reset when connected
       disconnectedTimeRef.current = null;
       setIsStuckReconnecting(false);
     }
+    
+    // Always clear interval on cleanup
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+    };
   }, [status]);
 
   const statusConfig = {

@@ -53,9 +53,12 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
       setReconnectMessage(result.message);
       
       // Re-test connection after reconnection attempt
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         handleTestConnection();
       }, RETEST_DELAY_MS);
+      
+      // Store timeout ID for cleanup if needed
+      return () => clearTimeout(timeoutId);
     } catch (error) {
       console.error('Error forcing reconnection:', error);
       setReconnectMessage('Reconnection failed. Check console for details.');
