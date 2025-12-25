@@ -31,11 +31,16 @@ if (isFirebaseConfigured) {
     const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
     console.log("Firebase initialized successfully");
     
-    // Initialize Realtime Database
+    // Initialize Realtime Database with proper error handling
     dbInstance = getDatabase(app);
     console.log("Firebase Database instance ready");
+    console.log("Database URL:", firebaseConfig.databaseURL);
+    
+    // Log successful initialization
+    console.log("✓ Firebase Realtime Database initialized and ready for connections");
   } catch (e) {
-    console.error("Error initializing Firebase:", e);
+    console.error("❌ Error initializing Firebase:", e);
+    console.error("Please check your Firebase configuration and network connection");
   }
 }
 
