@@ -107,14 +107,12 @@ export const monitorConnectionStatus = (
 
   const connectedRef = ref(database, '.info/connected');
   
-  const listener = (snapshot: any) => {
+  const unsubscribe = onValue(connectedRef, (snapshot) => {
     const connected = snapshot.val() === true;
     onStatusChange(connected);
-  };
-  
-  onValue(connectedRef, listener);
+  });
 
-  return () => off(connectedRef, listener);
+  return unsubscribe;
 };
 
 /**

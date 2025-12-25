@@ -7,15 +7,21 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { testFirebaseConnection, ConnectionTestResult, monitorConnectionStatus } from '../utils/firebaseConnectionTest';
+import { forceReconnect } from '../firebaseConfig';
 
 interface FirebaseConnectionStatusProps {
   onClose: () => void;
 }
 
+// Delay after reconnection before retesting (in milliseconds)
+const RETEST_DELAY_MS = 3000;
+
 const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onClose }) => {
   const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isTesting, setIsTesting] = useState<boolean>(false);
+  const [isReconnecting, setIsReconnecting] = useState<boolean>(false);
+  const [reconnectMessage, setReconnectMessage] = useState<string>('');
 
   // Monitor real-time connection status
   useEffect(() => {
@@ -28,6 +34,7 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
 
   const handleTestConnection = useCallback(async () => {
     setIsTesting(true);
+    setReconnectMessage('');
     try {
       const result = await testFirebaseConnection();
       setTestResult(result);
@@ -37,6 +44,28 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
       setIsTesting(false);
     }
   }, []);
+  
+  const handleForceReconnect = useCallback(async () => {
+    setIsReconnecting(true);
+    setReconnectMessage('');
+    try {
+      const result = await forceReconnect();
+      setReconnectMessage(result.message);
+      
+      // Re-test connection after reconnection attempt
+      const timeoutId = setTimeout(() => {
+        handleTestConnection();
+      }, RETEST_DELAY_MS);
+      
+      // Store timeout ID for cleanup if needed
+      return () => clearTimeout(timeoutId);
+    } catch (error) {
+      console.error('Error forcing reconnection:', error);
+      setReconnectMessage('Reconnection failed. Check console for details.');
+    } finally {
+      setIsReconnecting(false);
+    }
+  }, [handleTestConnection]);
 
   // Run test with a small delay to avoid unnecessary API calls on mount
   useEffect(() => {
@@ -71,13 +100,16 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
         <div className="p-6 space-y-6">
           {/* Real-time Connection Indicator */}
           <div className="bg-gray-700 rounded-lg p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-3">
                 <div className={`w-4 h-4 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
                 <span className="text-lg font-semibold text-white">
                   Real-time Status: {isConnected ? 'Connected' : 'Disconnected'}
                 </span>
               </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={handleTestConnection}
                 disabled={isTesting}
@@ -85,7 +117,27 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
               >
                 {isTesting ? '🔄 Testing...' : '🔍 Test Connection'}
               </button>
+              
+              {!isConnected && (
+                <button
+                  onClick={handleForceReconnect}
+                  disabled={isReconnecting}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors font-semibold"
+                >
+                  {isReconnecting ? '🔄 Reconnecting...' : '🔌 Force Reconnect'}
+                </button>
+              )}
             </div>
+            
+            {reconnectMessage && (
+              <div className={`mt-3 p-3 rounded-lg ${
+                reconnectMessage.includes('failed') || reconnectMessage.includes('Error') 
+                  ? 'bg-red-900 bg-opacity-30 border border-red-500 text-red-300' 
+                  : 'bg-blue-900 bg-opacity-30 border border-blue-500 text-blue-300'
+              }`}>
+                {reconnectMessage}
+              </div>
+            )}
           </div>
 
           {/* Test Results */}
@@ -185,6 +237,8 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
               <li>If read/write fails, check Firebase Security Rules in Firebase Console</li>
               <li>The real-time status indicator shows live connection state</li>
               <li>Click "Test Connection" to run a comprehensive connectivity check</li>
+              <li><strong>If stuck reconnecting:</strong> Click "Force Reconnect" to reset the connection</li>
+              <li>Force reconnect closes and reopens the Firebase connection, which often resolves stuck states</li>
             </ul>
           </div>
         </div>

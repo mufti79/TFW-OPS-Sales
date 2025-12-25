@@ -4,7 +4,7 @@ import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
 import useFirebaseSync, { onSyncError, WARNING_THROTTLE_MS } from './hooks/useFirebaseSync';
-import { isFirebaseConfigured, database } from './firebaseConfig';
+import { isFirebaseConfigured, database, firebaseProjectId } from './firebaseConfig';
 import { ref, onValue, get } from 'firebase/database';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
 import NotificationComponent from './components/AttendanceCheckin';
@@ -228,6 +228,9 @@ const AppComponent: React.FC = () => {
     
     const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'sdk-error'>('connecting');
     const [initialLoading, setInitialLoading] = useState(true);
+    const [connectionAttempts, setConnectionAttempts] = useState(0);
+    const [lastConnectionCheck, setLastConnectionCheck] = useState(Date.now());
+    const initialDisconnectTimeRef = useRef<number | null>(null);
 
     const { data: dailyCounts, setData: setDailyCounts } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
     const { data: dailyRideDetails, setData: setDailyRideDetails } = useFirebaseSync<Record<string, Record<string, { tickets: number; packages: number }>>>('data/dailyRideDetails', {});
@@ -331,15 +334,40 @@ const AppComponent: React.FC = () => {
             // Set up connection monitoring with error handling
             const unsubscribe = onValue(connectedRef, (snap) => {
                 const isConnected = snap.val() === true;
-                setConnectionStatus(isConnected ? 'connected' : 'disconnected');
+                const now = Date.now();
                 
-                // Log connection status changes for debugging
                 if (isConnected) {
+                    setConnectionStatus('connected');
+                    setConnectionAttempts(0); // Reset attempts on successful connection
+                    setLastConnectionCheck(now);
+                    initialDisconnectTimeRef.current = null; // Reset disconnect timer
                     console.log('✅ Firebase Realtime Database connection established');
                     console.log('✓ All data will be saved to Firebase and synced in real-time');
                 } else {
+                    setConnectionStatus('disconnected');
+                    setConnectionAttempts(prev => prev + 1);
+                    setLastConnectionCheck(now);
+                    
+                    // Track when disconnection started (only once)
+                    if (initialDisconnectTimeRef.current === null) {
+                        initialDisconnectTimeRef.current = now;
+                    }
+                    
                     console.log('⚠️ Firebase Realtime Database connection interrupted - attempting to reconnect');
                     console.log('ℹ️ Changes will be saved to Firebase automatically when connection is restored');
+                    
+                    // If stuck disconnected for too long, provide diagnostic help
+                    const timeSinceDisconnect = initialDisconnectTimeRef.current ? now - initialDisconnectTimeRef.current : 0;
+                    if (connectionAttempts > 5 && timeSinceDisconnect > 30000) {
+                        console.error('⚠️ Connection issues detected - still disconnected after multiple attempts');
+                        console.error('💡 Possible causes:');
+                        console.error('   1. Firebase Realtime Database does not exist');
+                        console.error('   2. Database URL is incorrect');
+                        console.error('   3. Network/firewall blocking Firebase');
+                        console.error('   4. Security rules blocking access');
+                        console.error('');
+                        console.error('🔧 Run diagnostics: firebaseDiagnostics.printReport()');
+                    }
                 }
             }, (error) => {
                 // Handle connection monitoring errors
@@ -347,6 +375,38 @@ const AppComponent: React.FC = () => {
                 console.error('💡 Check your internet connection and Firebase configuration');
                 setConnectionStatus('sdk-error');
             });
+            
+            // Timeout threshold for connection warnings (in milliseconds)
+            const CONNECTION_WARNING_THRESHOLD_MS = 60000; // 60 seconds
+            
+            // Add periodic connection health check
+            const connectionCheckInterval = setInterval(() => {
+                if (connectionStatus === 'disconnected' || connectionStatus === 'connecting') {
+                    const timeSinceLastCheck = Date.now() - lastConnectionCheck;
+                    
+                    // If disconnected for more than threshold, something is wrong
+                    if (timeSinceLastCheck > CONNECTION_WARNING_THRESHOLD_MS) {
+                        console.warn('⚠️ Firebase connection not established after 60 seconds');
+                        console.warn('💡 This might indicate:');
+                        console.warn('   - Database URL is incorrect or database does not exist');
+                        console.warn('   - Network/firewall blocking Firebase servers');
+                        console.warn('   - Browser blocking third-party connections');
+                        console.warn('');
+                        console.warn('🔧 Troubleshooting steps:');
+                        console.warn('   1. Run: firebaseDiagnostics.printReport()');
+                        if (firebaseProjectId) {
+                            // Note: Project ID is logged for debugging only, not exposed to end users
+                            const consoleUrl = `https://console.firebase.google.com/project/${encodeURIComponent(firebaseProjectId)}/database`;
+                            console.warn(`   2. Check Firebase Console: ${consoleUrl}`);
+                        } else {
+                            console.warn('   2. Check Firebase Console: https://console.firebase.google.com');
+                        }
+                        console.warn('   3. Verify database URL in firebaseConfig.ts');
+                        console.warn('   4. Check browser console for errors');
+                        console.warn('   5. Try refreshing the page');
+                    }
+                }
+            }, 30000); // Check every 30 seconds
             
             // Check if user is returning (has auth data in localStorage) to reduce wait time
             let hasStoredAuth = false;
@@ -376,7 +436,10 @@ const AppComponent: React.FC = () => {
                     setInitialLoading(false);
                 });
 
-            return () => unsubscribe();
+            return () => {
+                unsubscribe();
+                clearInterval(connectionCheckInterval);
+            };
         } else {
             // Not configured / SDK Error
             setInitialLoading(false);
