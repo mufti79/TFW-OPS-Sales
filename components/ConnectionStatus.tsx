@@ -5,9 +5,10 @@ type Status = 'connecting' | 'connected' | 'disconnected' | 'sdk-error';
 
 interface ConnectionStatusProps {
   status: Status;
+  onTestConnection?: () => void;
 }
 
-const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
+const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConnection }) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   const statusConfig = {
@@ -45,6 +46,13 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
     }
   };
 
+  const handleTestClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (onTestConnection) {
+      onTestConnection();
+    }
+  };
+
   return (
     <div className="relative">
       <div 
@@ -73,6 +81,14 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status }) => {
             <p className="text-green-400 text-[11px]">
               ✓ Syncing with TFW-NEW app
             </p>
+          )}
+          {onTestConnection && (
+            <button
+              onClick={handleTestClick}
+              className="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 px-3 rounded transition-colors"
+            >
+              🔍 Test Firebase Connection
+            </button>
           )}
         </div>
       )}
