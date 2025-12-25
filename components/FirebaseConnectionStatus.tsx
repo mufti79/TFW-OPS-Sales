@@ -5,7 +5,7 @@
  * Useful for debugging and verifying Firebase Realtime Database connectivity.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { testFirebaseConnection, ConnectionTestResult, monitorConnectionStatus } from '../utils/firebaseConnectionTest';
 
 interface FirebaseConnectionStatusProps {
@@ -26,12 +26,7 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
     return unsubscribe;
   }, []);
 
-  // Run initial test on mount
-  useEffect(() => {
-    handleTestConnection();
-  }, []);
-
-  const handleTestConnection = async () => {
+  const handleTestConnection = useCallback(async () => {
     setIsTesting(true);
     try {
       const result = await testFirebaseConnection();
@@ -41,7 +36,16 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
     } finally {
       setIsTesting(false);
     }
-  };
+  }, []);
+
+  // Run test with a small delay to avoid unnecessary API calls on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleTestConnection();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [handleTestConnection]);
 
   const getStatusColor = (status: boolean) => {
     return status ? 'text-green-400' : 'text-red-400';

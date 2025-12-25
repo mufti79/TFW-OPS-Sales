@@ -6,7 +6,7 @@
  */
 
 import { database, isFirebaseConfigured, firebaseProjectId } from '../firebaseConfig';
-import { ref, get, set, onValue, off } from 'firebase/database';
+import { ref, get, set, onValue, off, DatabaseReference } from 'firebase/database';
 
 export interface ConnectionTestResult {
   configured: boolean;
@@ -104,12 +104,14 @@ export const monitorConnectionStatus = (
 
   const connectedRef = ref(database, '.info/connected');
   
-  onValue(connectedRef, (snapshot) => {
+  const listener = (snapshot: any) => {
     const connected = snapshot.val() === true;
     onStatusChange(connected);
-  });
+  };
+  
+  onValue(connectedRef, listener);
 
-  return () => off(connectedRef);
+  return () => off(connectedRef, listener);
 };
 
 /**
@@ -138,11 +140,22 @@ export const verifyDatabaseURL = async (): Promise<{
     };
   }
 
-  if (!url.includes('firebaseio.com') && !url.includes('firebasedatabase.app')) {
+  // More secure URL validation - check for exact domain match
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+    if (!hostname.endsWith('.firebaseio.com') && !hostname.endsWith('.firebasedatabase.app')) {
+      return {
+        valid: false,
+        url,
+        error: 'Invalid Firebase database URL format'
+      };
+    }
+  } catch (e) {
     return {
       valid: false,
       url,
-      error: 'Invalid Firebase database URL format'
+      error: 'Malformed database URL'
     };
   }
 

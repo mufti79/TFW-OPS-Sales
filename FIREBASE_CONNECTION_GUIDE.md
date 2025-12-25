@@ -72,9 +72,10 @@ This means your Firebase setup is working correctly!
 
 ### Current Configuration
 
-The app is configured to use the following Firebase project:
-- **Project ID**: `tfw-ops-salesgit-4001335-4685c`
-- **Database URL**: `https://tfw-ops-salesgit-4001335-4685c-default-rtdb.firebaseio.com`
+The app is configured to use environment variables for Firebase configuration.
+Check your `.env` file or environment settings for:
+- **Project ID**: Set via `VITE_FIREBASE_PROJECT_ID`
+- **Database URL**: Set via `VITE_FIREBASE_DATABASE_URL`
 
 ### Verifying Configuration
 

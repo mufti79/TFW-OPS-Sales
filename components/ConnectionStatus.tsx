@@ -46,7 +46,7 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
     }
   };
 
-  const handleTestClick = (e: React.MouseEvent) => {
+  const handleTestClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (onTestConnection) {
       onTestConnection();
