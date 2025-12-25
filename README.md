@@ -74,6 +74,15 @@ This app uses Firebase Realtime Database for data synchronization. The Firebase 
 
 **For synchronization to work with TFW-NEW app, both apps must use the same Firebase project configuration.**
 
+### Testing Firebase Connection
+
+The app includes a built-in Firebase connection test tool:
+1. Click on the connection status indicator in the header
+2. Select "🔍 Test Firebase Connection" from the tooltip
+3. View detailed diagnostics including connection status, read/write permissions, and project information
+
+For detailed instructions, see [FIREBASE_CONNECTION_GUIDE.md](./FIREBASE_CONNECTION_GUIDE.md).
+
 ## Deployment
 
 The app is deployed on Vercel at https://tfw-ops-sales.vercel.app
@@ -97,14 +106,23 @@ If you experience any memory-related issues:
 For synchronization problems with TFW-NEW app:
 1. Check [SYNCHRONIZATION.md](./SYNCHRONIZATION.md)
 2. Verify Firebase connection in app header
-3. Try manual sync button in roster views
+3. Test Firebase connection using the built-in test tool (see [FIREBASE_CONNECTION_GUIDE.md](./FIREBASE_CONNECTION_GUIDE.md))
+4. Try manual sync button in roster views
+
+### Firebase Connection Issues
+If you're experiencing Firebase connection problems:
+1. Click on the connection status in the header and run the connection test
+2. Check [FIREBASE_CONNECTION_GUIDE.md](./FIREBASE_CONNECTION_GUIDE.md) for detailed troubleshooting
+3. Verify your internet connection
+4. Check Firebase Security Rules in Firebase Console
 
 ## Support
 
 For issues or questions:
+- **Firebase Connection**: Check [FIREBASE_CONNECTION_GUIDE.md](./FIREBASE_CONNECTION_GUIDE.md) for connection testing and troubleshooting
 - **Logo & Images**: Check [LOGO_SETUP.md](./LOGO_SETUP.md) for customization guide
-- Check [MEMORY_OPTIMIZATION.md](./MEMORY_OPTIMIZATION.md) for performance issues
-- Check [SYNCHRONIZATION.md](./SYNCHRONIZATION.md) for sync-related issues
-- Check [FIX_SUMMARY.md](./FIX_SUMMARY.md) for recent fixes and improvements
+- **Memory Issues**: Check [MEMORY_OPTIMIZATION.md](./MEMORY_OPTIMIZATION.md) for performance issues
+- **Sync Issues**: Check [SYNCHRONIZATION.md](./SYNCHRONIZATION.md) for sync-related issues
+- **Recent Updates**: Check [FIX_SUMMARY.md](./FIX_SUMMARY.md) for recent fixes and improvements
 - Check browser console for errors
 - Verify Firebase connection status in the app header

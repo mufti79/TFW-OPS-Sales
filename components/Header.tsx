@@ -6,7 +6,7 @@ import { Operator } from '../types';
 import ConnectionStatus from './ConnectionStatus';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
-type Modal = 'ai-assistant' | 'operators' | 'backup' | 'diagnostics' | null;
+type Modal = 'ai-assistant' | 'operators' | 'backup' | 'diagnostics' | 'firebase-status' | null;
 type Connection = 'connecting' | 'connected' | 'disconnected' | 'sdk-error';
 
 interface HeaderProps {
@@ -190,7 +190,10 @@ const Header: React.FC<HeaderProps> = ({
 
 
           <div className="hidden md:flex items-center ml-4 md:ml-6 space-x-4">
-            <ConnectionStatus status={connectionStatus} />
+            <ConnectionStatus 
+              status={connectionStatus} 
+              onTestConnection={() => onShowModal('firebase-status')}
+            />
             
             {onClearCache && (
               <button 
@@ -303,7 +306,10 @@ const Header: React.FC<HeaderProps> = ({
               </button>
             </div>
              <div className="mt-3 px-5 flex items-center">
-                 <ConnectionStatus status={connectionStatus} />
+                 <ConnectionStatus 
+                   status={connectionStatus} 
+                   onTestConnection={() => onShowModal('firebase-status')}
+                 />
             </div>
           </div>
         </div>
