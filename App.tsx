@@ -8,6 +8,7 @@ import { isFirebaseConfigured, database } from './firebaseConfig';
 import { ref, onValue, get } from 'firebase/database';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
 import NotificationComponent from './components/AttendanceCheckin';
+import { printDiagnosticsReport, runFirebaseDiagnostics } from './utils/firebaseDiagnostics';
 
 
 
@@ -19,6 +20,17 @@ import Footer from './components/Footer';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import KioskModeWrapper from './components/KioskModeWrapper';
 import useLocalStorage from './hooks/useLocalStorage';
+
+// Expose diagnostics tools to window for easy debugging
+if (typeof window !== 'undefined') {
+  (window as any).firebaseDiagnostics = {
+    runTests: runFirebaseDiagnostics,
+    printReport: printDiagnosticsReport
+  };
+  console.log('💡 Firebase Diagnostics Tools Available:');
+  console.log('   - Run: firebaseDiagnostics.printReport()');
+  console.log('   - Or: firebaseDiagnostics.runTests()');
+}
 
 // Lazy load heavy components to reduce initial memory footprint
 const Reports = lazy(() => import('./components/Reports'));
