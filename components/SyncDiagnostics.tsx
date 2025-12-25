@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { database, isFirebaseConfigured } from '../firebaseConfig';
 import { ref, onValue } from 'firebase/database';
+import { onFirebaseConnectionChange } from '../hooks/useFirebaseSync';
 
 interface DiagnosticInfo {
   firebaseConfigured: boolean;
@@ -46,13 +47,13 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       console.error('localStorage check failed:', error);
     }
 
-    // Check Firebase connection
+    // Check Firebase connection using centralized connection status
     let connectionStatus: 'connected' | 'disconnected' | 'unknown' = 'unknown';
     
     if (isFirebaseConfigured && database) {
-      const connectedRef = ref(database, '.info/connected');
-      const unsubscribe = onValue(connectedRef, (snapshot) => {
-        connectionStatus = snapshot.val() ? 'connected' : 'disconnected';
+      // Use centralized connection monitoring to prevent duplicate listeners
+      const unsubscribe = onFirebaseConnectionChange((isConnected) => {
+        connectionStatus = isConnected ? 'connected' : 'disconnected';
         
         setDiagnostics({
           firebaseConfigured: isFirebaseConfigured,
@@ -66,7 +67,7 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         
         setIsRefreshing(false);
         
-        // Unsubscribe immediately after getting the value to prevent memory leak
+        // Unsubscribe immediately after getting the value to prevent persistent listener
         unsubscribe();
       });
     } else {
