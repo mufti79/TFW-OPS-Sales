@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect, ReactNode, useRef, la
 import { RIDES, FLOORS, OPERATORS, TICKET_SALES_PERSONNEL, COUNTERS, RIDES_ARRAY, OPERATORS_ARRAY, TICKET_SALES_PERSONNEL_ARRAY, COUNTERS_ARRAY, PRESERVE_STORAGE_KEYS } from './constants';
 import { RideWithCount, Ride, Operator, AttendanceRecord, Counter, HistoryRecord, PackageSalesRecord, AttendanceData, PackageSalesData } from './types';
 import { useAuth, Role } from './hooks/useAuth';
-import useFirebaseSync, { onSyncError, WARNING_THROTTLE_MS } from './hooks/useFirebaseSync';
+import useFirebaseSync, { onSyncError, onFirebaseConnectionChange, WARNING_THROTTLE_MS } from './hooks/useFirebaseSync';
 import { isFirebaseConfigured, database, firebaseProjectId } from './firebaseConfig';
 import { ref, onValue, get } from 'firebase/database';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
@@ -329,11 +329,9 @@ const AppComponent: React.FC = () => {
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
-            const connectedRef = ref(database, '.info/connected');
-            
-            // Set up connection monitoring with error handling
-            const unsubscribe = onValue(connectedRef, (snap) => {
-                const isConnected = snap.val() === true;
+            // Use centralized connection status from useFirebaseSync hook
+            // This prevents duplicate listeners on .info/connected
+            const unsubscribe = onFirebaseConnectionChange((isConnected) => {
                 const now = Date.now();
                 
                 if (isConnected) {
@@ -369,11 +367,6 @@ const AppComponent: React.FC = () => {
                         console.error('🔧 Run diagnostics: firebaseDiagnostics.printReport()');
                     }
                 }
-            }, (error) => {
-                // Handle connection monitoring errors
-                console.error('❌ Error monitoring Firebase connection:', error);
-                console.error('💡 Check your internet connection and Firebase configuration');
-                setConnectionStatus('sdk-error');
             });
             
             // Timeout threshold for connection warnings (in milliseconds)
