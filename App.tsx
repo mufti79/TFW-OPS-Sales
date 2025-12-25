@@ -315,8 +315,22 @@ const AppComponent: React.FC = () => {
     useEffect(() => {
         if (isFirebaseConfigured && database) {
             const connectedRef = ref(database, '.info/connected');
+            
+            // Set up connection monitoring with error handling
             const unsubscribe = onValue(connectedRef, (snap) => {
-                setConnectionStatus(snap.val() ? 'connected' : 'disconnected');
+                const isConnected = snap.val() === true;
+                setConnectionStatus(isConnected ? 'connected' : 'disconnected');
+                
+                // Log connection status changes for debugging
+                if (isConnected) {
+                    console.log('✅ Firebase Realtime Database connection established');
+                } else {
+                    console.log('⚠️ Firebase Realtime Database disconnected - working in offline mode');
+                }
+            }, (error) => {
+                // Handle connection monitoring errors
+                console.error('❌ Error monitoring Firebase connection:', error);
+                setConnectionStatus('sdk-error');
             });
             
             // Check if user is returning (has auth data in localStorage) to reduce wait time
@@ -335,9 +349,13 @@ const AppComponent: React.FC = () => {
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Initial data load timed out")), timeoutDuration));
 
             Promise.race([Promise.all(promises), timeoutPromise])
-                .then(() => setInitialLoading(false))
+                .then(() => {
+                    setInitialLoading(false);
+                    console.log('✓ Initial data loaded successfully');
+                })
                 .catch(error => {
                     console.warn("Firebase load issue:", error.message);
+                    console.log('ℹ️ Using cached data - will sync when connection is available');
                     setInitialLoading(false);
                 });
 
@@ -346,8 +364,10 @@ const AppComponent: React.FC = () => {
             // Offline mode / Not configured / SDK Error
             setInitialLoading(false);
             if (!database && typeof window !== 'undefined') {
+                console.error('❌ Firebase database instance is null - check configuration');
                 setConnectionStatus('sdk-error');
             } else {
+                console.log('ℹ️ Firebase not configured - running in offline mode');
                 setConnectionStatus('disconnected');
             }
         }

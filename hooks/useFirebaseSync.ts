@@ -314,24 +314,26 @@ function useFirebaseSync<T>(
                 failedWrites.delete(path);
             }
         } catch (e) {
-            console.warn("Failed to update localStorage from Firebase sync", e);
+            console.warn("⚠️ Failed to update localStorage from Firebase sync", e);
         }
       } else {
         // IMPORTANT: If snapshot doesn't exist (e.g. data was deleted/reset on server),
         // we must revert to initialValue to ensure clients sync the deletion.
+        console.log(`ℹ️ No data at ${path}, using initial value`);
         setStoredValue(initialValue);
         try {
             window.localStorage.removeItem(localKey);
             window.localStorage.removeItem(localKeyTimestamp);
             console.log(`✓ Firebase data cleared for ${path} (data does not exist)`);
         } catch (e) {
-            console.warn("Failed to clear localStorage from Firebase sync", e);
+            console.warn("⚠️ Failed to clear localStorage from Firebase sync", e);
         }
       }
       setLoading(false);
     }, (error) => {
         clearTimeout(timeoutId);
-        console.error(`Firebase read error at path "${path}":`, error);
+        console.error(`❌ Firebase read error at path "${path}":`, error);
+        console.log(`ℹ️ Continuing with cached data for ${path}`);
         setLoading(false);
     });
 
