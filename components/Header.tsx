@@ -40,13 +40,10 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoError, setLogoError] = useState(false);
-  const [logoLoaded, setLogoLoaded] = useState(false);
   
-  // Reset logo error and loaded state when appLogo changes
-  // Also add a timestamp to force browser to reload the image
+  // Reset logo error state when appLogo changes
   React.useEffect(() => {
     setLogoError(false);
-    setLogoLoaded(false);
   }, [appLogo]);
   
   const isManager = role === 'admin' || role === 'operation-officer';
@@ -139,14 +136,9 @@ const Header: React.FC<HeaderProps> = ({
                 }}
                 onLoad={() => {
                   console.log('Logo loaded successfully');
-                  setLogoLoaded(true);
-                }}
-                style={{
-                  display: logoLoaded ? 'block' : 'none'
                 }}
               />
-            ) : null}
-            {(!appLogo || logoError || !logoLoaded) && (
+            ) : (
               <div className="w-10 h-10 bg-gray-700 border-2 border-dashed border-gray-500 rounded-md flex items-center justify-center mr-3">
                 <span className="text-gray-500 text-xs font-bold">Logo</span>
               </div>
