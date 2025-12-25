@@ -97,7 +97,7 @@ export const runFirebaseDiagnostics = async (): Promise<CompleteDiagnostics> => 
       results.recommendations.push('Database URL format is invalid - check firebaseConfig.ts');
       results.recommendations.push(`Current URL: ${urlCheck.url}`);
       return results;
-    } else if (urlCheck.canConnect === false) {
+    } else if (!urlCheck.canConnect) {
       results.databaseURLCheck = {
         success: false,
         message: 'Cannot connect to database URL',

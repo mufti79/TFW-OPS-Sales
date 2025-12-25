@@ -8,6 +8,9 @@
 import { database, isFirebaseConfigured, firebaseProjectId } from '../firebaseConfig';
 import { ref, get, set, onValue, off, DatabaseReference } from 'firebase/database';
 
+// Connection test timeout in milliseconds
+const CONNECTION_TEST_TIMEOUT_MS = 5000;
+
 export interface ConnectionTestResult {
   configured: boolean;
   connected: boolean;
@@ -161,7 +164,7 @@ export const verifyDatabaseURL = async (): Promise<{
       const connectedRef = ref(database, '.info/connected');
       const snapshot = await Promise.race([
         get(connectedRef),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), 5000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Connection timeout')), CONNECTION_TEST_TIMEOUT_MS))
       ]);
       
       return {

@@ -17,6 +17,7 @@ During investigation, we discovered a critical issue: **The Firebase Realtime Da
 
 **Technical Details:**
 - Database URL in config: `https://tfw-ops-salesgit-4001335-4685c-default-rtdb.firebaseio.com`
+  - *(Note: This is from the existing public repository configuration)*
 - DNS Resolution: FAILED (host not found)
 - Error Type: Network connectivity failure / Database may not exist
 
