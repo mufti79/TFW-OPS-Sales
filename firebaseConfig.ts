@@ -115,6 +115,10 @@ if (isFirebaseConfigured) {
 // Export the database instance.
 export const database = dbInstance;
 
+// Timing constants for force reconnection
+const OFFLINE_WAIT_MS = 1000;  // Time to wait after going offline
+const ONLINE_WAIT_MS = 2000;   // Time to wait after going online
+
 /**
  * Force reconnection to Firebase Realtime Database
  * This can help when the connection gets stuck or fails to establish
@@ -136,14 +140,14 @@ export const forceReconnect = async (): Promise<{ success: boolean; message: str
     console.log('📴 Disconnected from Firebase');
     
     // Wait a moment for the disconnection to complete
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, OFFLINE_WAIT_MS));
     
     // Then go back online to force a fresh connection
     goOnline(database);
     console.log('📶 Reconnecting to Firebase...');
     
     // Wait a moment for the connection to establish
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, ONLINE_WAIT_MS));
     
     return { 
       success: true, 

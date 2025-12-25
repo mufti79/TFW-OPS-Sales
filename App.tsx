@@ -391,10 +391,12 @@ const AppComponent: React.FC = () => {
                         console.warn('');
                         console.warn('🔧 Troubleshooting steps:');
                         console.warn('   1. Run: firebaseDiagnostics.printReport()');
-                        const consoleUrl = firebaseProjectId 
-                            ? `https://console.firebase.google.com/project/${encodeURIComponent(firebaseProjectId)}/database`
-                            : 'https://console.firebase.google.com';
-                        console.warn(`   2. Check Firebase Console: ${consoleUrl}`);
+                        if (firebaseProjectId) {
+                            const consoleUrl = `https://console.firebase.google.com/project/${encodeURIComponent(firebaseProjectId)}/database`;
+                            console.warn(`   2. Check Firebase Console: ${consoleUrl}`);
+                        } else {
+                            console.warn('   2. Check Firebase Console: https://console.firebase.google.com');
+                        }
                         console.warn('   3. Verify database URL in firebaseConfig.ts');
                         console.warn('   4. Check browser console for errors');
                         console.warn('   5. Try refreshing the page');

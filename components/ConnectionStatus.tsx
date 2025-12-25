@@ -28,6 +28,8 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
           const timeSinceDisconnect = Date.now() - disconnectedTimeRef.current;
           if (timeSinceDisconnect > 30000) {
             setIsStuckReconnecting(true);
+            // No need to keep checking once stuck is detected
+            clearInterval(checkInterval);
           }
         }
       }, 5000); // Check every 5 seconds
