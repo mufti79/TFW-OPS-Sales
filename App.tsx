@@ -357,7 +357,7 @@ const AppComponent: React.FC = () => {
                     const timeSinceDisconnect = initialDisconnectTimeRef.current ? now - initialDisconnectTimeRef.current : 0;
                     if (connectionAttempts > 5 && timeSinceDisconnect > 30000) {
                         console.error('⚠️ Connection issues detected - still disconnected after multiple attempts');
-                        console.error('💡 Run diagnostics: firebaseDiagnostics.printReport()');
+                        console.error('💡 Check Firebase connection status in the header menu');
                     }
                 }
             });
@@ -373,7 +373,7 @@ const AppComponent: React.FC = () => {
                     // If disconnected for more than threshold, something is wrong
                     if (timeSinceLastCheck > CONNECTION_WARNING_THRESHOLD_MS) {
                         console.warn('⚠️ Firebase connection not established after 60 seconds');
-                        console.warn('🔧 Run diagnostics: firebaseDiagnostics.printReport()');
+                        console.warn('💡 Check Firebase connection status in the header menu');
                     }
                 }
             }, 30000); // Check every 30 seconds
