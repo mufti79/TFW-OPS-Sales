@@ -7,6 +7,7 @@
 
 import { database, isFirebaseConfigured, firebaseProjectId } from '../firebaseConfig';
 import { ref, get, set, onValue, off, DatabaseReference } from 'firebase/database';
+import { onFirebaseConnectionChange } from '../hooks/useFirebaseSync';
 
 // Connection test timeout in milliseconds
 const CONNECTION_TEST_TIMEOUT_MS = 5000;
@@ -96,6 +97,9 @@ export const testFirebaseConnection = async (): Promise<ConnectionTestResult> =>
 /**
  * Monitors Firebase connection status in real-time
  * Returns an unsubscribe function to stop monitoring
+ * 
+ * Note: This uses the centralized connection monitor from useFirebaseSync
+ * to prevent duplicate listeners on .info/connected
  */
 export const monitorConnectionStatus = (
   onStatusChange: (connected: boolean) => void
@@ -105,14 +109,8 @@ export const monitorConnectionStatus = (
     return () => {};
   }
 
-  const connectedRef = ref(database, '.info/connected');
-  
-  const unsubscribe = onValue(connectedRef, (snapshot) => {
-    const connected = snapshot.val() === true;
-    onStatusChange(connected);
-  });
-
-  return unsubscribe;
+  // Use centralized connection monitoring to prevent duplicate listeners
+  return onFirebaseConnectionChange(onStatusChange);
 };
 
 /**

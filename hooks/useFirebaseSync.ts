@@ -11,32 +11,87 @@ const INITIAL_RETRY_DELAY_MS = 2000; // Start with 2 seconds
 const MAX_RETRY_DELAY_MS = 30000; // Cap at 30 seconds
 export const WARNING_THROTTLE_MS = 30000; // 30 seconds - max frequency for sync warnings
 
-// Connection monitoring
+// Connection monitoring state
 let isOnline = navigator.onLine;
 let connectionListenerSetup = false;
 let dataConsistencyCheckInterval: NodeJS.Timeout | null = null;
 let firebaseConnected = false; // Track Firebase-level connection status
+let firebaseConnectionMonitorSetup = false; // Guard to prevent duplicate Firebase connection listeners
+let firebaseConnectionUnsubscribe: (() => void) | null = null; // Store unsubscribe function
+
+// Callbacks to notify about connection state changes
+type ConnectionStatusCallback = (connected: boolean) => void;
+const connectionStatusCallbacks: ConnectionStatusCallback[] = [];
 
 // Track paths that need consistency verification
 const pathsToVerify = new Set<string>();
 
-// Monitor Firebase connection status globally
+/**
+ * Get the current Firebase connection status
+ * @returns true if connected, false otherwise
+ */
+export const getFirebaseConnectionStatus = (): boolean => {
+  return firebaseConnected;
+};
+
+/**
+ * Subscribe to Firebase connection status changes
+ * @param callback Function to call when connection status changes
+ * @returns Unsubscribe function
+ */
+export const onFirebaseConnectionChange = (callback: ConnectionStatusCallback): (() => void) => {
+  connectionStatusCallbacks.push(callback);
+  // Immediately call with current status
+  callback(firebaseConnected);
+  
+  return () => {
+    const index = connectionStatusCallbacks.indexOf(callback);
+    if (index > -1) {
+      connectionStatusCallbacks.splice(index, 1);
+    }
+  };
+};
+
+// Notify all callbacks about connection status change
+const notifyConnectionStatusChange = (connected: boolean) => {
+  connectionStatusCallbacks.forEach(callback => {
+    try {
+      callback(connected);
+    } catch (err) {
+      console.error('Error in connection status callback:', err);
+    }
+  });
+};
+
+// Monitor Firebase connection status globally - SINGLETON pattern to ensure only one listener
 const setupFirebaseConnectionMonitor = () => {
-  if (!database || !isFirebaseConfigured) return;
+  // Guard: Only set up once globally, regardless of how many times this is called
+  if (firebaseConnectionMonitorSetup || !database || !isFirebaseConfigured) return;
+  
+  firebaseConnectionMonitorSetup = true;
+  console.log('🔥 Setting up Firebase connection monitor (singleton)');
   
   const connectedRef = ref(database, '.info/connected');
-  onValue(connectedRef, (snapshot) => {
+  firebaseConnectionUnsubscribe = onValue(connectedRef, (snapshot) => {
     const connected = snapshot.val() === true;
+    const previousState = firebaseConnected;
     firebaseConnected = connected;
     
-    if (connected) {
-      console.log('🔥 Firebase Realtime Database connected');
-      // Retry any failed writes when reconnected
-      setTimeout(() => {
-        retryAllFailedWrites();
-      }, 1000);
-    } else {
-      console.log('🔥 Firebase Realtime Database disconnected');
+    // Only log and act on state changes to avoid noise
+    if (previousState !== connected) {
+      if (connected) {
+        console.log('🔥 Firebase Realtime Database connected');
+        // Notify all listeners about connection status change
+        notifyConnectionStatusChange(true);
+        // Retry any failed writes when reconnected
+        setTimeout(() => {
+          retryAllFailedWrites();
+        }, 1000);
+      } else {
+        console.log('🔥 Firebase Realtime Database disconnected');
+        // Notify all listeners about connection status change
+        notifyConnectionStatusChange(false);
+      }
     }
   });
 };
@@ -102,28 +157,34 @@ const retryAllFailedWrites = () => {
   });
 };
 
-// Setup connection monitoring (only once globally)
+// Handler functions for browser online/offline events
+const handleBrowserOnline = () => {
+  console.log('🌐 Browser is back online');
+  isOnline = true;
+  // Wait a bit for connection to stabilize, then retry failed writes
+  setTimeout(() => {
+    retryAllFailedWrites();
+  }, 1000);
+};
+
+const handleBrowserOffline = () => {
+  console.log('🌐 Browser is offline');
+  isOnline = false;
+};
+
+// Setup connection monitoring (only once globally) - SINGLETON pattern
 const setupConnectionMonitoring = () => {
   if (connectionListenerSetup) return;
   connectionListenerSetup = true;
   
-  // Setup Firebase-level connection monitoring
+  console.log('🔧 Setting up global connection monitoring (singleton)');
+  
+  // Setup Firebase-level connection monitoring (singleton with its own guard)
   setupFirebaseConnectionMonitor();
   
-  // Monitor browser online/offline events
-  window.addEventListener('online', () => {
-    console.log('🌐 Browser is back online');
-    isOnline = true;
-    // Wait a bit for connection to stabilize, then retry failed writes
-    setTimeout(() => {
-      retryAllFailedWrites();
-    }, 1000);
-  });
-  
-  window.addEventListener('offline', () => {
-    console.log('🌐 Browser is offline');
-    isOnline = false;
-  });
+  // Monitor browser online/offline events - use named functions for proper cleanup
+  window.addEventListener('online', handleBrowserOnline);
+  window.addEventListener('offline', handleBrowserOffline);
   
   // Setup periodic data consistency check (every 5 minutes when online)
   // This helps catch any sync issues that might occur
@@ -497,5 +558,36 @@ function useFirebaseSync<T>(
 
   return { data: storedValue, setData: setValue, isLoading: loading };
 }
+
+/**
+ * Cleanup function to tear down global connection monitoring
+ * Should only be called when the entire application is shutting down
+ * Not normally needed in React apps, but useful for testing
+ */
+export const cleanupConnectionMonitoring = () => {
+  // Clean up Firebase connection listener
+  if (firebaseConnectionUnsubscribe) {
+    firebaseConnectionUnsubscribe();
+    firebaseConnectionUnsubscribe = null;
+    firebaseConnectionMonitorSetup = false;
+    console.log('🔧 Firebase connection monitor cleaned up');
+  }
+  
+  // Clean up browser event listeners
+  window.removeEventListener('online', handleBrowserOnline);
+  window.removeEventListener('offline', handleBrowserOffline);
+  
+  // Clear consistency check interval
+  if (dataConsistencyCheckInterval) {
+    clearInterval(dataConsistencyCheckInterval);
+    dataConsistencyCheckInterval = null;
+  }
+  
+  // Clear all connection status callbacks to prevent memory leaks
+  connectionStatusCallbacks.length = 0;
+  
+  connectionListenerSetup = false;
+  console.log('🔧 Global connection monitoring cleaned up');
+};
 
 export default useFirebaseSync;
