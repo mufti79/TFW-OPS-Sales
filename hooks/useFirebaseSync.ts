@@ -80,7 +80,7 @@ const setupFirebaseConnectionMonitor = () => {
     // Only log and act on state changes to avoid noise
     if (previousState !== connected) {
       if (connected) {
-        console.log('🔥 Firebase Realtime Database connected');
+        console.log('✅ Firebase connected');
         // Notify all listeners about connection status change
         notifyConnectionStatusChange(true);
         // Retry any failed writes when reconnected
@@ -88,7 +88,7 @@ const setupFirebaseConnectionMonitor = () => {
           retryAllFailedWrites();
         }, 1000);
       } else {
-        console.log('🔥 Firebase Realtime Database disconnected');
+        console.log('⚠️ Firebase disconnected - will reconnect automatically');
         // Notify all listeners about connection status change
         notifyConnectionStatusChange(false);
       }
@@ -270,19 +270,6 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
     if (now - timestamp < expirationTime) {
       try {
         const parsedData = JSON.parse(item);
-        const ageSeconds = Math.floor((now - timestamp) / 1000);
-        
-        // Determine cache type for logging
-        let cacheType: string;
-        if (isLogoPath) {
-          cacheType = 'logo (never expires)';
-        } else if (isConfigPath) {
-          cacheType = 'config';
-        } else {
-          cacheType = 'data';
-        }
-        
-        console.log(`✓ Using cached data for ${path} (age: ${ageSeconds}s, type: ${cacheType})`);
         return parsedData;
       } catch (parseError) {
         console.warn(`Failed to parse cached data for ${path}, clearing cache:`, parseError);
@@ -292,11 +279,6 @@ function getCachedValue<T>(localKey: string, localKeyTimestamp: string, path: st
       }
     } else {
       // Cache is stale, clear it
-      const ageHours = Math.floor((now - timestamp) / (60 * 60 * 1000));
-      const ageMinutes = Math.floor((now - timestamp) / (60 * 1000));
-      const ageSeconds = Math.floor((now - timestamp) / 1000);
-      const ageDisplay = ageHours > 0 ? `${ageHours} hours` : (ageMinutes > 0 ? `${ageMinutes} minutes` : `${ageSeconds} seconds`);
-      console.warn(`Cache expired for ${path} (age: ${ageDisplay}), will refresh from Firebase`);
       window.localStorage.removeItem(localKey);
       window.localStorage.removeItem(localKeyTimestamp);
       return null;
@@ -319,15 +301,7 @@ function useFirebaseSync<T>(
     if (typeof window !== 'undefined') {
       const cachedValue = getCachedValue<T>(localKey, localKeyTimestamp, path);
       if (cachedValue !== null) {
-        // Special logging for logo
-        if (path === LOGO_PATH) {
-          const logoSize = (typeof cachedValue === 'string') ? cachedValue.length : 0;
-          console.log(`✓ Logo loaded from cache (size: ${logoSize} characters)`);
-          console.log(`ℹ️ Logo will be displayed immediately while Firebase syncs`);
-        }
         return cachedValue;
-      } else if (path === LOGO_PATH) {
-        console.log(`ℹ️ No cached logo found - will load from Firebase or show placeholder`);
       }
     }
     return initialValue;
@@ -379,56 +353,28 @@ function useFirebaseSync<T>(
             window.localStorage.setItem(localKey, JSON.stringify(val));
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
             
-            // Special logging for logo to help with debugging
-            if (path === LOGO_PATH) {
-                const logoSize = (typeof val === 'string') ? val.length : 0;
-                console.log(`✓ Logo loaded from Firebase Realtime Database (size: ${logoSize} characters)`);
-                console.log(`✓ Logo cached for fast display`);
-            } else {
-                console.log(`✓ Data loaded from Firebase Realtime Database for ${path}`);
-            }
-            
             // Clear any pending failed writes for this path since we just got fresh data
             if (failedWrites.has(path)) {
-                console.log(`✓ Clearing failed writes for ${path} - fresh data received`);
                 failedWrites.delete(path);
             }
         } catch (e) {
-            console.warn("⚠️ Failed to update cache from Firebase sync", e);
-            if (path === LOGO_PATH) {
-                console.error("⚠️ Logo could not be cached");
-            }
+            console.warn("Failed to update cache", e);
         }
       } else {
         // IMPORTANT: If snapshot doesn't exist (e.g. data was deleted/reset in Firebase),
         // we must revert to initialValue to ensure clients sync the deletion.
-        if (path === LOGO_PATH) {
-            console.log(`ℹ️ No logo found in Firebase Realtime Database - using placeholder`);
-        } else {
-            console.log(`ℹ️ No data at ${path} in Firebase, using initial value`);
-        }
         setStoredValue(initialValue);
         try {
             window.localStorage.removeItem(localKey);
             window.localStorage.removeItem(localKeyTimestamp);
-            if (path === LOGO_PATH) {
-                console.log(`✓ Logo cache cleared (no logo in Firebase Realtime Database)`);
-            } else {
-                console.log(`✓ Cache cleared for ${path} (data does not exist in Firebase)`);
-            }
         } catch (e) {
-            console.warn("⚠️ Failed to clear cache from Firebase sync", e);
+            console.warn("Failed to clear cache", e);
         }
       }
       setLoading(false);
     }, (error) => {
         clearTimeout(timeoutId);
-        console.error(`❌ Firebase Realtime Database read error at path "${path}":`, error);
-        if (path === LOGO_PATH) {
-            console.log(`ℹ️ Cannot load logo from Firebase - using cached version if available`);
-        } else {
-            console.log(`ℹ️ Cannot load from Firebase - using cached data for ${path}`);
-        }
+        console.error(`Firebase read error at "${path}":`, error);
         setLoading(false);
     });
 
@@ -449,9 +395,8 @@ function useFirebaseSync<T>(
         try {
             window.localStorage.setItem(localKey, JSON.stringify(valueToStore));
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
-            console.log(`✓ Data cached for ${path}`);
         } catch (error) {
-            console.error(`❌ Error saving to localStorage for key "${localKey}":`, error);
+            console.error(`Error saving to localStorage for "${localKey}":`, error);
         }
 
         // 2. Save to Firebase Realtime Database (Primary Storage) with retry mechanism
@@ -461,7 +406,6 @@ function useFirebaseSync<T>(
             const attemptWrite = (retryCount: number = 0) => {
                 set(dbRef, valueToStore)
                     .then(() => {
-                        console.log(`✓ Data saved to Firebase Realtime Database for ${path}`);
                         // Clear any failed write tracking on success
                         failedWrites.delete(path);
                     })
@@ -470,8 +414,7 @@ function useFirebaseSync<T>(
                         const err = error instanceof Error ? error : new Error(String(error));
                         const firebaseErr = err as FirebaseError;
                         
-                        console.error(`❌ Firebase Realtime Database write error at path "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, err);
-                        console.error(`   Error details:`, firebaseErr.code || 'unknown', err.message);
+                        console.error(`Firebase write error at "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, err.message);
                         
                         // Check for specific error types that need special handling
                         const isPermissionError = firebaseErr.code === 'PERMISSION_DENIED';
@@ -482,16 +425,11 @@ function useFirebaseSync<T>(
                                                err.message.includes('offline');
                         
                         if (isPermissionError) {
-                            console.error(`   ⚠️ PERMISSION DENIED - Check Firebase database rules!`);
-                            console.error(`   Database rules may be blocking writes to: ${path}`);
-                            console.error(`   Visit: https://console.firebase.google.com/project/${firebaseProjectId}/database/rules`);
+                            console.error(`PERMISSION DENIED - Check Firebase database rules for: ${path}`);
                         }
                         
                         // Improved connection detection
                         const isCurrentlyOffline = !isOnline || !firebaseConnected;
-                        if (isNetworkError && isCurrentlyOffline) {
-                            console.warn(`   ℹ️ Connection interrupted - data will be saved to Firebase when connection is restored`);
-                        }
                         
                         // Track failed write for retry
                         if (retryCount < MAX_RETRY_INDEX) {
@@ -503,7 +441,6 @@ function useFirebaseSync<T>(
                             });
                             
                             // Calculate exponential backoff delay: 2s, 4s, 8s, 16s, 30s, 30s, ...
-                            // This provides better resilience against transient network issues
                             const exponentialDelay = Math.min(
                                 INITIAL_RETRY_DELAY_MS * Math.pow(2, retryCount),
                                 MAX_RETRY_DELAY_MS
@@ -517,26 +454,16 @@ function useFirebaseSync<T>(
                             }
                             
                             // Schedule retry with exponential backoff
-                            console.warn(`⏳ Will retry saving to Firebase for ${path} in ${exponentialDelay/1000} seconds... (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
                             setTimeout(() => {
                                 const failedWrite = failedWrites.get(path);
                                 // Only retry if this is still the current failed write attempt
                                 if (failedWrite && failedWrite.retryCount === nextRetryCount) {
-                                    console.log(`🔄 Retrying Firebase Realtime Database write for ${path} (attempt ${nextRetryCount + 1}/${MAX_RETRY_ATTEMPTS})`);
                                     attemptWrite(nextRetryCount);
                                 }
                             }, exponentialDelay);
                         } else {
-                            console.error(`❌ CRITICAL: Firebase Realtime Database write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
-                            console.error(`   Data is cached locally but NOT saved to Firebase. It will NOT sync to other devices!`);
-                            
-                            if (isPermissionError) {
-                                console.error(`   CAUSE: Database permission rules are blocking writes`);
-                                console.error(`   FIX: Update Firebase Realtime Database rules at:`);
-                                console.error(`   https://console.firebase.google.com/project/${firebaseProjectId}/database/rules`);
-                            } else {
-                                console.error(`   Possible causes: Database rules, network issues, or permissions`);
-                            }
+                            console.error(`CRITICAL: Firebase write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
+                            console.error(`Data is cached locally but NOT saved to Firebase`);
                             
                             // Notify listeners about critical sync error (all retries failed)
                             notifySyncError(path, err, true);
@@ -549,7 +476,7 @@ function useFirebaseSync<T>(
             // Start the write attempt
             attemptWrite(0);
         } else {
-            console.warn(`⚠️ Firebase not configured. Data for ${path} is cached locally only and will not be saved to Firebase.`);
+            console.warn(`Firebase not configured. Data for ${path} is cached locally only.`);
         }
         
         return valueToStore;

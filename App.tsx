@@ -8,10 +8,6 @@ import { isFirebaseConfigured, database, firebaseProjectId } from './firebaseCon
 import { ref, onValue, get } from 'firebase/database';
 import { NotificationContext, useNotification, NotificationType } from './imageStore';
 import NotificationComponent from './components/AttendanceCheckin';
-import { printDiagnosticsReport, runFirebaseDiagnostics } from './utils/firebaseDiagnostics';
-
-
-
 
 import Login from './components/Login';
 import Header from './components/Header';
@@ -20,17 +16,6 @@ import Footer from './components/Footer';
 import ConfigErrorScreen from './components/ConfigErrorScreen';
 import KioskModeWrapper from './components/KioskModeWrapper';
 import useLocalStorage from './hooks/useLocalStorage';
-
-// Expose diagnostics tools to window for easy debugging
-if (typeof window !== 'undefined') {
-  (window as any).firebaseDiagnostics = {
-    runTests: runFirebaseDiagnostics,
-    printReport: printDiagnosticsReport
-  };
-  console.log('💡 Firebase Diagnostics Tools Available:');
-  console.log('   - Run: firebaseDiagnostics.printReport()');
-  console.log('   - Or: firebaseDiagnostics.runTests()');
-}
 
 // Lazy load heavy components to reduce initial memory footprint
 const Reports = lazy(() => import('./components/Reports'));
@@ -231,6 +216,7 @@ const AppComponent: React.FC = () => {
     const [connectionAttempts, setConnectionAttempts] = useState(0);
     const [lastConnectionCheck, setLastConnectionCheck] = useState(Date.now());
     const initialDisconnectTimeRef = useRef<number | null>(null);
+    const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const { data: dailyCounts, setData: setDailyCounts } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
     const { data: dailyRideDetails, setData: setDailyRideDetails } = useFirebaseSync<Record<string, Record<string, { tickets: number; packages: number }>>>('data/dailyRideDetails', {});
@@ -329,10 +315,25 @@ const AppComponent: React.FC = () => {
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
+            // Set a timeout to transition from "connecting" to "disconnected" if connection takes too long
+            // This prevents the UI from showing "Connecting..." indefinitely
+            connectionTimeoutRef.current = setTimeout(() => {
+                if (connectionStatus === 'connecting') {
+                    console.warn('⚠️ Firebase connection timeout - transitioning to disconnected state');
+                    setConnectionStatus('disconnected');
+                }
+            }, 10000); // 10 seconds timeout
+            
             // Use centralized connection status from useFirebaseSync hook
             // This prevents duplicate listeners on .info/connected
             const unsubscribe = onFirebaseConnectionChange((isConnected) => {
                 const now = Date.now();
+                
+                // Clear the connection timeout since we got a status update
+                if (connectionTimeoutRef.current) {
+                    clearTimeout(connectionTimeoutRef.current);
+                    connectionTimeoutRef.current = null;
+                }
                 
                 if (isConnected) {
                     setConnectionStatus('connected');
@@ -340,7 +341,6 @@ const AppComponent: React.FC = () => {
                     setLastConnectionCheck(now);
                     initialDisconnectTimeRef.current = null; // Reset disconnect timer
                     console.log('✅ Firebase Realtime Database connection established');
-                    console.log('✓ All data will be saved to Firebase and synced in real-time');
                 } else {
                     setConnectionStatus('disconnected');
                     setConnectionAttempts(prev => prev + 1);
@@ -352,19 +352,12 @@ const AppComponent: React.FC = () => {
                     }
                     
                     console.log('⚠️ Firebase Realtime Database connection interrupted - attempting to reconnect');
-                    console.log('ℹ️ Changes will be saved to Firebase automatically when connection is restored');
                     
                     // If stuck disconnected for too long, provide diagnostic help
                     const timeSinceDisconnect = initialDisconnectTimeRef.current ? now - initialDisconnectTimeRef.current : 0;
                     if (connectionAttempts > 5 && timeSinceDisconnect > 30000) {
                         console.error('⚠️ Connection issues detected - still disconnected after multiple attempts');
-                        console.error('💡 Possible causes:');
-                        console.error('   1. Firebase Realtime Database does not exist');
-                        console.error('   2. Database URL is incorrect');
-                        console.error('   3. Network/firewall blocking Firebase');
-                        console.error('   4. Security rules blocking access');
-                        console.error('');
-                        console.error('🔧 Run diagnostics: firebaseDiagnostics.printReport()');
+                        console.error('💡 Run diagnostics: firebaseDiagnostics.printReport()');
                     }
                 }
             });
@@ -380,23 +373,7 @@ const AppComponent: React.FC = () => {
                     // If disconnected for more than threshold, something is wrong
                     if (timeSinceLastCheck > CONNECTION_WARNING_THRESHOLD_MS) {
                         console.warn('⚠️ Firebase connection not established after 60 seconds');
-                        console.warn('💡 This might indicate:');
-                        console.warn('   - Database URL is incorrect or database does not exist');
-                        console.warn('   - Network/firewall blocking Firebase servers');
-                        console.warn('   - Browser blocking third-party connections');
-                        console.warn('');
-                        console.warn('🔧 Troubleshooting steps:');
-                        console.warn('   1. Run: firebaseDiagnostics.printReport()');
-                        if (firebaseProjectId) {
-                            // Note: Project ID is logged for debugging only, not exposed to end users
-                            const consoleUrl = `https://console.firebase.google.com/project/${encodeURIComponent(firebaseProjectId)}/database`;
-                            console.warn(`   2. Check Firebase Console: ${consoleUrl}`);
-                        } else {
-                            console.warn('   2. Check Firebase Console: https://console.firebase.google.com');
-                        }
-                        console.warn('   3. Verify database URL in firebaseConfig.ts');
-                        console.warn('   4. Check browser console for errors');
-                        console.warn('   5. Try refreshing the page');
+                        console.warn('🔧 Run diagnostics: firebaseDiagnostics.printReport()');
                     }
                 }
             }, 30000); // Check every 30 seconds
@@ -419,19 +396,20 @@ const AppComponent: React.FC = () => {
             Promise.race([Promise.all(promises), timeoutPromise])
                 .then(() => {
                     setInitialLoading(false);
-                    console.log('✓ Initial data loaded successfully from Firebase Realtime Database');
-                    console.log('✓ Logo, rides, and operators synced from Firebase');
+                    console.log('✓ Initial data loaded from Firebase');
                 })
                 .catch(error => {
                     console.warn("Firebase load issue:", error.message);
-                    console.log('ℹ️ Loading cached data while Firebase reconnects - all changes will be saved to Firebase');
-                    console.log('ℹ️ Logo will display from cache if previously saved to Firebase');
+                    console.log('ℹ️ Loading cached data while Firebase reconnects');
                     setInitialLoading(false);
                 });
 
             return () => {
                 unsubscribe();
                 clearInterval(connectionCheckInterval);
+                if (connectionTimeoutRef.current) {
+                    clearTimeout(connectionTimeoutRef.current);
+                }
             };
         } else {
             // Not configured / SDK Error

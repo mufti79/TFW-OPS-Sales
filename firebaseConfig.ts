@@ -77,37 +77,13 @@ if (isFirebaseConfigured) {
     try {
       // Initialize Firebase only once
       const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-      console.log("Firebase initialized successfully");
       
       // Initialize Realtime Database with proper error handling
       dbInstance = getDatabase(app);
-      console.log("Firebase Database instance ready");
-      console.log("Database URL:", firebaseConfig.databaseURL);
-      
-      // Log successful initialization
-      console.log("✓ Firebase Realtime Database initialized and ready for connections");
-      console.log("");
-      console.log("📝 Note: If you see connection errors, it may mean:");
-      console.log("   - The Realtime Database hasn't been created in Firebase Console");
-      console.log("   - The database URL is incorrect");
-      console.log("   - Security rules are blocking access");
-      console.log("   - Network/firewall is blocking Firebase");
-      console.log("");
-      console.log("💡 Run diagnostics in browser console: firebaseDiagnostics.printReport()");
+      console.log("✓ Firebase initialized");
     } catch (e) {
       console.error("❌ Error initializing Firebase:", e);
-      console.error("");
-      console.error("Common causes:");
-      console.error("1. Invalid API key or project ID");
-      console.error("2. Firebase project doesn't exist or was deleted");
-      console.error("3. Network connection issues");
-      console.error("4. Realtime Database not enabled in Firebase Console");
-      console.error("");
-      console.error("🔧 Please verify:");
-      console.error("   - Firebase project exists: https://console.firebase.google.com/project/" + firebaseConfig.projectId);
-      console.error("   - Realtime Database is created");
-      console.error("   - API key is valid");
-      console.error("   - Network connection is working");
+      console.error("Please verify Firebase project exists and credentials are correct");
     }
   }
 }
