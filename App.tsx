@@ -125,7 +125,13 @@ const shouldResetViewForRole = (currentView: View, role: Exclude<Role, null>): b
 const DATE_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const VISIBILITY_CHECK_THROTTLE = 30 * 1000; // 30 seconds
 const CACHE_CLEAR_RELOAD_DELAY = 2000; // 2 seconds - delay before reloading after clearing cache
-const FIREBASE_CONNECTION_TIMEOUT = 10000; // 10 seconds - max time to wait for initial Firebase connection
+
+/**
+ * Maximum time to wait for initial Firebase connection before transitioning from "connecting" to "disconnected" state.
+ * This prevents the UI from showing an indefinite "Connecting..." message if Firebase is unreachable.
+ * The timeout is cleared if a connection status update is received before the timeout expires.
+ */
+const FIREBASE_CONNECTION_TIMEOUT = 10000; // 10 seconds
 
 const toLocalDateString = (date: Date): string => {
   const year = date.getFullYear();
