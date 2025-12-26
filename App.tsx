@@ -125,6 +125,7 @@ const shouldResetViewForRole = (currentView: View, role: Exclude<Role, null>): b
 const DATE_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const VISIBILITY_CHECK_THROTTLE = 30 * 1000; // 30 seconds
 const CACHE_CLEAR_RELOAD_DELAY = 2000; // 2 seconds - delay before reloading after clearing cache
+const FIREBASE_CONNECTION_TIMEOUT = 10000; // 10 seconds - max time to wait for initial Firebase connection
 
 const toLocalDateString = (date: Date): string => {
   const year = date.getFullYear();
@@ -315,6 +316,14 @@ const AppComponent: React.FC = () => {
     
     useEffect(() => {
         if (isFirebaseConfigured && database) {
+            // Helper function to clear connection timeout
+            const clearConnectionTimeout = () => {
+                if (connectionTimeoutRef.current) {
+                    clearTimeout(connectionTimeoutRef.current);
+                    connectionTimeoutRef.current = null;
+                }
+            };
+            
             // Set a timeout to transition from "connecting" to "disconnected" if connection takes too long
             // This prevents the UI from showing "Connecting..." indefinitely
             connectionTimeoutRef.current = setTimeout(() => {
@@ -322,7 +331,7 @@ const AppComponent: React.FC = () => {
                     console.warn('⚠️ Firebase connection timeout - transitioning to disconnected state');
                     setConnectionStatus('disconnected');
                 }
-            }, 10000); // 10 seconds timeout
+            }, FIREBASE_CONNECTION_TIMEOUT);
             
             // Use centralized connection status from useFirebaseSync hook
             // This prevents duplicate listeners on .info/connected
@@ -330,10 +339,7 @@ const AppComponent: React.FC = () => {
                 const now = Date.now();
                 
                 // Clear the connection timeout since we got a status update
-                if (connectionTimeoutRef.current) {
-                    clearTimeout(connectionTimeoutRef.current);
-                    connectionTimeoutRef.current = null;
-                }
+                clearConnectionTimeout();
                 
                 if (isConnected) {
                     setConnectionStatus('connected');
@@ -407,9 +413,7 @@ const AppComponent: React.FC = () => {
             return () => {
                 unsubscribe();
                 clearInterval(connectionCheckInterval);
-                if (connectionTimeoutRef.current) {
-                    clearTimeout(connectionTimeoutRef.current);
-                }
+                clearConnectionTimeout();
             };
         } else {
             // Not configured / SDK Error
