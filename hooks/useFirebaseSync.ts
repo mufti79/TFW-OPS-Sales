@@ -363,7 +363,7 @@ function useFirebaseSync<T>(
     
     const dbRef = ref(database, path);
 
-    // Reduced timeout to 2.5s to let offline users start working faster
+    // Timeout set to 5s to balance between fast offline startup and reliable connection on slower networks
     const timeoutId = setTimeout(() => {
         // Only update loading state if still loading to avoid unnecessary state updates
         setLoading((currentLoading) => {
@@ -373,7 +373,7 @@ function useFirebaseSync<T>(
             }
             return currentLoading;
         });
-    }, 2500);
+    }, 5000);
 
     const unsubscribe = onValue(dbRef, (snapshot) => {
       clearTimeout(timeoutId);

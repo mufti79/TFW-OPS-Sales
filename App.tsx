@@ -417,20 +417,25 @@ const AppComponent: React.FC = () => {
             });
             
             // Timeout threshold for connection warnings (in milliseconds)
-            const CONNECTION_WARNING_THRESHOLD_MS = 60000; // 60 seconds
+            const CONNECTION_WARNING_THRESHOLD_MS = 120000; // 120 seconds (2 minutes)
             
             // Add periodic connection health check
+            // Only warn if truly stuck, not during normal connection establishment
             const connectionCheckInterval = setInterval(() => {
-                if (connectionStatus === 'disconnected' || connectionStatus === 'connecting') {
-                    const timeSinceLastCheck = Date.now() - lastConnectionCheck;
+                // Only warn if we've been in a disconnected state for an extended period
+                // Skip warnings if we're in initial connecting state or recently had status updates
+                if (connectionStatus === 'disconnected' && initialDisconnectTimeRef.current) {
+                    const timeSinceDisconnect = Date.now() - initialDisconnectTimeRef.current;
                     
-                    // If disconnected for more than threshold, something is wrong
-                    if (timeSinceLastCheck > CONNECTION_WARNING_THRESHOLD_MS) {
-                        console.warn('⚠️ Firebase connection not established after 60 seconds');
+                    // If disconnected for more than threshold and no successful reconnects, warn user
+                    if (timeSinceDisconnect > CONNECTION_WARNING_THRESHOLD_MS) {
+                        console.warn('⚠️ Firebase connection not established after 2 minutes');
                         console.warn('💡 Check Firebase connection status in the header menu');
+                        // Reset disconnect timer to avoid repeated warnings on next check
+                        initialDisconnectTimeRef.current = Date.now();
                     }
                 }
-            }, 30000); // Check every 30 seconds
+            }, 60000); // Check every 60 seconds
             
             // Check if user is returning (has auth data in localStorage) to reduce wait time
             let hasStoredAuth = false;
