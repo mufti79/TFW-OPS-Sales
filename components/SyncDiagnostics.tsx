@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { database, isFirebaseConfigured } from '../firebaseConfig';
-import { ref, onValue } from 'firebase/database';
-import { onFirebaseConnectionChange } from '../hooks/useFirebaseSync';
+import { ref, get } from 'firebase/database';
 
 interface DiagnosticInfo {
   firebaseConfigured: boolean;
@@ -17,7 +16,7 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [diagnostics, setDiagnostics] = useState<DiagnosticInfo | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const runDiagnostics = () => {
+  const runDiagnostics = async () => {
     setIsRefreshing(true);
     
     // Check localStorage
@@ -47,42 +46,37 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       console.error('localStorage check failed:', error);
     }
 
-    // Check Firebase connection using centralized connection status
+    // Check Firebase connection directly without using callbacks
     let connectionStatus: 'connected' | 'disconnected' | 'unknown' = 'unknown';
+    let databaseConnected = false;
     
     if (isFirebaseConfigured && database) {
-      // Use centralized connection monitoring to prevent duplicate listeners
-      const unsubscribe = onFirebaseConnectionChange((isConnected) => {
+      try {
+        // Directly check Firebase connection status
+        const connectedRef = ref(database, '.info/connected');
+        const snapshot = await get(connectedRef);
+        const isConnected = snapshot.val() === true;
+        
         connectionStatus = isConnected ? 'connected' : 'disconnected';
-        
-        setDiagnostics({
-          firebaseConfigured: isFirebaseConfigured,
-          databaseConnected: connectionStatus === 'connected',
-          localStorageAvailable,
-          localStorageSize: Math.round(localStorageSize / 1024), // KB
-          cachedPaths,
-          connectionStatus,
-          timestamp: new Date().toLocaleString(),
-        });
-        
-        setIsRefreshing(false);
-        
-        // Unsubscribe immediately after getting the value to prevent persistent listener
-        unsubscribe();
-      });
-    } else {
-      setDiagnostics({
-        firebaseConfigured: isFirebaseConfigured,
-        databaseConnected: false,
-        localStorageAvailable,
-        localStorageSize: Math.round(localStorageSize / 1024),
-        cachedPaths,
-        connectionStatus: 'disconnected',
-        timestamp: new Date().toLocaleString(),
-      });
-      
-      setIsRefreshing(false);
+        databaseConnected = isConnected;
+      } catch (error) {
+        console.error('Failed to check Firebase connection:', error);
+        connectionStatus = 'disconnected';
+        databaseConnected = false;
+      }
     }
+    
+    setDiagnostics({
+      firebaseConfigured: isFirebaseConfigured,
+      databaseConnected,
+      localStorageAvailable,
+      localStorageSize: Math.round(localStorageSize / 1024), // KB
+      cachedPaths,
+      connectionStatus,
+      timestamp: new Date().toLocaleString(),
+    });
+    
+    setIsRefreshing(false);
   };
 
   useEffect(() => {
