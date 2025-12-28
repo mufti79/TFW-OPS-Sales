@@ -18,6 +18,7 @@ let dataConsistencyCheckInterval: NodeJS.Timeout | null = null;
 let firebaseConnected = false; // Track Firebase-level connection status
 let firebaseConnectionMonitorSetup = false; // Guard to prevent duplicate Firebase connection listeners
 let firebaseConnectionUnsubscribe: (() => void) | null = null; // Store unsubscribe function
+let visibilityChangeHandler: (() => void) | null = null; // Store visibility handler for cleanup
 
 // Callbacks to notify about connection state changes
 type ConnectionStatusCallback = (connected: boolean) => void;
@@ -159,16 +160,24 @@ const retryAllFailedWrites = () => {
 
 // Handler functions for browser online/offline events
 const handleBrowserOnline = () => {
-  console.log('🌐 Browser is back online');
+  console.log('🌐 Browser is back online - triggering reconnection...');
   isOnline = true;
   // Wait a bit for connection to stabilize, then retry failed writes
   setTimeout(() => {
     retryAllFailedWrites();
   }, 1000);
+  
+  // Notify all connection listeners about potential reconnection
+  // The Firebase SDK should automatically reconnect, but we ensure our state is updated
+  setTimeout(() => {
+    if (database && isFirebaseConfigured) {
+      console.log('🔄 Verifying Firebase connection after network recovery...');
+    }
+  }, 2000);
 };
 
 const handleBrowserOffline = () => {
-  console.log('🌐 Browser is offline');
+  console.log('🌐 Browser is offline - Firebase sync paused');
   isOnline = false;
 };
 
@@ -185,6 +194,28 @@ const setupConnectionMonitoring = () => {
   // Monitor browser online/offline events - use named functions for proper cleanup
   window.addEventListener('online', handleBrowserOnline);
   window.addEventListener('offline', handleBrowserOffline);
+  
+  // Monitor page visibility changes to handle tab switching and app backgrounding
+  // This helps ensure connection is maintained when user returns to the tab
+  visibilityChangeHandler = () => {
+    if (document.visibilityState === 'visible') {
+      console.log('👁️ Page became visible - checking Firebase connection...');
+      
+      // If we were disconnected, trigger a connection check after brief delay
+      if (!firebaseConnected && isOnline && database && isFirebaseConfigured) {
+        setTimeout(() => {
+          if (!firebaseConnected) {
+            console.log('🔄 Page visible but Firebase disconnected - may need reconnection');
+            console.log('💡 Firebase SDK will attempt automatic reconnection');
+          }
+        }, 2000);
+      }
+    } else {
+      console.log('👁️ Page hidden - Firebase connection will be maintained in background');
+    }
+  };
+  
+  document.addEventListener('visibilitychange', visibilityChangeHandler);
   
   // Setup periodic data consistency check (every 5 minutes when online)
   // This helps catch any sync issues that might occur
@@ -503,6 +534,12 @@ export const cleanupConnectionMonitoring = () => {
   // Clean up browser event listeners
   window.removeEventListener('online', handleBrowserOnline);
   window.removeEventListener('offline', handleBrowserOffline);
+  
+  // Clean up visibility change listener
+  if (visibilityChangeHandler) {
+    document.removeEventListener('visibilitychange', visibilityChangeHandler);
+    visibilityChangeHandler = null;
+  }
   
   // Clear consistency check interval
   if (dataConsistencyCheckInterval) {

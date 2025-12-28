@@ -51,22 +51,22 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
     connecting: { 
       color: 'bg-yellow-500', 
       text: 'Connecting to Firebase...', 
-      tooltip: 'Establishing connection to Firebase Realtime Database. All changes will be saved to Firebase when connected.'
+      tooltip: 'Establishing connection to Firebase Realtime Database. All changes will be saved to Firebase when connected. The app will automatically reconnect if the connection is interrupted.'
     },
     connected: { 
       color: 'bg-green-500', 
       text: 'Firebase: Connected', 
-      tooltip: 'Connected to Firebase Realtime Database! All changes are automatically saved to Firebase and synced in real-time across all devices.'
+      tooltip: 'Connected to Firebase Realtime Database! All changes are automatically saved to Firebase and synced in real-time across all devices. Data updates will appear immediately.'
     },
     disconnected: { 
       color: 'bg-orange-500', 
       text: 'Firebase: Reconnecting...', 
-      tooltip: 'Temporarily disconnected from Firebase. Changes will be saved to Firebase automatically when connection is restored.'
+      tooltip: 'Temporarily disconnected from Firebase. The app will automatically reconnect within 45 seconds. Changes are saved locally and will sync to Firebase when the connection is restored.'
     },
     'sdk-error': { 
       color: 'bg-red-600', 
       text: 'Firebase: Connection Error', 
-      tooltip: 'Cannot connect to Firebase Realtime Database. Check browser settings and network connection.'
+      tooltip: 'Cannot connect to Firebase Realtime Database. Check browser settings, network connection, and Firebase configuration.'
     },
   };
 
@@ -124,15 +124,18 @@ const ConnectionStatus: React.FC<ConnectionStatusProps> = ({ status, onTestConne
           )}
           {isStuckReconnecting && (
             <div className="mt-2 mb-3 p-2 bg-red-900 bg-opacity-30 border border-red-600 rounded">
-              <p className="text-red-400 font-semibold mb-1">⚠️ Connection Stuck</p>
+              <p className="text-red-400 font-semibold mb-1">⚠️ Connection Taking Longer Than Expected</p>
               <p className="text-red-300 text-[11px]">
-                Unable to connect for 30+ seconds. This may indicate:
+                The app will automatically attempt to reconnect at 45 seconds. If that doesn't work, this may indicate:
               </p>
               <ul className="text-red-300 text-[11px] mt-1 ml-3 list-disc">
                 <li>Database doesn't exist</li>
                 <li>Network/firewall issue</li>
                 <li>Wrong database URL</li>
               </ul>
+              <p className="text-red-300 text-[11px] mt-1">
+                You can also manually force reconnection below.
+              </p>
             </div>
           )}
           {onTestConnection && (

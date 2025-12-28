@@ -224,6 +224,8 @@ const AppComponent: React.FC = () => {
     const [lastConnectionCheck, setLastConnectionCheck] = useState(Date.now());
     const initialDisconnectTimeRef = useRef<number | null>(null);
     const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autoReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autoReconnectAttemptedRef = useRef<boolean>(false);
 
     const { data: dailyCounts, setData: setDailyCounts } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
     const { data: dailyRideDetails, setData: setDailyRideDetails } = useFirebaseSync<Record<string, Record<string, { tickets: number; packages: number }>>>('data/dailyRideDetails', {});
@@ -330,6 +332,14 @@ const AppComponent: React.FC = () => {
                 }
             };
             
+            // Helper function to clear auto-reconnect timeout
+            const clearAutoReconnectTimeout = () => {
+                if (autoReconnectTimeoutRef.current) {
+                    clearTimeout(autoReconnectTimeoutRef.current);
+                    autoReconnectTimeoutRef.current = null;
+                }
+            };
+            
             // Set a timeout to transition from "connecting" to "disconnected" if connection takes too long
             // This prevents the UI from showing "Connecting..." indefinitely
             connectionTimeoutRef.current = setTimeout(() => {
@@ -352,7 +362,10 @@ const AppComponent: React.FC = () => {
                     setConnectionAttempts(0); // Reset attempts on successful connection
                     setLastConnectionCheck(now);
                     initialDisconnectTimeRef.current = null; // Reset disconnect timer
+                    autoReconnectAttemptedRef.current = false; // Reset auto-reconnect flag
+                    clearAutoReconnectTimeout(); // Clear any pending auto-reconnect
                     console.log('✅ Firebase Realtime Database connection established');
+                    console.log('✓ Real-time data sync is active');
                 } else {
                     setConnectionStatus('disconnected');
                     setConnectionAttempts(prev => prev + 1);
@@ -361,6 +374,7 @@ const AppComponent: React.FC = () => {
                     // Track when disconnection started (only once)
                     if (initialDisconnectTimeRef.current === null) {
                         initialDisconnectTimeRef.current = now;
+                        autoReconnectAttemptedRef.current = false; // Reset flag on new disconnect
                     }
                     
                     console.log('⚠️ Firebase Realtime Database connection interrupted - attempting to reconnect');
@@ -371,6 +385,34 @@ const AppComponent: React.FC = () => {
                         console.error('⚠️ Connection issues detected - still disconnected after multiple attempts');
                         console.error('💡 Check Firebase connection status in the header menu');
                     }
+                    
+                    // AUTOMATIC RECONNECTION: Schedule force reconnect after 45 seconds of being disconnected
+                    // This helps resolve stuck connection states without manual intervention
+                    clearAutoReconnectTimeout(); // Clear any existing timeout first
+                    const AUTO_RECONNECT_DELAY_MS = 45000; // 45 seconds
+                    
+                    autoReconnectTimeoutRef.current = setTimeout(async () => {
+                        // Only attempt auto-reconnect once per disconnect session
+                        if (!autoReconnectAttemptedRef.current && connectionStatus === 'disconnected') {
+                            autoReconnectAttemptedRef.current = true;
+                            console.log('🔄 Automatic reconnection triggered after 45 seconds of disconnection');
+                            
+                            try {
+                                const { forceReconnect } = await import('./firebaseConfig');
+                                const result = await forceReconnect();
+                                
+                                if (result.success) {
+                                    console.log('✓ Automatic reconnection completed successfully');
+                                    showNotification('🔄 Attempting to reconnect to Firebase...', 'info', 3000);
+                                } else {
+                                    console.warn('⚠️ Automatic reconnection failed:', result.message);
+                                    console.warn('💡 You can manually reconnect via the connection status menu');
+                                }
+                            } catch (error) {
+                                console.error('❌ Error during automatic reconnection:', error);
+                            }
+                        }
+                    }, AUTO_RECONNECT_DELAY_MS);
                 }
             });
             
@@ -420,6 +462,7 @@ const AppComponent: React.FC = () => {
                 unsubscribe();
                 clearInterval(connectionCheckInterval);
                 clearConnectionTimeout();
+                clearAutoReconnectTimeout();
             };
         } else {
             // Not configured / SDK Error
