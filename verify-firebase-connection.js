@@ -75,7 +75,6 @@ async function verifyConnection() {
             console.log('Firebase Realtime Database is properly configured!');
             console.log('═══════════════════════════════════════════════════════');
             resolve(true);
-            process.exit(0);
           }).catch((error) => {
             console.log('  ❌ Write test failed:', error.message);
             console.log('  💡 Check Firebase Security Rules');
@@ -85,7 +84,6 @@ async function verifyConnection() {
             console.log('Database is reachable but security rules may need updating');
             console.log('═══════════════════════════════════════════════════════');
             resolve(false);
-            process.exit(1);
           });
         } else {
           console.log('  ❌ Not connected to Firebase');
@@ -95,7 +93,6 @@ async function verifyConnection() {
           console.log('❌ CONNECTION FAILED');
           console.log('═══════════════════════════════════════════════════════');
           resolve(false);
-          process.exit(1);
         }
       });
     });
@@ -107,9 +104,14 @@ async function verifyConnection() {
     console.log('❌ VERIFICATION FAILED');
     console.log('Error:', error.message);
     console.log('═══════════════════════════════════════════════════════');
-    process.exit(1);
+    return false;
   }
 }
 
-// Run verification
-verifyConnection();
+// Run verification and exit with appropriate code
+verifyConnection().then((success) => {
+  process.exit(success ? 0 : 1);
+}).catch((error) => {
+  console.error('❌ Unexpected error:', error);
+  process.exit(1);
+});
