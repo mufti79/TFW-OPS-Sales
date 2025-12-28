@@ -431,7 +431,7 @@ const AppComponent: React.FC = () => {
                     if (timeSinceDisconnect > CONNECTION_WARNING_THRESHOLD_MS) {
                         console.warn('⚠️ Firebase connection not established after 2 minutes');
                         console.warn('💡 Check Firebase connection status in the header menu');
-                        // Reset disconnect timer to avoid repeated warnings every 30 seconds
+                        // Reset disconnect timer to avoid repeated warnings on next check
                         initialDisconnectTimeRef.current = Date.now();
                     }
                 }
