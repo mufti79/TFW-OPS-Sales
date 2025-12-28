@@ -80,7 +80,13 @@ if (isFirebaseConfigured) {
       
       // Initialize Realtime Database with proper error handling
       dbInstance = getDatabase(app);
-      console.log("✓ Firebase initialized");
+      
+      // Log successful initialization with details
+      console.log("✓ Firebase Realtime Database initialized successfully");
+      console.log("  📋 Project ID:", firebaseConfig.projectId);
+      console.log("  🔗 Database URL:", firebaseConfig.databaseURL);
+      console.log("  🔥 Firebase SDK version: 12.6.0");
+      console.log("  ✅ Ready for real-time data synchronization");
     } catch (e) {
       console.error("❌ Error initializing Firebase:", e);
       console.error("Please verify Firebase project exists and credentials are correct");
@@ -136,4 +142,22 @@ export const forceReconnect = async (): Promise<{ success: boolean; message: str
       message: `Reconnection failed: ${error.message}` 
     };
   }
+};
+
+/**
+ * Get Firebase Realtime Database connection information
+ * @returns Object containing connection status and configuration details
+ */
+export const getConnectionInfo = (): {
+  configured: boolean;
+  databaseInitialized: boolean;
+  projectId: string;
+  databaseURL: string;
+} => {
+  return {
+    configured: isFirebaseConfigured,
+    databaseInitialized: database !== null,
+    projectId: firebaseProjectId,
+    databaseURL: database?.app.options.databaseURL || firebaseConfig.databaseURL || 'Not available'
+  };
 };
