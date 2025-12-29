@@ -54,7 +54,7 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     let databaseURL = 'Not configured';
     let projectId = 'Not configured';
     
-    // Always try to get the configuration values, even if database is null
+    // Get configuration values from database instance or fallback to config exports
     if (database) {
       databaseURL = database.app.options.databaseURL || firebaseDatabaseURL || 'Not available';
       projectId = database.app.options.projectId || firebaseProjectId || 'Not available';
