@@ -79,7 +79,8 @@ The Firebase connection has been replaced with a new project configuration. To e
 3. **Copy your project credentials** from Project Settings
 4. **Update `firebaseConfig.ts`** with your actual credentials
 
-📖 **For detailed setup instructions, see [FIREBASE_NEW_PROJECT_SETUP.md](./FIREBASE_NEW_PROJECT_SETUP.md)**
+📖 **Quick Setup Guide:** [QUICK_FIREBASE_SETUP.md](./QUICK_FIREBASE_SETUP.md) (⚡ 5-minute setup)  
+📖 **Detailed Instructions:** [FIREBASE_NEW_PROJECT_SETUP.md](./FIREBASE_NEW_PROJECT_SETUP.md)
 
 **For synchronization to work with TFW-NEW app, both apps must use the same Firebase project configuration.**
 
