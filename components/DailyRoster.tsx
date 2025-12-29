@@ -6,7 +6,7 @@ import BriefingCheckin from './BriefingCheckin';
 import SplitCounter from './SplitCounter';
 import DeveloperAttribution from './DeveloperAttribution';
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
 // Manage Assignments Modal Component
