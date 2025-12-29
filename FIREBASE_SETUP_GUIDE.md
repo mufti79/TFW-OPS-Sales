@@ -72,11 +72,7 @@ const firebaseConfig = {
 };
 ```
 
-4. **IMPORTANT:** Also update the placeholder constants:
-```typescript
-const PLACEHOLDER_PROJECT_ID = "tfw-ops-sales-new";  // ← Change this to your actual project ID
-const PLACEHOLDER_API_KEY = "AIzaSyDQT8vR5mX3KnH9wL2pJ4fY6tE8qN1xU7s";  // ← Change this to your actual API key
-```
+4. **IMPORTANT:** Do NOT change the `PLACEHOLDER_PROJECT_ID` and `PLACEHOLDER_API_KEY` constants at the top of the file - these are used for validation. Only update the values in the `firebaseConfig` object.
 
 5. Save the file
 
@@ -103,11 +99,11 @@ const PLACEHOLDER_API_KEY = "AIzaSyDQT8vR5mX3KnH9wL2pJ4fY6tE8qN1xU7s";  // ← C
 
 ### Issue: Still showing "Firebase Configured: ❌"
 
-**Solution:** Check that you've updated BOTH:
-1. The `firebaseConfig` object values
-2. The `PLACEHOLDER_PROJECT_ID` and `PLACEHOLDER_API_KEY` constants
+**Solution:** Ensure you've updated the `firebaseConfig` object values with your actual Firebase credentials. The validation checks that:
+1. Your `projectId` is different from the placeholder value
+2. Your `apiKey` is different from the placeholder value
 
-The validation checks these placeholder constants to ensure you've replaced them.
+Do NOT change the `PLACEHOLDER_PROJECT_ID` and `PLACEHOLDER_API_KEY` constants - these are used for validation purposes only.
 
 ### Issue: "Database Connected: ❌" but configured
 
@@ -226,8 +222,7 @@ The **Sync Diagnostics** panel helps you troubleshoot connection issues:
 - [ ] Firebase project created
 - [ ] Realtime Database enabled and created
 - [ ] Configuration copied from Firebase Console
-- [ ] `firebaseConfig.ts` updated with actual values
-- [ ] `PLACEHOLDER_PROJECT_ID` and `PLACEHOLDER_API_KEY` updated
+- [ ] `firebaseConfig.ts` updated with actual values (not the placeholder constants)
 - [ ] Application restarted
 - [ ] Sync Diagnostics shows all ✅ green checks
 - [ ] Data syncs between devices/browsers
