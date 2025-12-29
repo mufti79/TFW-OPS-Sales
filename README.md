@@ -70,28 +70,53 @@ The build process includes:
 
 ## Firebase Configuration
 
-⚠️ **IMPORTANT: New Firebase Project Setup Required** (Updated: December 29, 2024)
+⚠️ **IMPORTANT: Firebase Setup Required** (Updated: December 29, 2024)
 
-The Firebase connection has been replaced with a new project configuration. To enable data synchronization:
+The application requires a Firebase Realtime Database to enable data synchronization and real-time updates.
+
+### Current Status:
+- ❌ Firebase is NOT configured (using placeholder values)
+- ❌ Database connection is not established
+- ❌ Sync Diagnostics shows disconnected status
+
+### Quick Setup (5 Minutes):
 
 1. **Create a new Firebase project** at [Firebase Console](https://console.firebase.google.com)
 2. **Enable Realtime Database** in your project
 3. **Copy your project credentials** from Project Settings
-4. **Update `firebaseConfig.ts`** with your actual credentials
+4. **Update `firebaseConfig.ts`** with your actual credentials (replace placeholder values)
+5. **Restart the application** and verify connection in Sync Diagnostics
 
-📖 **Quick Setup Guide:** [QUICK_FIREBASE_SETUP.md](./QUICK_FIREBASE_SETUP.md) (⚡ 5-minute setup)  
-📖 **Detailed Instructions:** [FIREBASE_NEW_PROJECT_SETUP.md](./FIREBASE_NEW_PROJECT_SETUP.md)
+📖 **Complete Setup Guide:** [FIREBASE_SETUP_GUIDE.md](./FIREBASE_SETUP_GUIDE.md) (⚡ Step-by-step with troubleshooting)  
+📖 **Quick Reference:** [QUICK_FIREBASE_SETUP.md](./QUICK_FIREBASE_SETUP.md)  
+📖 **Example Config:** [firebaseConfig.example.ts](./firebaseConfig.example.ts)
 
 **For synchronization to work with TFW-NEW app, both apps must use the same Firebase project configuration.**
 
 ### Testing Firebase Connection
 
-The app includes a built-in Firebase connection test tool:
-1. Click on the connection status indicator in the header
-2. Select "🔍 Test Firebase Connection" from the tooltip
-3. View detailed diagnostics including connection status, read/write permissions, and project information
+The app includes built-in diagnostic tools:
 
-For detailed instructions, see [FIREBASE_CONNECTION_GUIDE.md](./FIREBASE_CONNECTION_GUIDE.md).
+1. **Sync Diagnostics Panel:**
+   - Open from the menu or settings
+   - Shows Firebase configuration status
+   - Displays connection status in real-time
+   - View Project ID and Database URL
+   - Copy diagnostic report for troubleshooting
+
+2. **Connection Status Indicator:**
+   - Located in the header
+   - Click for quick connection test
+   - View detailed diagnostics
+
+### Troubleshooting:
+
+If Sync Diagnostics shows errors:
+- **Firebase Configured: ❌** → Update `firebaseConfig.ts` with real credentials
+- **Database Connected: ❌** → Check internet connection and verify database exists in Firebase Console
+- **Connection Status: UNKNOWN** → Ensure Firebase Realtime Database is created and accessible
+
+See [FIREBASE_SETUP_GUIDE.md](./FIREBASE_SETUP_GUIDE.md) for detailed troubleshooting steps.
 
 ## Deployment
 
