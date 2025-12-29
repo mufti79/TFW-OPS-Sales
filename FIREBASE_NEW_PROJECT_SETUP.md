@@ -77,18 +77,31 @@ const firebaseConfig = {
 For production use, update your Firebase Realtime Database security rules:
 
 1. Go to **Realtime Database** > **Rules** tab in Firebase Console
-2. Replace the rules with:
+2. For initial testing, use permissive rules (Test Mode):
 
 ```json
 {
   "rules": {
-    ".read": "auth != null || true",
-    ".write": "auth != null || true"
+    ".read": "true",
+    ".write": "true"
   }
 }
 ```
 
-**Note:** The rules above allow public read/write access. For better security, implement proper authentication and update rules accordingly.
+**⚠️ IMPORTANT:** These rules allow anyone to read/write your database. This is only for initial testing!
+
+3. After confirming your app works, immediately update to secure rules:
+
+```json
+{
+  "rules": {
+    ".read": "auth != null",
+    ".write": "auth != null"
+  }
+}
+```
+
+**Note:** The secure rules require authentication. If you're not using Firebase Authentication yet, you may need to implement it first, or use custom security rules based on your app's needs.
 
 ### Step 6: Test the Connection
 

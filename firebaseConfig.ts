@@ -27,11 +27,16 @@ import { getDatabase, connectDatabaseEmulator, goOffline, goOnline } from 'fireb
 // ⚠️  PLACEHOLDER VALUES - REPLACE WITH YOUR ACTUAL FIREBASE CREDENTIALS
 // Get these from: Firebase Console > Project Settings > Your apps
 //
+
+// Placeholder values that need to be replaced
+const PLACEHOLDER_PROJECT_ID = "tfw-ops-sales-new";
+const PLACEHOLDER_API_KEY = "AIzaSyDQT8vR5mX3KnH9wL2pJ4fY6tE8qN1xU7s";
+
 const firebaseConfig = {
-  apiKey: "AIzaSyDQT8vR5mX3KnH9wL2pJ4fY6tE8qN1xU7s",           // ⚠️  Replace with your API key
+  apiKey: PLACEHOLDER_API_KEY,           // ⚠️  Replace with your API key
   authDomain: "tfw-ops-sales-new.firebaseapp.com",              // ⚠️  Replace with your auth domain
   databaseURL: "https://tfw-ops-sales-new-default-rtdb.firebaseio.com",  // ⚠️  Replace with your database URL
-  projectId: "tfw-ops-sales-new",                               // ⚠️  Replace with your project ID
+  projectId: PLACEHOLDER_PROJECT_ID,                               // ⚠️  Replace with your project ID
   storageBucket: "tfw-ops-sales-new.firebasestorage.app",      // ⚠️  Replace with your storage bucket
   messagingSenderId: "123456789012",                            // ⚠️  Replace with your messaging sender ID
   appId: "1:123456789012:web:abc123def456ghi789"               // ⚠️  Replace with your app ID
@@ -74,8 +79,8 @@ function validateDatabaseURL(url: string | undefined): { valid: boolean; error?:
 export const isFirebaseConfigured = 
   firebaseConfig.projectId !== "YOUR_PROJECT_ID" && 
   firebaseConfig.apiKey !== "YOUR_API_KEY" &&
-  firebaseConfig.projectId !== "tfw-ops-sales-new" &&  // Placeholder project ID
-  firebaseConfig.apiKey !== "AIzaSyDQT8vR5mX3KnH9wL2pJ4fY6tE8qN1xU7s";  // Placeholder API key
+  firebaseConfig.projectId !== PLACEHOLDER_PROJECT_ID &&  // Placeholder project ID
+  firebaseConfig.apiKey !== PLACEHOLDER_API_KEY;  // Placeholder API key
 
 // Export project ID for use in error messages and diagnostics
 export const firebaseProjectId = firebaseConfig.projectId;
