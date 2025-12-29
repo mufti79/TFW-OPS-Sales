@@ -56,8 +56,9 @@ export const isFirebaseConfigured = (() => {
   }
 })();
 
-// Export project ID for diagnostics
+// Export project ID and database URL for diagnostics
 export const firebaseProjectId = firebaseConfig.projectId;
+export const firebaseDatabaseURL = firebaseConfig.databaseURL;
 
 // Validate database URL format
 function validateDatabaseURL(url: string | undefined): { valid: boolean; error?: string } {

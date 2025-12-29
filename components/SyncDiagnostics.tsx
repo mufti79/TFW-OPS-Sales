@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { database, isFirebaseConfigured } from '../firebaseConfig';
+import { database, isFirebaseConfigured, firebaseProjectId, firebaseDatabaseURL } from '../firebaseConfig';
 import { ref, get } from 'firebase/database';
 
 interface DiagnosticInfo {
@@ -54,9 +54,14 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     let databaseURL = 'Not configured';
     let projectId = 'Not configured';
     
+    // Always try to get the configuration values, even if database is null
     if (database) {
-      databaseURL = database.app.options.databaseURL || 'Not available';
-      projectId = database.app.options.projectId || 'Not available';
+      databaseURL = database.app.options.databaseURL || firebaseDatabaseURL || 'Not available';
+      projectId = database.app.options.projectId || firebaseProjectId || 'Not available';
+    } else {
+      // When database is null, show the config values directly
+      databaseURL = firebaseDatabaseURL || 'Not configured';
+      projectId = firebaseProjectId || 'Not configured';
     }
     
     if (isFirebaseConfigured && database) {
