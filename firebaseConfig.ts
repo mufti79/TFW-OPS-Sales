@@ -36,12 +36,25 @@ const firebaseConfig = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Check if Firebase has been configured with real values
-export const isFirebaseConfigured = 
-  firebaseConfig.projectId !== "YOUR_PROJECT_ID" && 
-  firebaseConfig.apiKey !== "YOUR_API_KEY_HERE" &&
-  !firebaseConfig.apiKey.includes("YOUR_") &&
-  !firebaseConfig.projectId.includes("YOUR_") &&
-  firebaseConfig.databaseURL.includes("firebaseio.com");
+export const isFirebaseConfigured = (() => {
+  // Check for placeholder values
+  if (firebaseConfig.projectId === "YOUR_PROJECT_ID" || 
+      firebaseConfig.apiKey === "YOUR_API_KEY_HERE" ||
+      firebaseConfig.apiKey.includes("YOUR_") ||
+      firebaseConfig.projectId.includes("YOUR_")) {
+    return false;
+  }
+  
+  // Validate database URL has correct domain suffix
+  try {
+    const url = new URL(firebaseConfig.databaseURL);
+    const hostname = url.hostname;
+    // Use endsWith to ensure the domain is a valid Firebase domain
+    return hostname.endsWith('.firebaseio.com') || hostname.endsWith('.firebasedatabase.app');
+  } catch {
+    return false;
+  }
+})();
 
 // Export project ID for diagnostics
 export const firebaseProjectId = firebaseConfig.projectId;
@@ -149,7 +162,6 @@ if (!isFirebaseConfigured) {
       console.log("");
       console.log("✓ Project:", firebaseConfig.projectId);
       console.log("✓ Database:", firebaseConfig.databaseURL);
-      console.log("✓ SDK Version: 12.6.0");
       console.log("✓ Real-time sync: ENABLED");
       console.log("");
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
