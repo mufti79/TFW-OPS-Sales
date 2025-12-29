@@ -5,7 +5,7 @@ import { Role } from '../hooks/useAuth';
 import BriefingCheckin from './BriefingCheckin';
 import DeveloperAttribution from './DeveloperAttribution';
 
-type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster';
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 
 // Manage Assignments Modal Component
 interface ManageAssignmentsModalProps {
