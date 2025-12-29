@@ -144,8 +144,13 @@ if (!isFirebaseConfigured) {
       // Initialize Firebase only once
       const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
       
-      // Initialize Realtime Database with proper error handling
-      dbInstance = getDatabase(app);
+      // Initialize Realtime Database with explicit database URL option
+      // This ensures the database URL from firebaseConfig is used
+      if (firebaseConfig.databaseURL) {
+        dbInstance = getDatabase(app, firebaseConfig.databaseURL);
+      } else {
+        dbInstance = getDatabase(app);
+      }
       
       // Log successful initialization with details
       console.log("✓ Firebase Realtime Database initialized successfully");
