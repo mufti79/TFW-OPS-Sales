@@ -1,51 +1,59 @@
-
 // ═══════════════════════════════════════════════════════════════════════════
-// 🔥 FIREBASE CONFIGURATION - NEW PROJECT SETUP REQUIRED
+// 🔥 FIREBASE CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════
 //
-// ⚠️  IMPORTANT: The Firebase project has been replaced with a new configuration.
+// 📋 SIMPLE SETUP (3 steps):
+// 1. Go to https://console.firebase.google.com
+// 2. Create a project → Enable Realtime Database → Get your config
+// 3. Paste your config values below (replace the placeholders)
 //
-// The previous Firebase project (tfw-ops-salesgit-4001335-4685c) was not working
-// properly and has been replaced with a new project configuration.
-//
-// 📋 ACTION REQUIRED:
-// 1. Create a new Firebase project in Firebase Console
-// 2. Enable Realtime Database in your project
-// 3. Copy your project's configuration credentials
-// 4. Replace the placeholder values below with your actual credentials
-//
-// 📖 For detailed setup instructions, see: FIREBASE_NEW_PROJECT_SETUP.md
+// 💡 TIP: The app works offline without Firebase - Firebase adds sync between devices
 //
 // ═══════════════════════════════════════════════════════════════════════════
 
 import { initializeApp, getApps, getApp, deleteApp } from 'firebase/app';
 import { getDatabase, connectDatabaseEmulator, goOffline, goOnline } from 'firebase/database';
 
-// Your web app's Firebase configuration
-// NEW Firebase Project Configuration (Updated: December 29, 2024)
-// 
-// ⚠️  PLACEHOLDER VALUES - REPLACE WITH YOUR ACTUAL FIREBASE CREDENTIALS
-// Get these from: Firebase Console > Project Settings > Your apps
+// ═══════════════════════════════════════════════════════════════════════════
+// 👇 PASTE YOUR FIREBASE CONFIG HERE
+// ═══════════════════════════════════════════════════════════════════════════
+// Get this from: Firebase Console → Project Settings → Your apps → Web app config
 //
-
-// Placeholder values that need to be replaced
-const PLACEHOLDER_PROJECT_ID = "tfw-ops-sales-new";
-const PLACEHOLDER_API_KEY = "AIzaSyDQT8vR5mX3KnH9wL2pJ4fY6tE8qN1xU7s";
+// Replace ONLY the values below (keep the property names as is):
 
 const firebaseConfig = {
-  apiKey: PLACEHOLDER_API_KEY,           // ⚠️  Replace with your API key
-  authDomain: "tfw-ops-sales-new.firebaseapp.com",              // ⚠️  Replace with your auth domain
-  databaseURL: "https://tfw-ops-sales-new-default-rtdb.firebaseio.com",  // ⚠️  Replace with your database URL
-  projectId: PLACEHOLDER_PROJECT_ID,                               // ⚠️  Replace with your project ID
-  storageBucket: "tfw-ops-sales-new.firebasestorage.app",      // ⚠️  Replace with your storage bucket
-  messagingSenderId: "123456789012",                            // ⚠️  Replace with your messaging sender ID
-  appId: "1:123456789012:web:abc123def456ghi789"               // ⚠️  Replace with your app ID
+  apiKey: "YOUR_API_KEY_HERE",                    // Example: "AIzaSyC1234567890abcdefg..."
+  authDomain: "YOUR_PROJECT.firebaseapp.com",     // Example: "my-project.firebaseapp.com"
+  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",  // Example: "https://my-project-default-rtdb.firebaseio.com"
+  projectId: "YOUR_PROJECT_ID",                   // Example: "my-project-abc123"
+  storageBucket: "YOUR_PROJECT.firebasestorage.app",  // Example: "my-project.firebasestorage.app"
+  messagingSenderId: "123456789012",              // Example: "987654321098"
+  appId: "1:123456789012:web:abc123def456"       // Example: "1:987654321098:web:a1b2c3d4e5f6"
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// VALIDATION & DETECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Check if Firebase has been configured with real values
+export const isFirebaseConfigured = 
+  firebaseConfig.projectId !== "YOUR_PROJECT_ID" && 
+  firebaseConfig.apiKey !== "YOUR_API_KEY_HERE" &&
+  !firebaseConfig.apiKey.includes("YOUR_") &&
+  !firebaseConfig.projectId.includes("YOUR_") &&
+  firebaseConfig.databaseURL.includes("firebaseio.com");
+
+// Export project ID for diagnostics
+export const firebaseProjectId = firebaseConfig.projectId;
 
 // Validate database URL format
 function validateDatabaseURL(url: string | undefined): { valid: boolean; error?: string } {
   if (!url) {
     return { valid: false, error: 'Database URL is missing' };
+  }
+  
+  if (url.includes("YOUR_")) {
+    return { valid: false, error: 'Database URL contains placeholder text - replace with your actual Firebase database URL' };
   }
   
   try {
@@ -56,7 +64,7 @@ function validateDatabaseURL(url: string | undefined): { valid: boolean; error?:
     if (!hostname.endsWith('.firebaseio.com') && !hostname.endsWith('.firebasedatabase.app')) {
       return { 
         valid: false, 
-        error: `Invalid Firebase database domain: ${hostname}. Must end with .firebaseio.com or .firebasedatabase.app` 
+        error: `Invalid domain: ${hostname}. Must end with .firebaseio.com or .firebasedatabase.app` 
       };
     }
     
@@ -64,103 +72,110 @@ function validateDatabaseURL(url: string | undefined): { valid: boolean; error?:
     if (urlObj.protocol !== 'https:') {
       return { 
         valid: false, 
-        error: 'Database URL must use HTTPS protocol' 
+        error: 'Database URL must use HTTPS' 
       };
     }
     
     return { valid: true };
   } catch (e) {
-    return { valid: false, error: `Malformed database URL: ${url}` };
+    return { valid: false, error: `Invalid URL format: ${url}` };
   }
 }
 
-// Check if the config has been filled out.
-// NOTE: Updated validation for new Firebase project setup
-export const isFirebaseConfigured = 
-  firebaseConfig.projectId !== "YOUR_PROJECT_ID" && 
-  firebaseConfig.apiKey !== "YOUR_API_KEY" &&
-  firebaseConfig.projectId !== PLACEHOLDER_PROJECT_ID &&  // Placeholder project ID
-  firebaseConfig.apiKey !== PLACEHOLDER_API_KEY;  // Placeholder API key
-
-// Export project ID for use in error messages and diagnostics
-export const firebaseProjectId = firebaseConfig.projectId;
+// ═══════════════════════════════════════════════════════════════════════════
+// INITIALIZATION & ERROR HANDLING
+// ═══════════════════════════════════════════════════════════════════════════
 
 let dbInstance = null;
 
 if (!isFirebaseConfigured) {
-  // Firebase is not configured - show helpful setup message
-  console.error("╔═══════════════════════════════════════════════════════════════════════════╗");
-  console.error("║                                                                           ║");
-  console.error("║  ⚠️  FIREBASE CONFIGURATION REQUIRED                                      ║");
-  console.error("║                                                                           ║");
-  console.error("║  The Firebase project has been replaced with a new configuration.        ║");
-  console.error("║  Please complete the setup to enable data synchronization.               ║");
-  console.error("║                                                                           ║");
-  console.error("╚═══════════════════════════════════════════════════════════════════════════╝");
-  console.error("");
-  console.error("📋 SETUP INSTRUCTIONS:");
-  console.error("");
-  console.error("1️⃣  Create a new Firebase project:");
-  console.error("    → Go to: https://console.firebase.google.com");
-  console.error("    → Click 'Add project' or 'Create a project'");
-  console.error("");
-  console.error("2️⃣  Enable Realtime Database:");
-  console.error("    → In your project, click 'Realtime Database'");
-  console.error("    → Click 'Create Database'");
-  console.error("    → Choose a location and security rules");
-  console.error("");
-  console.error("3️⃣  Get your configuration:");
-  console.error("    → Go to Project Settings (gear icon)");
-  console.error("    → Scroll to 'Your apps' and click the web icon");
-  console.error("    → Copy the Firebase configuration object");
-  console.error("");
-  console.error("4️⃣  Update firebaseConfig.ts:");
-  console.error("    → Replace the placeholder values with your actual credentials");
-  console.error("");
-  console.error("📖 For detailed instructions, see: FIREBASE_SETUP_GUIDE.md");
-  console.error("");
-  console.error("Current configuration status:");
-  console.error("  Project ID:", firebaseConfig.projectId);
-  console.error("  Status: ❌ Using placeholder values");
-  console.error("");
-} else if (isFirebaseConfigured) {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 📱 OFFLINE MODE - Your app works fine without Firebase!
+  // ═══════════════════════════════════════════════════════════════════════════
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("📱 Running in OFFLINE MODE");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("");
+  console.log("✅ Your app is working and will save data locally");
+  console.log("ℹ️  Firebase is not configured - data won't sync between devices");
+  console.log("");
+  console.log("🔧 Want to enable sync? Follow these 3 steps:");
+  console.log("");
+  console.log("  1. Go to: https://console.firebase.google.com");
+  console.log("  2. Create project → Enable Realtime Database → Copy config");
+  console.log("  3. Paste your config in firebaseConfig.ts (replace placeholders)");
+  console.log("");
+  console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+  console.log("");
+} else {
   // Validate database URL before initializing
   const urlValidation = validateDatabaseURL(firebaseConfig.databaseURL);
   
   if (!urlValidation.valid) {
-    console.error("❌ Firebase database URL validation failed:", urlValidation.error);
+    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.error("❌ Firebase Configuration Error");
+    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    console.error("");
+    console.error("Problem:", urlValidation.error);
     console.error("Current database URL:", firebaseConfig.databaseURL);
     console.error("");
     console.error("🔧 How to fix:");
-    console.error("1. Go to Firebase Console: https://console.firebase.google.com");
-    console.error("2. Select your project:", firebaseConfig.projectId);
-    console.error("3. Navigate to 'Realtime Database' in the left menu");
-    console.error("4. If you see 'Create Database', click it to create a new Realtime Database");
-    console.error("5. Once created, copy the database URL (it should be in format: https://PROJECT-ID-default-rtdb.firebaseio.com)");
-    console.error("6. Update the databaseURL in firebaseConfig.ts with the correct URL");
+    console.error("");
+    console.error("  1. Go to: https://console.firebase.google.com");
+    console.error("  2. Select your project:", firebaseConfig.projectId);
+    console.error("  3. Click 'Realtime Database' in the left menu");
+    console.error("  4. If it says 'Create Database', click it to create one");
+    console.error("  5. Copy the database URL (looks like: https://YOUR-PROJECT-default-rtdb.firebaseio.com)");
+    console.error("  6. Paste it in firebaseConfig.ts");
+    console.error("");
+    console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.error("");
   } else {
     try {
-      // Initialize Firebase only once
+      // Initialize Firebase
       const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
       
-      // Initialize Realtime Database with explicit database URL option
-      // This ensures the database URL from firebaseConfig is used
+      // Initialize Realtime Database with explicit database URL
       if (firebaseConfig.databaseURL) {
         dbInstance = getDatabase(app, firebaseConfig.databaseURL);
       } else {
         dbInstance = getDatabase(app);
       }
       
-      // Log successful initialization with details
-      console.log("✓ Firebase Realtime Database initialized successfully");
-      console.log("  📋 Project ID:", firebaseConfig.projectId);
-      console.log("  🔗 Database URL:", firebaseConfig.databaseURL);
-      console.log("  🔥 Firebase SDK version: 12.6.0");
-      console.log("  ✅ Ready for real-time data synchronization");
-    } catch (e) {
-      console.error("❌ Error initializing Firebase:", e);
-      console.error("Please verify Firebase project exists and credentials are correct");
+      // Success!
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("🔥 Firebase Connected Successfully!");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("");
+      console.log("✓ Project:", firebaseConfig.projectId);
+      console.log("✓ Database:", firebaseConfig.databaseURL);
+      console.log("✓ SDK Version: 12.6.0");
+      console.log("✓ Real-time sync: ENABLED");
+      console.log("");
+      console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.log("");
+    } catch (e: any) {
+      console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.error("❌ Firebase Initialization Failed");
+      console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.error("");
+      console.error("Error:", e.message || e);
+      console.error("");
+      console.error("Common causes:");
+      console.error("  • Invalid API key or project ID");
+      console.error("  • Firebase project doesn't exist");
+      console.error("  • Realtime Database not enabled in Firebase Console");
+      console.error("  • Network connection issues");
+      console.error("");
+      console.error("🔧 How to fix:");
+      console.error("");
+      console.error("  1. Verify your Firebase project exists: https://console.firebase.google.com");
+      console.error("  2. Check that Realtime Database is enabled");
+      console.error("  3. Get fresh config from: Project Settings → Your apps → Web");
+      console.error("  4. Update firebaseConfig.ts with the new config");
+      console.error("");
+      console.error("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.error("");
     }
   }
 }
