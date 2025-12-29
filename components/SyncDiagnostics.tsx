@@ -5,6 +5,8 @@ import { ref, get } from 'firebase/database';
 interface DiagnosticInfo {
   firebaseConfigured: boolean;
   databaseConnected: boolean;
+  databaseURL: string;
+  projectId: string;
   localStorageAvailable: boolean;
   localStorageSize: number;
   cachedPaths: string[];
@@ -49,6 +51,13 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     // Check Firebase connection directly without using callbacks
     let connectionStatus: 'connected' | 'disconnected' | 'unknown' = 'unknown';
     let databaseConnected = false;
+    let databaseURL = 'Not configured';
+    let projectId = 'Not configured';
+    
+    if (database) {
+      databaseURL = database.app.options.databaseURL || 'Not available';
+      projectId = database.app.options.projectId || 'Not available';
+    }
     
     if (isFirebaseConfigured && database) {
       try {
@@ -69,6 +78,8 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setDiagnostics({
       firebaseConfigured: isFirebaseConfigured,
       databaseConnected,
+      databaseURL,
+      projectId,
       localStorageAvailable,
       localStorageSize: Math.round(localStorageSize / 1024), // KB
       cachedPaths,
@@ -101,6 +112,8 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 Generated: ${diagnostics.timestamp}
 
 Firebase Configuration: ${diagnostics.firebaseConfigured ? 'Yes' : 'No'}
+Project ID: ${diagnostics.projectId}
+Database URL: ${diagnostics.databaseURL}
 Database Connected: ${diagnostics.databaseConnected ? 'Yes' : 'No'}
 Connection Status: ${diagnostics.connectionStatus}
 LocalStorage Available: ${diagnostics.localStorageAvailable ? 'Yes' : 'No'}
@@ -190,6 +203,14 @@ Online: ${navigator.onLine ? 'Yes' : 'No'}
                       {diagnostics.connectionStatus.toUpperCase()}
                     </span>
                   </div>
+                  <div className="flex flex-col gap-1 py-2 border-t border-gray-700">
+                    <span className="text-gray-400 text-xs">Project ID:</span>
+                    <span className="font-mono text-xs text-blue-300 break-all">{diagnostics.projectId}</span>
+                  </div>
+                  <div className="flex flex-col gap-1 pb-2 border-b border-gray-700">
+                    <span className="text-gray-400 text-xs">Database URL:</span>
+                    <span className="font-mono text-xs text-blue-300 break-all">{diagnostics.databaseURL}</span>
+                  </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-300">LocalStorage Available:</span>
                     <span className="font-mono">{getStatusIcon(diagnostics.localStorageAvailable)}</span>
@@ -225,12 +246,31 @@ Online: ${navigator.onLine ? 'Yes' : 'No'}
               <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
                 <h3 className="text-lg font-semibold text-purple-400 mb-3">Troubleshooting</h3>
                 <div className="space-y-3 text-sm text-gray-300">
-                  {!diagnostics.databaseConnected && (
+                  {!diagnostics.firebaseConfigured && (
+                    <div className="bg-red-900 bg-opacity-30 border border-red-500 rounded p-3">
+                      <p className="font-semibold text-red-400">🔥 Firebase Not Configured</p>
+                      <p className="mt-2 text-red-300">Firebase is using placeholder credentials and needs to be set up with a real project.</p>
+                      <p className="mt-2 font-semibold">Setup Instructions:</p>
+                      <ol className="list-decimal list-inside mt-1 space-y-1 text-red-200">
+                        <li>Go to <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Firebase Console</a></li>
+                        <li>Create a new Firebase project</li>
+                        <li>Enable Realtime Database in your project</li>
+                        <li>Copy your project configuration</li>
+                        <li>Update firebaseConfig.ts with your credentials</li>
+                      </ol>
+                      <p className="mt-2 text-xs text-red-300">
+                        📖 See FIREBASE_SETUP_GUIDE.md for detailed instructions
+                      </p>
+                    </div>
+                  )}
+                  
+                  {diagnostics.firebaseConfigured && !diagnostics.databaseConnected && (
                     <div className="bg-red-900 bg-opacity-30 border border-red-500 rounded p-3">
                       <p className="font-semibold text-red-400">⚠️ Database Not Connected</p>
-                      <p className="mt-1">Possible causes:</p>
+                      <p className="mt-1">Firebase is configured but not connecting:</p>
                       <ul className="list-disc list-inside mt-1 space-y-1">
                         <li>Check your internet connection</li>
+                        <li>Verify Firebase Realtime Database is created</li>
                         <li>Verify Firebase rules allow access</li>
                         <li>Check browser console for errors</li>
                       </ul>
