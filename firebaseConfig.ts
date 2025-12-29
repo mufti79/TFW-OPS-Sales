@@ -22,13 +22,13 @@ import { getDatabase, connectDatabaseEmulator, goOffline, goOnline } from 'fireb
 // Replace ONLY the values below (keep the property names as is):
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",                    // Example: "AIzaSyC1234567890abcdefg..."
-  authDomain: "YOUR_PROJECT.firebaseapp.com",     // Example: "my-project.firebaseapp.com"
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",  // Example: "https://my-project-default-rtdb.firebaseio.com"
-  projectId: "YOUR_PROJECT_ID",                   // Example: "my-project-abc123"
-  storageBucket: "YOUR_PROJECT.firebasestorage.app",  // Example: "my-project.firebasestorage.app"
-  messagingSenderId: "123456789012",              // Example: "987654321098"
-  appId: "1:123456789012:web:abc123def456"       // Example: "1:987654321098:web:a1b2c3d4e5f6"
+  apiKey: "AIzaSyA9kTKrhiXLVnri6rczHb26Ghl7l4uxJhE",
+  authDomain: "tfw-ops-salesgit-4001335-4685c.firebaseapp.com",
+  databaseURL: "https://tfw-ops-salesgit-4001335-4685c-default-rtdb.firebaseio.com",
+  projectId: "tfw-ops-salesgit-4001335-4685c",
+  storageBucket: "tfw-ops-salesgit-4001335-4685c.firebasestorage.app",
+  messagingSenderId: "890191705352",
+  appId: "1:890191705352:web:9251f92d340a3a977ce8bd"
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -56,8 +56,9 @@ export const isFirebaseConfigured = (() => {
   }
 })();
 
-// Export project ID for diagnostics
+// Export project ID and database URL for diagnostics
 export const firebaseProjectId = firebaseConfig.projectId;
+export const firebaseDatabaseURL = firebaseConfig.databaseURL;
 
 // Validate database URL format
 function validateDatabaseURL(url: string | undefined): { valid: boolean; error?: string } {
