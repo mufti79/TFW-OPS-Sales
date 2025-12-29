@@ -70,7 +70,16 @@ The build process includes:
 
 ## Firebase Configuration
 
-This app uses Firebase Realtime Database for data synchronization. The Firebase configuration is in `firebaseConfig.ts`.
+⚠️ **IMPORTANT: New Firebase Project Setup Required** (Updated: December 29, 2024)
+
+The Firebase connection has been replaced with a new project configuration. To enable data synchronization:
+
+1. **Create a new Firebase project** at [Firebase Console](https://console.firebase.google.com)
+2. **Enable Realtime Database** in your project
+3. **Copy your project credentials** from Project Settings
+4. **Update `firebaseConfig.ts`** with your actual credentials
+
+📖 **For detailed setup instructions, see [FIREBASE_NEW_PROJECT_SETUP.md](./FIREBASE_NEW_PROJECT_SETUP.md)**
 
 **For synchronization to work with TFW-NEW app, both apps must use the same Firebase project configuration.**
 
