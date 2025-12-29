@@ -215,8 +215,9 @@ The **Sync Diagnostics** panel helps you troubleshoot connection issues:
 2. **Check Browser Console** - Press F12 to see error messages
 3. **Review Firebase Console** - Verify project and database exist
 4. **Refer to Documentation:**
-   - `FIREBASE_NEW_PROJECT_SETUP.md` - Detailed setup instructions
+   - This guide (FIREBASE_SETUP_GUIDE.md) - Complete setup and troubleshooting
    - `firebaseConfig.example.ts` - Example configuration structure
+   - `README.md` - Application overview and quick start
 
 ---
 

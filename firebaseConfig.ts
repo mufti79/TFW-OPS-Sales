@@ -117,7 +117,7 @@ if (!isFirebaseConfigured) {
   console.error("4️⃣  Update firebaseConfig.ts:");
   console.error("    → Replace the placeholder values with your actual credentials");
   console.error("");
-  console.error("📖 For detailed instructions, see: FIREBASE_NEW_PROJECT_SETUP.md");
+  console.error("📖 For detailed instructions, see: FIREBASE_SETUP_GUIDE.md");
   console.error("");
   console.error("Current configuration status:");
   console.error("  Project ID:", firebaseConfig.projectId);

@@ -259,7 +259,7 @@ Online: ${navigator.onLine ? 'Yes' : 'No'}
                         <li>Update firebaseConfig.ts with your credentials</li>
                       </ol>
                       <p className="mt-2 text-xs text-red-300">
-                        📖 See FIREBASE_NEW_PROJECT_SETUP.md for detailed instructions
+                        📖 See FIREBASE_SETUP_GUIDE.md for detailed instructions
                       </p>
                     </div>
                   )}
