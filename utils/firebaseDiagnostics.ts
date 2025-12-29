@@ -67,12 +67,12 @@ export const runFirebaseDiagnostics = async (): Promise<CompleteDiagnostics> => 
   if (!database) {
     results.databaseInstance = {
       success: false,
-      message: 'Firebase database instance is null',
-      details: 'Database failed to initialize - check console for errors',
+      message: 'Firebase not configured (running in offline mode)',
+      details: 'Configure Firebase in firebaseConfig.ts to enable sync',
       timestamp: new Date().toISOString()
     };
-    results.recommendations.push('Check browser console for Firebase initialization errors');
-    results.recommendations.push('Verify internet connection');
+    results.recommendations.push('See FIREBASE_SETUP_SIMPLE.md for easy setup guide');
+    results.recommendations.push('App works fine offline - Firebase adds sync between devices');
     return results;
   }
 

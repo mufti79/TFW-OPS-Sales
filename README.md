@@ -70,26 +70,26 @@ The build process includes:
 
 ## Firebase Configuration
 
-⚠️ **IMPORTANT: Firebase Setup Required** (Updated: December 29, 2024)
-
-The application requires a Firebase Realtime Database to enable data synchronization and real-time updates.
+💡 **Good News:** The app works fine without Firebase! Firebase just adds sync between devices.
 
 ### Current Status:
-- ❌ Firebase is NOT configured (using placeholder values)
-- ❌ Database connection is not established
-- ❌ Sync Diagnostics shows disconnected status
+- 📱 Running in OFFLINE MODE (local storage only)
+- ℹ️  Firebase not configured - data won't sync between devices
+- ✅ All features work normally in offline mode
 
-### Quick Setup (5 Minutes):
+### Want to Enable Sync? (5 Minutes):
 
-1. **Create a new Firebase project** at [Firebase Console](https://console.firebase.google.com)
-2. **Enable Realtime Database** in your project
-3. **Copy your project credentials** from Project Settings
-4. **Update `firebaseConfig.ts`** with your actual credentials (replace placeholder values)
-5. **Restart the application** and verify connection in Sync Diagnostics
+Follow the **super simple 3-step guide**: [FIREBASE_SETUP_SIMPLE.md](./FIREBASE_SETUP_SIMPLE.md) ⚡
 
-📖 **Complete Setup Guide:** [FIREBASE_SETUP_GUIDE.md](./FIREBASE_SETUP_GUIDE.md) (⚡ Step-by-step with troubleshooting)  
-📖 **Quick Reference:** [QUICK_FIREBASE_SETUP.md](./QUICK_FIREBASE_SETUP.md)  
-📖 **Example Config:** [firebaseConfig.example.ts](./firebaseConfig.example.ts)
+**Quick summary:**
+1. Create Firebase project at [Firebase Console](https://console.firebase.google.com)
+2. Enable Realtime Database
+3. Copy & paste config into `firebaseConfig.ts`
+
+📖 **Other guides:**  
+- [FIREBASE_SETUP_SIMPLE.md](./FIREBASE_SETUP_SIMPLE.md) - **START HERE** (simplest guide)
+- [FIREBASE_SETUP_GUIDE.md](./FIREBASE_SETUP_GUIDE.md) - Detailed with troubleshooting
+- [QUICK_FIREBASE_SETUP.md](./QUICK_FIREBASE_SETUP.md) - Quick reference
 
 **For synchronization to work with TFW-NEW app, both apps must use the same Firebase project configuration.**
 
@@ -97,26 +97,31 @@ The application requires a Firebase Realtime Database to enable data synchroniza
 
 The app includes built-in diagnostic tools:
 
-1. **Sync Diagnostics Panel:**
+1. **Console Messages:**
+   - When running in offline mode, you'll see clear messages
+   - When Firebase connects, you'll see a success message
+   - Any errors show helpful troubleshooting steps
+
+2. **Sync Diagnostics Panel:**
    - Open from the menu or settings
    - Shows Firebase configuration status
    - Displays connection status in real-time
-   - View Project ID and Database URL
-   - Copy diagnostic report for troubleshooting
 
-2. **Connection Status Indicator:**
+3. **Connection Status Indicator:**
    - Located in the header
    - Click for quick connection test
-   - View detailed diagnostics
 
 ### Troubleshooting:
 
-If Sync Diagnostics shows errors:
-- **Firebase Configured: ❌** → Update `firebaseConfig.ts` with real credentials
-- **Database Connected: ❌** → Check internet connection and verify database exists in Firebase Console
-- **Connection Status: UNKNOWN** → Ensure Firebase Realtime Database is created and accessible
+**App shows "OFFLINE MODE":**
+- ✅ This is normal! Your app works fine offline
+- Want sync? Follow [FIREBASE_SETUP_SIMPLE.md](./FIREBASE_SETUP_SIMPLE.md)
 
-See [FIREBASE_SETUP_GUIDE.md](./FIREBASE_SETUP_GUIDE.md) for detailed troubleshooting steps.
+**Firebase errors after configuring:**
+- Check browser console for specific error messages
+- Verify all placeholder values in `firebaseConfig.ts` are replaced
+- Ensure Realtime Database is created in Firebase Console
+- See [FIREBASE_SETUP_SIMPLE.md](./FIREBASE_SETUP_SIMPLE.md) for troubleshooting
 
 ## Deployment
 

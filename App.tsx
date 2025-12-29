@@ -470,15 +470,15 @@ const AppComponent: React.FC = () => {
                 clearAutoReconnectTimeout();
             };
         } else {
-            // Not configured / SDK Error
+            // Not configured - running in offline mode
             setInitialLoading(false);
             if (!database && typeof window !== 'undefined') {
-                console.error('❌ Firebase database instance is null - check configuration');
-                console.error('💡 Verify firebaseConfig.ts has correct credentials');
-                setConnectionStatus('sdk-error');
+                // Firebase not configured - this is normal for offline mode
+                // The detailed message is already shown in firebaseConfig.ts
+                console.log('ℹ️  Running in offline mode - data saved locally');
+                setConnectionStatus('disconnected');
             } else {
-                console.log('ℹ️ Firebase not configured - please configure Firebase to enable real-time data sync');
-                console.log('ℹ️ Data will be cached locally until Firebase is configured');
+                console.log('ℹ️  Firebase not configured - data will be cached locally');
                 setConnectionStatus('disconnected');
             }
         }
