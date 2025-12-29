@@ -96,18 +96,18 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
       return;
     }
 
-    const handleClickOutside = (event: PointerEvent) => {
+    const handleClickOutside = (event: MouseEvent) => {
       const dropdownElement = dropdownRefs.current.get(openDropdownId);
       if (dropdownElement && event.target && !dropdownElement.contains(event.target as Node)) {
         setOpenDropdownId(null);
       }
     };
 
-    // Attach native listener in capture phase and use pointerdown for better device support
-    document.addEventListener('pointerdown', handleClickOutside, true);
+    // Use click event instead of pointerdown to allow checkbox onChange to fire first
+    document.addEventListener('click', handleClickOutside);
 
     return () => {
-      document.removeEventListener('pointerdown', handleClickOutside, true);
+      document.removeEventListener('click', handleClickOutside);
       // Clean up this dropdown's ref when it closes
       dropdownRefs.current.delete(openDropdownId);
     };
@@ -391,9 +391,6 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                                 <label 
                                                     key={op.id} 
                                                     className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer"
-                                                    onPointerDown={(e) => {
-                                                        e.stopPropagation();
-                                                    }}
                                                 >
                                                     <input
                                                         type="checkbox"
