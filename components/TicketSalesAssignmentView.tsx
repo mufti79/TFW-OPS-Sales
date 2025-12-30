@@ -57,7 +57,8 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
         // Check if all elements in prevVal exist in newVal (order-independent comparison)
         const prevSet = new Set<number>(prevVal);
         const newSet = new Set<number>(newVal);
-        if (prevSet.size !== newSet.size || !Array.from(prevSet).every((id: number) => newSet.has(id))) {
+        // Arrays have same length, so if all elements match, they're equal
+        if (![...prevSet].every((id: number) => newSet.has(id))) {
           return normalizedAssignments;
         }
       }
@@ -90,7 +91,8 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
       // Order-independent comparison using Sets
       const localSet = new Set<number>(localVal);
       const remoteSet = new Set<number>(remoteVal);
-      if (localSet.size !== remoteSet.size || !Array.from(localSet).every((id: number) => remoteSet.has(id))) {
+      // Arrays have same length, so if all elements match, they're equal
+      if (![...localSet].every((id: number) => remoteSet.has(id))) {
         return true; // Different array contents means dirty
       }
     }
