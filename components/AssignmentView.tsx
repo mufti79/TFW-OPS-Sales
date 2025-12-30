@@ -62,9 +62,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
           return normalizedAssignments;
         }
         // Check if all elements in prevVal exist in newVal (order-independent comparison)
-        const prevSet = new Set(prevVal);
-        const newSet = new Set(newVal);
-        if (prevSet.size !== newSet.size || !Array.from(prevSet).every(id => newSet.has(id))) {
+        const prevSet = new Set<number>(prevVal);
+        const newSet = new Set<number>(newVal);
+        if (prevSet.size !== newSet.size || !Array.from(prevSet).every((id: number) => newSet.has(id))) {
           if (import.meta.env.DEV) {
             console.log('🔄 AssignmentView - Updating state (values changed for key:', key, ')');
           }
@@ -100,9 +100,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         return true; // Different array lengths means dirty
       }
       // Order-independent comparison using Sets
-      const localSet = new Set(localVal);
-      const remoteSet = new Set(remoteVal);
-      if (localSet.size !== remoteSet.size || !Array.from(localSet).every(id => remoteSet.has(id))) {
+      const localSet = new Set<number>(localVal);
+      const remoteSet = new Set<number>(remoteVal);
+      if (localSet.size !== remoteSet.size || !Array.from(localSet).every((id: number) => remoteSet.has(id))) {
         return true; // Different array contents means dirty
       }
     }
