@@ -136,6 +136,10 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   };
 
   const handleSave = () => {
+    // Only save if there are actual changes
+    if (!isDirty) {
+      return;
+    }
     onSave(selectedDate, assignments);
   };
   
@@ -313,11 +317,10 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
               </button>
               <button
                   onClick={handleSave}
-                  disabled={!isDirty}
                   className={`w-full sm:w-auto px-6 py-2 text-sm font-bold rounded-lg active:scale-95 transition-all ${
                     isDirty 
                     ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400 animate-pulse' 
-                    : 'bg-green-600 text-white opacity-75 cursor-default'
+                    : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
               >
                   {isDirty ? 'Save Changes' : 'All Saved'}
