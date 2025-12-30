@@ -136,6 +136,10 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   };
 
   const handleSave = () => {
+    // Only save if there are actual changes
+    if (!isDirty) {
+      return;
+    }
     onSave(selectedDate, assignments);
   };
   

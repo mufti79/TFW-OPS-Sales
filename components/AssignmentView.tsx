@@ -148,6 +148,10 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   };
 
   const handleSave = () => {
+    // Only save if there are actual changes
+    if (!isDirty) {
+      return;
+    }
     onSave(selectedDate, assignments);
   };
   
