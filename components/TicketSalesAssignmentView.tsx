@@ -46,11 +46,18 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
         return normalizedAssignments;
       }
       
-      // Deep comparison: check if values are the same
+      // Deep comparison: check if values are the same (order-independent)
       for (const key of prevKeys) {
         const prevVal = prev[key];
         const newVal = normalizedAssignments[key];
-        if (prevVal.length !== newVal.length || !prevVal.every((id, i) => id === newVal[i])) {
+        // Compare arrays by content, not by position (order-independent)
+        if (prevVal.length !== newVal.length) {
+          return normalizedAssignments;
+        }
+        // Check if all elements in prevVal exist in newVal (order-independent comparison)
+        const prevSet = new Set(prevVal);
+        const newSet = new Set(newVal);
+        if (prevSet.size !== newSet.size || !Array.from(prevSet).every(id => newSet.has(id))) {
           return normalizedAssignments;
         }
       }
@@ -65,7 +72,30 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
     Object.entries(currentRemoteAssignments).forEach(([key, value]) => {
       normalizedRemote[key] = Array.isArray(value) ? value : [value];
     });
-    return JSON.stringify(assignments) !== JSON.stringify(normalizedRemote);
+    
+    // Compare keys first
+    const localKeys = Object.keys(assignments).sort();
+    const remoteKeys = Object.keys(normalizedRemote).sort();
+    if (localKeys.length !== remoteKeys.length || !localKeys.every((key, i) => key === remoteKeys[i])) {
+      return true; // Different keys means dirty
+    }
+    
+    // Compare values (order-independent for arrays)
+    for (const key of localKeys) {
+      const localVal = assignments[key];
+      const remoteVal = normalizedRemote[key];
+      if (localVal.length !== remoteVal.length) {
+        return true; // Different array lengths means dirty
+      }
+      // Order-independent comparison using Sets
+      const localSet = new Set(localVal);
+      const remoteSet = new Set(remoteVal);
+      if (localSet.size !== remoteSet.size || !Array.from(localSet).every(id => remoteSet.has(id))) {
+        return true; // Different array contents means dirty
+      }
+    }
+    
+    return false; // No differences found, not dirty
   }, [assignments, dailyAssignments, selectedDate]);
 
   useEffect(() => {
