@@ -157,6 +157,8 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   const handleClearAll = () => {
     if (window.confirm("Are you sure you want to clear all of today's assignments?")) {
         setAssignments({});
+        // Auto-save the cleared assignments to Firebase
+        onSave(selectedDate, {});
     }
   };
 
@@ -382,11 +384,13 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                                                 <label 
                                                     key={op.id} 
                                                     className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer"
+                                                    onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <input
                                                         type="checkbox"
                                                         checked={assignedPersonnelIds.includes(op.id)}
-                                                        onChange={() => {
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
                                                             handleAssignmentChange(counter.id, op.id);
                                                         }}
                                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-teal-600 focus:ring-teal-500"

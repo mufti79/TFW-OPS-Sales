@@ -169,6 +169,8 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   const handleClearAll = () => {
     if (window.confirm("Are you sure you want to clear all of today's assignments?")) {
         setAssignments({});
+        // Auto-save the cleared assignments to Firebase
+        onSave(selectedDate, {});
     }
   };
 
@@ -394,11 +396,13 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                                 <label 
                                                     key={op.id} 
                                                     className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer"
+                                                    onClick={(e) => e.stopPropagation()}
                                                 >
                                                     <input
                                                         type="checkbox"
                                                         checked={assignedOperatorIds.includes(op.id)}
-                                                        onChange={() => {
+                                                        onChange={(e) => {
+                                                            e.stopPropagation();
                                                             handleAssignmentChange(ride.id, op.id);
                                                         }}
                                                         className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-purple-600 focus:ring-purple-500"
