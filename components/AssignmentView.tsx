@@ -405,7 +405,6 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                                                             e.stopPropagation();
                                                             handleAssignmentChange(ride.id, op.id);
                                                         }}
-                                                        onClick={(e) => e.stopPropagation()}
                                                         className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-purple-600 focus:ring-purple-500"
                                                     />
                                                     <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>

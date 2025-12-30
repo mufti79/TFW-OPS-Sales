@@ -393,7 +393,6 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
                                                             e.stopPropagation();
                                                             handleAssignmentChange(counter.id, op.id);
                                                         }}
-                                                        onClick={(e) => e.stopPropagation()}
                                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-teal-600 focus:ring-teal-500"
                                                     />
                                                     <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
