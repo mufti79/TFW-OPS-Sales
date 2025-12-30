@@ -212,6 +212,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         const errors: string[] = [];
         // FIX: Explicitly type `newAssignments` to prevent type-widening issues downstream.
         const newAssignments: Record<string, number[]> = { ...assignments };
+        
+        // Track which rides are being imported to replace their assignments
+        const importedRideAssignments: Record<string, number[]> = {};
 
         const dataRows = json.slice(1);
 
@@ -241,12 +244,16 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
           });
 
           if (operatorIds.length > 0) {
-              newAssignments[String(rideId)] = [...(newAssignments[String(rideId)] || []), ...operatorIds];
-              // Remove duplicates
-              // FIX: Explicitly providing the generic type to `new Set` ensures TypeScript correctly infers the array elements as numbers, resolving a type error.
-              newAssignments[String(rideId)] = Array.from(new Set<number>(newAssignments[String(rideId)]));
+              // For rides in import file, accumulate operators from all rows (don't append to existing)
+              const rideKey = String(rideId);
+              importedRideAssignments[rideKey] = [...(importedRideAssignments[rideKey] || []), ...operatorIds];
               successCount++;
           }
+        });
+        
+        // Replace assignments for imported rides, removing duplicates
+        Object.entries(importedRideAssignments).forEach(([rideKey, operatorIds]) => {
+          newAssignments[rideKey] = Array.from(new Set<number>(operatorIds));
         });
 
         setAssignments(newAssignments);

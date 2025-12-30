@@ -200,6 +200,9 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
         const errors: string[] = [];
         // FIX: Explicitly type `newAssignments` to prevent type-widening issues downstream.
         const newAssignments: Record<string, number[]> = { ...assignments };
+        
+        // Track which counters are being imported to replace their assignments
+        const importedCounterAssignments: Record<string, number[]> = {};
 
         const dataRows = json.slice(1);
 
@@ -229,12 +232,16 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
           });
           
           if (personnelIds.length > 0) {
-            newAssignments[String(counterId)] = [...(newAssignments[String(counterId)] || []), ...personnelIds];
-            // Remove duplicates
-            // FIX: Explicitly providing the generic type to `new Set` ensures TypeScript correctly infers the array elements as numbers, resolving a type error.
-            newAssignments[String(counterId)] = Array.from(new Set<number>(newAssignments[String(counterId)]));
+            // For counters in import file, accumulate personnel from all rows (don't append to existing)
+            const counterKey = String(counterId);
+            importedCounterAssignments[counterKey] = [...(importedCounterAssignments[counterKey] || []), ...personnelIds];
             successCount++;
           }
+        });
+        
+        // Replace assignments for imported counters, removing duplicates
+        Object.entries(importedCounterAssignments).forEach(([counterKey, personnelIds]) => {
+          newAssignments[counterKey] = Array.from(new Set<number>(personnelIds));
         });
 
         setAssignments(newAssignments);
