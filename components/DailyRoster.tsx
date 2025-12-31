@@ -58,18 +58,9 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                             <h2 className="text-2xl font-bold text-gray-100">Manage Assignments</h2>
                             <p className="text-purple-400 font-semibold">{ride.name}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button 
-                                onClick={handleConfirm} 
-                                className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all"
-                                aria-label="Save assignments"
-                            >
-                                Save
-                            </button>
-                            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
                     </div>
                     
                     <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -99,8 +90,9 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                     <button 
                         onClick={handleConfirm} 
                         className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all"
+                        aria-label="Save assignments"
                     >
-                        Save Assignments
+                        Save
                     </button>
                 </div>
             </div>
