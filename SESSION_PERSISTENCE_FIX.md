@@ -4,7 +4,7 @@
 2026-01-01
 
 ## Problem Statement
-When operators or sales persons logged in, they were being automatically logged out at midnight when the day changed. The requirement is for users to remain logged in throughout their entire shift, even after midnight, until they manually log out or the next day begins.
+When operators or sales persons logged in, they were being automatically logged out at midnight when the day changed. The requirement is for users to remain logged in throughout their entire shift, even after midnight, until they manually log out.
 
 ## Root Cause
 The application had logic that detected day changes (midnight) and would:
@@ -64,7 +64,6 @@ const checkDate = () => {
 - Removed `localStorage.setItem('TFW_APP_NEW_DAY_FLAG', 'true')`
 - Removed `window.location.reload()`
 - Now simply updates `today` and `selectedDate` state variables
-- Added dependencies `setToday` and `setSelectedDate` to useEffect
 
 #### 2. Legacy Flag Cleanup (Lines 564-572)
 **Before:**

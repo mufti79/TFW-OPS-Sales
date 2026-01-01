@@ -533,7 +533,7 @@ const AppComponent: React.FC = () => {
                 setToday(newToday);
                 setSelectedDate(newToday);
                 
-                // Show notification to inform user that the date has changed
+                // Log that user remains logged in after date change
                 if (role && currentUser) {
                     console.log('Date updated - user remains logged in');
                 }
@@ -559,7 +559,7 @@ const AppComponent: React.FC = () => {
             clearInterval(intervalId);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [today, role, currentUser, setToday, setSelectedDate]);
+    }, [today, role, currentUser]);
     
     // Legacy flag cleanup - remove old new day flags if they exist
     useEffect(() => {
