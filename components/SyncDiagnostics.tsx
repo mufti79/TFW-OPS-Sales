@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { database, isFirebaseConfigured, firebaseProjectId, firebaseDatabaseURL } from '../firebaseConfig';
-import { ref, get } from 'firebase/database';
+import { ref, onValue } from 'firebase/database';
 
 interface DiagnosticInfo {
   firebaseConfigured: boolean;
@@ -66,10 +66,29 @@ const SyncDiagnostics: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     
     if (isFirebaseConfigured && database) {
       try {
-        // Directly check Firebase connection status
+        // Check Firebase connection status using onValue for real-time monitoring
+        // The .info/connected path provides real-time connection status
         const connectedRef = ref(database, '.info/connected');
-        const snapshot = await get(connectedRef);
-        const isConnected = snapshot.val() === true;
+        
+        // Create a promise to wait for the connection status
+        const connectionPromise = new Promise<boolean>((resolve) => {
+          const unsubscribe = onValue(connectedRef, (snapshot) => {
+            const isConnected = snapshot.val() === true;
+            unsubscribe(); // Clean up the listener
+            resolve(isConnected);
+          }, (error) => {
+            console.error('Failed to read connection status:', error);
+            unsubscribe(); // Clean up the listener
+            resolve(false);
+          });
+        });
+        
+        // Wait for connection status with a timeout
+        const timeoutPromise = new Promise<boolean>((resolve) => {
+          setTimeout(() => resolve(false), 3000); // 3 second timeout
+        });
+        
+        const isConnected = await Promise.race([connectionPromise, timeoutPromise]);
         
         connectionStatus = isConnected ? 'connected' : 'disconnected';
         databaseConnected = isConnected;
