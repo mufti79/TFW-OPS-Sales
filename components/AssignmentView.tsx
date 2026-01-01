@@ -6,6 +6,9 @@ import { useNotification } from '../imageStore';
 // Make sure XLSX is available from the script tag in index.html
 declare var XLSX: any;
 
+// Define View type to match the main app's view options
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
+
 interface AssignmentViewProps {
   rides: Ride[];
   operators: Operator[];
@@ -14,7 +17,7 @@ interface AssignmentViewProps {
   selectedDate: string;
   attendance: AttendanceRecord[];
   onSync?: () => Promise<void>;
-  onNavigate?: (view: 'roster') => void;
+  onNavigate?: (view: View) => void;
 }
 
 const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, dailyAssignments, onSave, selectedDate, attendance, onSync, onNavigate }) => {

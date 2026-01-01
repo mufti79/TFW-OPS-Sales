@@ -954,7 +954,18 @@ const AppComponent: React.FC = () => {
         return !!(attendanceData?.[today]?.[currentUser.id]);
     }, [attendanceData, today, currentUser, isAttendanceLoading]);
     
-    const isCheckinAllowed = useMemo(() => new Date().getHours() < 22, []);
+    // Check-in is allowed before 10 PM (22:00)
+    // However, users who already checked in (especially those who attended briefing) 
+    // should remain logged in until the end of the day (midnight)
+    const isCheckinAllowed = useMemo(() => {
+        const currentHour = new Date().getHours();
+        // If user has already checked in today, allow them to continue until midnight
+        if (hasCheckedInToday) {
+            return true;
+        }
+        // Otherwise, only allow new check-ins before 10 PM
+        return currentHour < 22;
+    }, [hasCheckedInToday]);
 
     // Optimize memory usage by calculating size only when explicitly needed, not on every render
     // This prevents frequent stringification of large objects which can cause memory issues
