@@ -42,6 +42,7 @@ When sales officers make ticket sales assignments in TFW-NEW, they automatically
 
 **Prerequisites:**  Node.js
 
+### Quick Start
 
 1. Install dependencies:
    ```bash
@@ -117,11 +118,16 @@ The app includes built-in diagnostic tools:
 - ✅ This is normal! Your app works fine offline
 - Want sync? Follow [FIREBASE_SETUP_SIMPLE.md](./FIREBASE_SETUP_SIMPLE.md)
 
+**Firebase configured but "Database Not Connected":**
+- 🔍 Most likely: Database doesn't exist yet in Firebase Console
+- 📖 Follow step-by-step guide: [DATABASE_CONNECTION_TROUBLESHOOTING.md](./DATABASE_CONNECTION_TROUBLESHOOTING.md)
+- Quick fix: Create database in Firebase Console → Realtime Database
+
 **Firebase errors after configuring:**
 - Check browser console for specific error messages
 - Verify all placeholder values in `firebaseConfig.ts` are replaced
 - Ensure Realtime Database is created in Firebase Console
-- See [FIREBASE_SETUP_SIMPLE.md](./FIREBASE_SETUP_SIMPLE.md) for troubleshooting
+- See [DATABASE_CONNECTION_TROUBLESHOOTING.md](./DATABASE_CONNECTION_TROUBLESHOOTING.md) for comprehensive help
 
 ## Deployment
 
@@ -147,6 +153,7 @@ For synchronization problems with TFW-NEW app:
 1. Check [SYNCHRONIZATION.md](./SYNCHRONIZATION.md)
 2. Verify Firebase connection in app header
 3. Test Firebase connection using the built-in test tool (see [FIREBASE_CONNECTION_GUIDE.md](./FIREBASE_CONNECTION_GUIDE.md))
+4. If database is disconnected, see [DATABASE_CONNECTION_TROUBLESHOOTING.md](./DATABASE_CONNECTION_TROUBLESHOOTING.md)
 4. Try manual sync button in roster views
 
 ### Firebase Connection Issues

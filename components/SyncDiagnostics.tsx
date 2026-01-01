@@ -291,13 +291,45 @@ Online: ${navigator.onLine ? 'Yes' : 'No'}
                   {diagnostics.firebaseConfigured && !diagnostics.databaseConnected && (
                     <div className="bg-red-900 bg-opacity-30 border border-red-500 rounded p-3">
                       <p className="font-semibold text-red-400">⚠️ Database Not Connected</p>
-                      <p className="mt-1">Firebase is configured but not connecting:</p>
-                      <ul className="list-disc list-inside mt-1 space-y-1">
-                        <li>Check your internet connection</li>
-                        <li>Verify Firebase Realtime Database is created</li>
-                        <li>Verify Firebase rules allow access</li>
-                        <li>Check browser console for errors</li>
-                      </ul>
+                      <p className="mt-2 text-red-300">Firebase is configured correctly, but the app cannot connect to the database.</p>
+                      
+                      <div className="mt-3 space-y-2">
+                        <p className="font-semibold text-red-200">Most Common Cause (80%):</p>
+                        <div className="bg-red-950 bg-opacity-50 rounded p-2 border-l-4 border-red-500">
+                          <p className="font-semibold">📦 Database Doesn't Exist Yet</p>
+                          <p className="mt-1 text-xs">Firebase projects don't automatically create a Realtime Database.</p>
+                          <ol className="list-decimal list-inside mt-2 space-y-1 text-xs">
+                            <li>Go to <a href={`https://console.firebase.google.com/project/${diagnostics.projectId}/database`} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Firebase Console → Realtime Database</a></li>
+                            <li>If you see "Create Database" button → Click it!</li>
+                            <li>Choose location & select "Start in test mode"</li>
+                            <li>Wait 30-60 seconds after creation</li>
+                            <li>Refresh this page</li>
+                          </ol>
+                        </div>
+
+                        <p className="font-semibold text-red-200 mt-3">Other Possible Causes:</p>
+                        <div className="space-y-2">
+                          <div className="bg-red-950 bg-opacity-30 rounded p-2">
+                            <p className="font-semibold text-xs">🔒 Security Rules Blocking Access</p>
+                            <p className="text-xs mt-1">
+                              Check: <a href={`https://console.firebase.google.com/project/${diagnostics.projectId}/database/rules`} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Database Rules</a>
+                            </p>
+                            <p className="text-xs mt-1">Ensure rules allow read/write (see DATABASE_CONNECTION_TROUBLESHOOTING.md)</p>
+                          </div>
+                          
+                          <div className="bg-red-950 bg-opacity-30 rounded p-2">
+                            <p className="font-semibold text-xs">🌐 Network/Firewall Issue</p>
+                            <p className="text-xs mt-1">
+                              Test: <a href={`${diagnostics.databaseURL}/.json`} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Open Database URL</a>
+                            </p>
+                            <p className="text-xs mt-1">Should show JSON or permission error (not timeout)</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <p className="mt-3 text-xs text-red-200 font-semibold">
+                        📖 Full guide: DATABASE_CONNECTION_TROUBLESHOOTING.md
+                      </p>
                     </div>
                   )}
                   
