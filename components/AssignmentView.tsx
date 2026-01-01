@@ -306,7 +306,10 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         
         // Navigate to roster view to show operators their assignments
         if (onNavigate) {
-          // Small delay to ensure Firebase save completes and user sees the success notification
+          // Delay navigation to:
+          // 1. Allow user to see the success notification (improves UX)
+          // 2. Give time for Firebase sync to complete in background
+          // Note: onSave is synchronous but triggers async Firebase sync via useFirebaseSync hook
           setTimeout(() => {
             onNavigate('roster');
           }, 1500);
