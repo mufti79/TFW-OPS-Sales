@@ -14,9 +14,10 @@ interface AssignmentViewProps {
   selectedDate: string;
   attendance: AttendanceRecord[];
   onSync?: () => Promise<void>;
+  onNavigate?: (view: 'roster') => void;
 }
 
-const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, dailyAssignments, onSave, selectedDate, attendance, onSync }) => {
+const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, dailyAssignments, onSave, selectedDate, attendance, onSync, onNavigate }) => {
   const [assignments, setAssignments] = useState<Record<string, number[]>>({});
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<'up' | 'down'>('down');
@@ -301,6 +302,17 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
           console.warn("Import errors:", errors);
         } else {
           showNotification(`${successCount} assignment rows imported and saved successfully!`, 'success');
+        }
+        
+        // Navigate to roster view to show operators their assignments
+        if (onNavigate) {
+          // Delay navigation to:
+          // 1. Allow user to see the success notification (improves UX)
+          // 2. Give time for Firebase sync to complete in background
+          // Note: onSave is synchronous but triggers async Firebase sync via useFirebaseSync hook
+          setTimeout(() => {
+            onNavigate('roster');
+          }, 1500);
         }
 
       } catch (error) {
