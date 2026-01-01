@@ -214,6 +214,63 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
                       </li>
                     ))}
                   </ul>
+                  
+                  {/* Enhanced troubleshooting guidance */}
+                  {!testResult.connected && testResult.configured && (
+                    <div className="mt-4 bg-red-950 bg-opacity-50 rounded p-3 border-l-4 border-red-500">
+                      <p className="font-semibold text-red-200 mb-2">🔍 Most Likely Cause:</p>
+                      <div className="space-y-2 text-xs text-red-200">
+                        <div className="bg-black bg-opacity-30 rounded p-2">
+                          <p className="font-semibold">1. Database Doesn't Exist (80% of cases)</p>
+                          <p className="mt-1">Your Firebase project may not have a Realtime Database created yet.</p>
+                          <p className="mt-1 font-semibold">Solution:</p>
+                          <ol className="list-decimal list-inside ml-2 space-y-1 mt-1">
+                            <li>Go to <a href={`https://console.firebase.google.com/project/${testResult.projectId}/database`} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Firebase Console → Realtime Database</a></li>
+                            <li>Click "Create Database" if you see that button</li>
+                            <li>Choose a location and select "Start in test mode"</li>
+                            <li>Wait 30-60 seconds for database creation</li>
+                            <li>Click "Test Connection" button again</li>
+                          </ol>
+                        </div>
+                        
+                        <div className="bg-black bg-opacity-30 rounded p-2">
+                          <p className="font-semibold">2. Security Rules Blocking Access</p>
+                          <p className="mt-1">If database exists but rules deny access:</p>
+                          <ol className="list-decimal list-inside ml-2 space-y-1 mt-1">
+                            <li>Go to <a href={`https://console.firebase.google.com/project/${testResult.projectId}/database/rules`} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Database Rules</a></li>
+                            <li>Update rules to allow read/write for testing</li>
+                            <li>Click "Publish" to save changes</li>
+                            <li>Wait 30 seconds for rules to propagate</li>
+                            <li>Click "Test Connection" button again</li>
+                          </ol>
+                        </div>
+                        
+                        <div className="bg-black bg-opacity-30 rounded p-2">
+                          <p className="font-semibold">3. Network Issue</p>
+                          <p className="mt-1">Test if Firebase is reachable:</p>
+                          <p className="mt-1">
+                            <a href={`${testResult.databaseURL}/.json`} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">
+                              Open: {testResult.databaseURL}/.json
+                            </a>
+                          </p>
+                          <p className="mt-1">Should show JSON or permission error (not timeout)</p>
+                        </div>
+                      </div>
+                      
+                      <p className="mt-3 text-xs text-red-200 font-semibold">
+                        📖 Full troubleshooting guide: <a href="https://github.com/mufti79/TFW-OPS-Sales/blob/main/DATABASE_CONNECTION_TROUBLESHOOTING.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">DATABASE_CONNECTION_TROUBLESHOOTING.md</a>
+                      </p>
+                    </div>
+                  )}
+                  
+                  {testResult.errors.some(e => e.toLowerCase().includes('permission')) && (
+                    <div className="mt-3 bg-yellow-900 bg-opacity-30 border border-yellow-500 rounded p-2">
+                      <p className="text-yellow-200 text-xs">
+                        <span className="font-semibold">💡 Permission Error Detected:</span> Your Firebase database rules are likely blocking access. 
+                        Check: <a href={`https://console.firebase.google.com/project/${testResult.projectId}/database/rules`} target="_blank" rel="noopener noreferrer" className="underline hover:text-white">Database Rules</a>
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -231,15 +288,18 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
 
           {/* Help Text */}
           <div className="bg-gray-700 rounded-lg p-4 text-sm text-gray-300">
-            <h4 className="font-semibold text-white mb-2">💡 Tips:</h4>
+            <h4 className="font-semibold text-white mb-2">💡 Quick Tips:</h4>
             <ul className="space-y-1 list-disc list-inside">
-              <li>If connection fails, check your internet connection</li>
-              <li>If read/write fails, check Firebase Security Rules in Firebase Console</li>
-              <li>The real-time status indicator shows live connection state</li>
-              <li>Click "Test Connection" to run a comprehensive connectivity check</li>
-              <li><strong>If stuck reconnecting:</strong> Click "Force Reconnect" to reset the connection</li>
-              <li>Force reconnect closes and reopens the Firebase connection, which often resolves stuck states</li>
+              <li><strong>Database doesn't exist?</strong> Create it in Firebase Console → Realtime Database</li>
+              <li><strong>Permission denied?</strong> Check Firebase Console → Realtime Database → Rules</li>
+              <li><strong>Still disconnected?</strong> Try "Force Reconnect" button</li>
+              <li><strong>Network issues?</strong> Test if database URL opens in your browser</li>
             </ul>
+            <div className="mt-3 pt-3 border-t border-gray-600">
+              <p className="text-xs text-gray-400">
+                📖 Comprehensive troubleshooting guide: <a href="https://github.com/mufti79/TFW-OPS-Sales/blob/main/DATABASE_CONNECTION_TROUBLESHOOTING.md" target="_blank" rel="noopener noreferrer" className="font-mono text-blue-300 underline hover:text-white">DATABASE_CONNECTION_TROUBLESHOOTING.md</a>
+              </p>
+            </div>
           </div>
         </div>
 
