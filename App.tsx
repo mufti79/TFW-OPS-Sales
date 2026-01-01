@@ -90,16 +90,6 @@ type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | 'diagnosti
 // Views that are specific to non-manager roles and should trigger a reset when a manager logs in
 const NON_MANAGER_VIEWS: View[] = ['counter', 'roster', 'ts-roster', 'my-sales', 'security-entry'];
 
-// Cache clear confirmation messages
-const CACHE_CLEAR_MESSAGES = {
-    online: 'This will clear all cached data and reload from Firebase Realtime Database.\n\n✓ Your data is safely stored in Firebase and will be restored automatically.\n✓ Your login session will be preserved.\n✓ Current navigation state will be preserved.\n\nThis is useful if you\'re experiencing sync issues or want to see the latest data from Firebase.\n\nContinue?',
-    offline: 'This will clear all cached data and reload from Firebase. Note: Connection to Firebase is currently interrupted.\n\nYour login session and navigation state will be preserved.\n\nContinue?',
-    success: {
-        online: 'Cache cleared successfully! Reloading and restoring your data from Firebase Realtime Database...',
-        offline: 'Cache cleared successfully! Reloading and reconnecting to Firebase...'
-    }
-};
-
 // Helper to determine default view for a role
 const getDefaultViewForRole = (role: Exclude<Role, null>): View => {
     switch (role) {
@@ -124,7 +114,6 @@ const shouldResetViewForRole = (currentView: View, role: Exclude<Role, null>): b
 // Constants for session management and date checking
 const DATE_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 const VISIBILITY_CHECK_THROTTLE = 30 * 1000; // 30 seconds
-const CACHE_CLEAR_RELOAD_DELAY = 2000; // 2 seconds - delay before reloading after clearing cache
 
 /**
  * Maximum time to wait for initial Firebase connection before transitioning from "connecting" to "disconnected" state.
@@ -211,6 +200,10 @@ const AppComponent: React.FC = () => {
 
     const [today, setToday] = useState(toLocalDateString(new Date()));
     const [selectedDate, setSelectedDate] = useState(today);
+    
+    // Track the date when user first checked in to prevent re-showing briefing after midnight
+    // This allows operators to remain logged in across date boundaries
+    const [checkInDate, setCheckInDate] = useLocalStorage<string | null>('checkInDate', null);
     
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(today);
@@ -603,9 +596,11 @@ const AppComponent: React.FC = () => {
     const handleLogout = useCallback(() => {
         if (currentUser) logAction('LOGOUT', `User ${currentUser.name} logged out.`);
         logout();
+        // Clear the check-in date when user logs out
+        setCheckInDate(null);
         // Reset view to default (counter) on logout to ensure clean state for next login
         setCurrentView('counter');
-    }, [currentUser, logout, logAction, setCurrentView]);
+    }, [currentUser, logout, logAction, setCurrentView, setCheckInDate]);
     
     const handleDateChange = (date: string) => {
         setSelectedDate(date);
@@ -728,8 +723,10 @@ const AppComponent: React.FC = () => {
         setAttendanceData(prev => ({ ...prev, [today]: { ...(prev?.[today] || {}), [currentUser.id]: { attendedBriefing, briefingTime } } }));
         logAction('CLOCK_IN', `${currentUser.name} checked in. Attended briefing: ${attendedBriefing}.`);
         showNotification('Check-in successful! You can now view your roster and assignments.', 'success', 3000);
+        // Store the check-in date to prevent re-showing briefing after midnight
+        setCheckInDate(today);
         // Keep user logged in for the entire day - no automatic logout after check-in
-    }, [currentUser, setAttendanceData, today, logAction, showNotification]);
+    }, [currentUser, setAttendanceData, today, logAction, showNotification, setCheckInDate]);
 
     const handleSavePackageSales = (data: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser) return;
@@ -936,17 +933,28 @@ const AppComponent: React.FC = () => {
         );
     }, [attendanceData]);
     
-    // Check if current user has checked in today, but wait for attendance data to load from Firebase
+    // Check if current user has checked in, but wait for attendance data to load from Firebase
     // This prevents showing the briefing screen when attendance data is still loading
     // If attendance is loading, assume not checked in (will show loading state or briefing screen)
+    // 
+    // IMPORTANT: We check the stored checkInDate instead of just today's attendance
+    // This allows users to remain logged in even after midnight without seeing briefing screen again
     const hasCheckedInToday = useMemo(() => {
         if (!currentUser) return false;
         // If attendance is still loading from Firebase, wait before making a decision
         // This prevents race conditions where different browsers show briefing screen
         // even though the user already checked in on another device
         if (isAttendanceLoading) return false;
+        
+        // Check if user has an active check-in session from their stored checkInDate
+        if (checkInDate && currentUser.id) {
+            // User already checked in on checkInDate - they remain checked in
+            return true;
+        }
+        
+        // Otherwise, check if they've checked in today
         return !!(attendanceData?.[today]?.[currentUser.id]);
-    }, [attendanceData, today, currentUser, isAttendanceLoading]);
+    }, [attendanceData, today, currentUser, isAttendanceLoading, checkInDate]);
     
     // Check-in is allowed before 10 PM (22:00)
     // However, users who already checked in (especially those who attended briefing) 
@@ -991,56 +999,6 @@ const AppComponent: React.FC = () => {
     }, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments]);
 
     const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
-
-    // Clear cache handler - removes all localStorage cache and service worker cache, then reloads from Firebase
-    const handleClearCache = useCallback(() => {
-        const warningMessage = isFirebaseConfigured 
-            ? CACHE_CLEAR_MESSAGES.online
-            : CACHE_CLEAR_MESSAGES.offline;
-        
-        if (window.confirm(warningMessage)) {
-            try {
-                // Set a flag to indicate cache was cleared so we can notify user on reconnect
-                if (isFirebaseConfigured) {
-                    sessionStorage.setItem('TFW_CACHE_CLEARED', 'true');
-                }
-                
-                // Collect all TFW-related localStorage keys first before removing any
-                // We collect all keys first to avoid any issues with concurrent modifications
-                // Preserve auth and view state to maintain user session and navigation
-                const keysToRemove: string[] = [];
-                const totalKeys = localStorage.length;
-                for (let i = 0; i < totalKeys; i++) {
-                    const key = localStorage.key(i);
-                    if (key && key.startsWith('tfw_') && !PRESERVE_STORAGE_KEYS.includes(key)) {
-                        keysToRemove.push(key);
-                    }
-                }
-                
-                // Remove all collected keys from localStorage (except preserved auth and view state)
-                keysToRemove.forEach(key => localStorage.removeItem(key));
-                
-                // Also clear service worker cache if available
-                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHE' });
-                }
-                
-                const reloadMessage = isFirebaseConfigured
-                    ? CACHE_CLEAR_MESSAGES.success.online
-                    : CACHE_CLEAR_MESSAGES.success.offline;
-                
-                showNotification(reloadMessage, 'success', CACHE_CLEAR_RELOAD_DELAY);
-                
-                // Reload the page after a short delay to allow notification to show
-                setTimeout(() => {
-                    window.location.reload();
-                }, CACHE_CLEAR_RELOAD_DELAY);
-            } catch (error) {
-                console.error('Error clearing cache:', error);
-                showNotification('Failed to clear cache. Please try again.', 'error');
-            }
-        }
-    }, [showNotification, isFirebaseConfigured]);
 
     // Note: We deliberately allow the app to run even if Firebase is not configured, with cached data support.
     
@@ -1110,7 +1068,7 @@ const AppComponent: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-900">
         <KioskModeWrapper />
-        <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={setCurrentModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo} onClearCache={handleClearCache}/>
+        <Header onSearch={setSearchTerm} onSelectFloor={setSelectedFloor} selectedFloor={selectedFloor} role={role} currentUser={currentUser} onLogout={handleLogout} onNavigate={handleNavigate} onShowModal={setCurrentModal} currentView={currentView} connectionStatus={connectionStatus} appLogo={appLogo}/>
         <main className="container mx-auto px-4 py-4 md:px-6 md:py-6 max-w-7xl">{renderView()}</main>
         {isManager && currentView === 'counter' && <Footer title={`Total Guests for ${displayDate.toLocaleDateString()}`} count={totalGuests} onReset={() => { if (window.confirm("Are you sure you want to reset all of today's guest counts to zero?")) { setDailyCounts(prev => ({...prev, [selectedDate]: {}})); setDailyRideDetails(prev => ({...prev, [selectedDate]: {}})); logAction('RESET_COUNTS', `Reset all counts for ${selectedDate}.`); } }} showReset={true} gradient="bg-gradient-to-r from-purple-400 to-pink-600"/>}
         {currentModal === 'edit-image' && selectedRideForEdit && <Suspense fallback={<LoadingFallback />}><EditImageModal ride={selectedRideForEdit} onClose={() => setCurrentModal(null)} onSave={(rideId, imageBase64) => { setRides(prev => ({...prev, [rideId]: {...(prev?.[rideId] || {}), imageUrl: imageBase64 }})); logAction('UPDATE_IMAGE', `Updated image for ride ID ${rideId}.`); setCurrentModal(null); }}/></Suspense>}
