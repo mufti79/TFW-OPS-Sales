@@ -6,6 +6,9 @@ import { useNotification } from '../imageStore';
 // Make sure XLSX is available from the script tag in index.html
 declare var XLSX: any;
 
+// Define View type to match the main app's view options
+type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
+
 interface TicketSalesAssignmentViewProps {
   counters: Counter[];
   ticketSalesPersonnel: Operator[];
@@ -14,9 +17,10 @@ interface TicketSalesAssignmentViewProps {
   selectedDate: string;
   attendance: AttendanceRecord[];
   onSync?: () => Promise<void>;
+  onNavigate?: (view: View) => void;
 }
 
-const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, onSave, selectedDate, attendance, onSync }) => {
+const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ counters, ticketSalesPersonnel, dailyAssignments, onSave, selectedDate, attendance, onSync, onNavigate }) => {
   const [assignments, setAssignments] = useState<Record<string, number[]>>({});
   const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
   const [dropdownPosition, setDropdownPosition] = useState<'up' | 'down'>('down');
@@ -286,6 +290,17 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
             console.warn("Import errors:", errors);
         } else {
             showNotification(`${successCount} assignment rows imported and saved successfully!`, 'success');
+        }
+        
+        // Navigate to ts-roster view to show ticket sales personnel their assignments
+        if (onNavigate) {
+          // Delay navigation to:
+          // 1. Allow user to see the success notification (improves UX)
+          // 2. Give time for Firebase sync to complete in background
+          // Note: onSave is synchronous but triggers async Firebase sync via useFirebaseSync hook
+          setTimeout(() => {
+            onNavigate('ts-roster');
+          }, 1500);
         }
 
       } catch (error) {
