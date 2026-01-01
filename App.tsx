@@ -528,14 +528,14 @@ const AppComponent: React.FC = () => {
             const newToday = toLocalDateString(new Date());
             if (newToday !== today) {
                 console.log('Day changed detected:', { oldDay: today, newDay: newToday });
-                // Only set flag and reload if user is logged in
+                // Update the date without logging out the user
+                // Users should remain logged in throughout their shift, even after midnight
+                setToday(newToday);
+                setSelectedDate(newToday);
+                
+                // Log that user remains logged in after date change
                 if (role && currentUser) {
-                    localStorage.setItem('TFW_APP_NEW_DAY_FLAG', 'true');
-                    window.location.reload();
-                } else {
-                    // Just update the date if no user is logged in
-                    setToday(newToday);
-                    setSelectedDate(newToday);
+                    console.log('Date updated - user remains logged in');
                 }
             }
         };
@@ -561,21 +561,15 @@ const AppComponent: React.FC = () => {
         };
     }, [today, role, currentUser]);
     
+    // Legacy flag cleanup - remove old new day flags if they exist
     useEffect(() => {
         const newDayFlag = localStorage.getItem('TFW_APP_NEW_DAY_FLAG');
-        if (newDayFlag && role && currentUser) {
-            console.log('Processing new day flag - logging out user');
+        if (newDayFlag) {
+            // Clear the old flag from previous version - no longer used
             localStorage.removeItem('TFW_APP_NEW_DAY_FLAG');
-            logout();
-            showNotification("A new day has started. Please log in for your daily check-in.", "info");
-            const newToday = toLocalDateString(new Date());
-            setToday(newToday);
-            setSelectedDate(newToday);
-        } else if (newDayFlag && !role) {
-            // Clear flag if no user is logged in
-            localStorage.removeItem('TFW_APP_NEW_DAY_FLAG');
+            console.log('Cleared legacy new day flag');
         }
-    }, [logout, showNotification, role, currentUser]);
+    }, []);
 
     const logAction = useCallback((action: string, details: string) => {
       const user = currentUser?.name || 'System';
