@@ -954,7 +954,18 @@ const AppComponent: React.FC = () => {
         return !!(attendanceData?.[today]?.[currentUser.id]);
     }, [attendanceData, today, currentUser, isAttendanceLoading]);
     
-    const isCheckinAllowed = useMemo(() => new Date().getHours() < 22, []);
+    // Check-in is allowed before 10 PM (22:00)
+    // However, users who already checked in (especially those who attended briefing) 
+    // should remain logged in until the end of the day (midnight)
+    const isCheckinAllowed = useMemo(() => {
+        const currentHour = new Date().getHours();
+        // If user has already checked in today, allow them to continue until midnight
+        if (hasCheckedInToday) {
+            return true;
+        }
+        // Otherwise, only allow new check-ins before 10 PM
+        return currentHour < 22;
+    }, [hasCheckedInToday]);
 
     // Optimize memory usage by calculating size only when explicitly needed, not on every render
     // This prevents frequent stringification of large objects which can cause memory issues
@@ -1074,7 +1085,7 @@ const AppComponent: React.FC = () => {
             case 'assignments': return <Suspense fallback={<LoadingFallback />}><AssignmentView rides={RIDES_ARRAY} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} onSave={handleSaveAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} onNavigate={handleNavigate} /></Suspense>;
             case 'expertise': return <Suspense fallback={<LoadingFallback />}><ExpertiseReport operators={operatorsArray} dailyAssignments={mergedAssignments || {}} rides={RIDES_ARRAY} /></Suspense>;
             case 'roster': return <Suspense fallback={<LoadingFallback />}><DailyRoster rides={ridesWithCounts} operators={operatorsArray} dailyAssignments={mergedAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onCountChange={handleSaveCount} onShowModal={(modal, ride) => { setCurrentModal(modal); setSelectedRideForEdit(ride || null); }} onSaveAssignments={handleSaveAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} /></Suspense>;
-            case 'ts-assignments': return <Suspense fallback={<LoadingFallback />}><TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} /></Suspense>;
+            case 'ts-assignments': return <Suspense fallback={<LoadingFallback />}><TicketSalesAssignmentView counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} onSave={handleSaveTSAssignments} selectedDate={selectedDate} attendance={attendanceArray} onSync={handleSyncAssignments} onNavigate={handleNavigate} /></Suspense>;
             case 'ts-roster': return <Suspense fallback={<LoadingFallback />}><TicketSalesRoster counters={COUNTERS_ARRAY} ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} selectedDate={selectedDate} onDateChange={handleDateChange} role={role} currentUser={currentUser} attendance={attendanceArray} onNavigate={handleNavigate} onSaveAssignments={handleSaveTSAssignments} hasCheckedInToday={hasCheckedInToday} onClockIn={handleClockIn} isCheckinAllowed={isCheckinAllowed} onSync={handleSyncAssignments} /></Suspense>;
             case 'ts-expertise': return <Suspense fallback={<LoadingFallback />}><TicketSalesExpertiseReport ticketSalesPersonnel={TICKET_SALES_PERSONNEL_ARRAY} dailyAssignments={mergedTSAssignments || {}} counters={COUNTERS_ARRAY} /></Suspense>;
             case 'history': return <Suspense fallback={<LoadingFallback />}><HistoryLog history={history} onClearHistory={() => { if(window.confirm("Are you sure?")) { setHistory([]); logAction('CLEAR_HISTORY', 'Cleared the entire activity log.'); } }}/></Suspense>;
