@@ -328,7 +328,7 @@ Online: ${navigator.onLine ? 'Yes' : 'No'}
                       </div>
 
                       <p className="mt-3 text-xs text-red-200 font-semibold">
-                        📖 Full guide: DATABASE_CONNECTION_TROUBLESHOOTING.md
+                        📖 Full guide: <a href="https://github.com/mufti79/TFW-OPS-Sales/blob/main/DATABASE_CONNECTION_TROUBLESHOOTING.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">DATABASE_CONNECTION_TROUBLESHOOTING.md</a>
                       </p>
                     </div>
                   )}

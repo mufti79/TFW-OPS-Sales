@@ -258,7 +258,7 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
                       </div>
                       
                       <p className="mt-3 text-xs text-red-200 font-semibold">
-                        📖 Full troubleshooting guide: DATABASE_CONNECTION_TROUBLESHOOTING.md
+                        📖 Full troubleshooting guide: <a href="https://github.com/mufti79/TFW-OPS-Sales/blob/main/DATABASE_CONNECTION_TROUBLESHOOTING.md" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">DATABASE_CONNECTION_TROUBLESHOOTING.md</a>
                       </p>
                     </div>
                   )}
@@ -297,7 +297,7 @@ const FirebaseConnectionStatus: React.FC<FirebaseConnectionStatusProps> = ({ onC
             </ul>
             <div className="mt-3 pt-3 border-t border-gray-600">
               <p className="text-xs text-gray-400">
-                📖 Comprehensive troubleshooting guide: <span className="font-mono text-blue-300">DATABASE_CONNECTION_TROUBLESHOOTING.md</span>
+                📖 Comprehensive troubleshooting guide: <a href="https://github.com/mufti79/TFW-OPS-Sales/blob/main/DATABASE_CONNECTION_TROUBLESHOOTING.md" target="_blank" rel="noopener noreferrer" className="font-mono text-blue-300 underline hover:text-white">DATABASE_CONNECTION_TROUBLESHOOTING.md</a>
               </p>
             </div>
           </div>

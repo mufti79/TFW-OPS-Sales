@@ -154,7 +154,7 @@ For synchronization problems with TFW-NEW app:
 2. Verify Firebase connection in app header
 3. Test Firebase connection using the built-in test tool (see [FIREBASE_CONNECTION_GUIDE.md](./FIREBASE_CONNECTION_GUIDE.md))
 4. If database is disconnected, see [DATABASE_CONNECTION_TROUBLESHOOTING.md](./DATABASE_CONNECTION_TROUBLESHOOTING.md)
-4. Try manual sync button in roster views
+5. Try manual sync button in roster views
 
 ### Firebase Connection Issues
 If you're experiencing Firebase connection problems:
