@@ -721,9 +721,19 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             <div className="mt-12">
               <h2 className="text-2xl font-bold text-pink-500 mb-4">Unassigned Rides & Games</h2>
               <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-4">
-                <ul className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-x-6">
+                <ul className="space-y-2">
                   {unassignedRides.map(ride => (
-                    <li key={ride.id} className="text-gray-400 mb-2 break-inside-avoid">{ride.name}</li>
+                    <li key={ride.id} className="text-gray-300 bg-gray-700/50 p-2 rounded-md flex justify-between items-center">
+                      <div>
+                        {ride.name} <span className="text-xs text-gray-500">({ride.floor} Fl)</span>
+                      </div>
+                      <button 
+                        onClick={() => setManageModalInfo(ride)}
+                        className="px-2 py-1 text-xs bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 active:scale-95 transition-all"
+                      >
+                        Assign
+                      </button>
+                    </li>
                   ))}
                 </ul>
               </div>
