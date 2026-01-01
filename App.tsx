@@ -998,7 +998,22 @@ const AppComponent: React.FC = () => {
         }
     }, [dailyCounts, dailyRideDetails, rides, operators, attendanceData, tsAssignments, history, packageSalesData, appLogo, otherSalesCategories, dailyAssignments]);
 
-    const totalGuests = useMemo(() => ridesWithCounts.reduce((sum, ride) => sum + ride.count, 0), [ridesWithCounts]);
+    // Calculate total guests with defensive checks to prevent fluctuations
+    // This ensures we count all rides, not just those currently visible
+    const totalGuests = useMemo(() => {
+        // Use the same logic as ridesWithCounts to ensure consistency
+        const counts = dailyCounts || {};
+        const countsForDay = counts[selectedDate] || {};
+        
+        // Use the actual config rides (with fallback) to ensure we're counting all rides
+        const configRides = (rides && Object.keys(rides).length > 0) ? rides : RIDES;
+        
+        // Sum up all counts for all rides in the configuration
+        return Object.keys(configRides).reduce((sum, rideId) => {
+            const count = countsForDay[Number(rideId)] || 0;
+            return sum + count;
+        }, 0);
+    }, [dailyCounts, selectedDate, rides]);
 
     // Note: We deliberately allow the app to run even if Firebase is not configured, with cached data support.
     
