@@ -16,23 +16,34 @@ const pendingWrites = new Map<string, { value: unknown; timestamp: number }>();
 const pendingWriteTimeouts = new Map<string, NodeJS.Timeout>();
 const WRITE_DEBOUNCE_MS = 500; // Debounce writes by 500ms to batch rapid updates
 const PENDING_WRITE_STALE_MS = 10000; // Clear pending writes older than 10 seconds
+let cleanupIntervalId: NodeJS.Timeout | null = null;
 
-// Periodically clean up stale pending writes to prevent memory leaks
-setInterval(() => {
-  const now = Date.now();
-  const staleKeys: string[] = [];
+// Start cleanup interval when first pending write is added
+const startCleanupInterval = () => {
+  if (cleanupIntervalId !== null) return; // Already running
   
-  pendingWrites.forEach((entry, key) => {
-    if (now - entry.timestamp > PENDING_WRITE_STALE_MS) {
-      staleKeys.push(key);
+  cleanupIntervalId = setInterval(() => {
+    const now = Date.now();
+    const staleKeys: string[] = [];
+    
+    pendingWrites.forEach((entry, key) => {
+      if (now - entry.timestamp > PENDING_WRITE_STALE_MS) {
+        staleKeys.push(key);
+      }
+    });
+    
+    staleKeys.forEach(key => {
+      pendingWrites.delete(key);
+      console.warn(`Cleared stale pending write for ${key}`);
+    });
+    
+    // Stop cleanup if no more pending writes
+    if (pendingWrites.size === 0 && cleanupIntervalId !== null) {
+      clearInterval(cleanupIntervalId);
+      cleanupIntervalId = null;
     }
-  });
-  
-  staleKeys.forEach(key => {
-    pendingWrites.delete(key);
-    console.warn(`Cleared stale pending write for ${key}`);
-  });
-}, PENDING_WRITE_STALE_MS); // Run cleanup every 10 seconds
+  }, PENDING_WRITE_STALE_MS); // Run cleanup every 10 seconds
+};
 
 // Connection monitoring state
 let isOnline = navigator.onLine;
@@ -461,7 +472,13 @@ function useFirebaseSync<T>(
         clearTimeout(pendingTimeout);
         pendingWriteTimeouts.delete(path);
       }
-      // Note: Keep pendingWrites entry to allow inflight writes to complete
+      
+      // Clean up pending write entry if no timeout exists (write already started)
+      // If write is truly inflight, it will complete and clean itself up
+      // But if timeout was cancelled before write started, we should clean up now
+      if (!pendingWriteTimeouts.has(path)) {
+        pendingWrites.delete(path);
+      }
     };
   }, [path, localKey, localKeyTimestamp, initialValue]);
 
@@ -482,6 +499,11 @@ function useFirebaseSync<T>(
         // Use timestamp to track write order instead of comparing values (which fails for objects)
         const writeTimestamp = Date.now();
         pendingWrites.set(path, { value: valueToStore, timestamp: writeTimestamp });
+        
+        // Start cleanup interval if this is the first pending write
+        if (pendingWrites.size === 1) {
+          startCleanupInterval();
+        }
         
         // 3. Clear any existing debounce timeout for this path
         const existingTimeout = pendingWriteTimeouts.get(path);
@@ -648,6 +670,17 @@ export const cleanupConnectionMonitoring = () => {
     clearInterval(dataConsistencyCheckInterval);
     dataConsistencyCheckInterval = null;
   }
+  
+  // Clear pending write cleanup interval
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
+  
+  // Clear all pending write timeouts
+  pendingWriteTimeouts.forEach(timeout => clearTimeout(timeout));
+  pendingWriteTimeouts.clear();
+  pendingWrites.clear();
   
   // Clear all connection status callbacks to prevent memory leaks
   connectionStatusCallbacks.length = 0;
