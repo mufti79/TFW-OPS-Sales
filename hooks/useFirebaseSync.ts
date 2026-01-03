@@ -15,6 +15,24 @@ export const WARNING_THROTTLE_MS = 30000; // 30 seconds - max frequency for sync
 const pendingWrites = new Map<string, { value: unknown; timestamp: number }>();
 const pendingWriteTimeouts = new Map<string, NodeJS.Timeout>();
 const WRITE_DEBOUNCE_MS = 500; // Debounce writes by 500ms to batch rapid updates
+const PENDING_WRITE_STALE_MS = 10000; // Clear pending writes older than 10 seconds
+
+// Periodically clean up stale pending writes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  const staleKeys: string[] = [];
+  
+  pendingWrites.forEach((entry, key) => {
+    if (now - entry.timestamp > PENDING_WRITE_STALE_MS) {
+      staleKeys.push(key);
+    }
+  });
+  
+  staleKeys.forEach(key => {
+    pendingWrites.delete(key);
+    console.warn(`Cleared stale pending write for ${key}`);
+  });
+}, PENDING_WRITE_STALE_MS); // Run cleanup every 10 seconds
 
 // Connection monitoring state
 let isOnline = navigator.onLine;
@@ -461,7 +479,9 @@ function useFirebaseSync<T>(
         }
 
         // 2. Mark this as a pending write to prevent Firebase sync from overwriting it
-        pendingWrites.set(path, { value: valueToStore, timestamp: Date.now() });
+        // Use timestamp to track write order instead of comparing values (which fails for objects)
+        const writeTimestamp = Date.now();
+        pendingWrites.set(path, { value: valueToStore, timestamp: writeTimestamp });
         
         // 3. Clear any existing debounce timeout for this path
         const existingTimeout = pendingWriteTimeouts.get(path);
@@ -474,8 +494,9 @@ function useFirebaseSync<T>(
             // Remove from pending writes after debounce period
             const pendingWrite = pendingWrites.get(path);
             
-            // Only proceed if this is still the current pending write
-            if (pendingWrite && pendingWrite.value === valueToStore) {
+            // Only proceed if this timestamp is still the current pending write
+            // This ensures we write the most recent value even if earlier writes were cancelled
+            if (pendingWrite && pendingWrite.timestamp === writeTimestamp) {
                 // Remove timeout tracking
                 pendingWriteTimeouts.delete(path);
                 
@@ -488,8 +509,9 @@ function useFirebaseSync<T>(
                             .then(() => {
                                 // Clear any failed write tracking on success
                                 failedWrites.delete(path);
-                                // Clear pending write on successful write
-                                if (pendingWrites.get(path)?.value === valueToStore) {
+                                // Clear pending write on successful write (only if it's still this timestamp)
+                                const currentPending = pendingWrites.get(path);
+                                if (currentPending && currentPending.timestamp === writeTimestamp) {
                                     pendingWrites.delete(path);
                                 }
                             })
@@ -553,8 +575,9 @@ function useFirebaseSync<T>(
                                     notifySyncError(path, err, true);
                                     
                                     failedWrites.delete(path);
-                                    // Clear pending write even on failure after all retries
-                                    if (pendingWrites.get(path)?.value === valueToStore) {
+                                    // Clear pending write even on failure after all retries (only if it's still this timestamp)
+                                    const currentPending = pendingWrites.get(path);
+                                    if (currentPending && currentPending.timestamp === writeTimestamp) {
                                         pendingWrites.delete(path);
                                     }
                                 }
@@ -565,8 +588,11 @@ function useFirebaseSync<T>(
                     attemptWrite(0);
                 } else {
                     console.warn(`Firebase not configured. Data for ${path} is cached locally only.`);
-                    // Clear pending write if Firebase is not configured
-                    pendingWrites.delete(path);
+                    // Clear pending write if Firebase is not configured (only if it's still this timestamp)
+                    const currentPending = pendingWrites.get(path);
+                    if (currentPending && currentPending.timestamp === writeTimestamp) {
+                        pendingWrites.delete(path);
+                    }
                 }
             }
         }, WRITE_DEBOUNCE_MS);
@@ -580,6 +606,18 @@ function useFirebaseSync<T>(
 
   return { data: storedValue, setData: setValue, isLoading: loading };
 }
+
+/**
+ * Check if there are any pending writes for a given path or any path
+ * @param path Optional path to check. If not provided, checks all paths
+ * @returns true if there are pending writes
+ */
+export const hasPendingWrites = (path?: string): boolean => {
+  if (path) {
+    return pendingWrites.has(path);
+  }
+  return pendingWrites.size > 0;
+};
 
 /**
  * Cleanup function to tear down global connection monitoring
