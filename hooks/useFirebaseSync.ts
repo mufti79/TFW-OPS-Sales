@@ -11,6 +11,40 @@ const INITIAL_RETRY_DELAY_MS = 2000; // Start with 2 seconds
 const MAX_RETRY_DELAY_MS = 30000; // Cap at 30 seconds
 export const WARNING_THROTTLE_MS = 30000; // 30 seconds - max frequency for sync warnings
 
+// Track pending writes to prevent Firebase sync from overwriting them
+const pendingWrites = new Map<string, { value: unknown; timestamp: number }>();
+const pendingWriteTimeouts = new Map<string, NodeJS.Timeout>();
+const WRITE_DEBOUNCE_MS = 500; // Debounce writes by 500ms to batch rapid updates
+const PENDING_WRITE_STALE_MS = 10000; // Clear pending writes older than 10 seconds
+let cleanupIntervalId: NodeJS.Timeout | null = null;
+
+// Start cleanup interval when first pending write is added
+const startCleanupInterval = () => {
+  if (cleanupIntervalId !== null) return; // Already running
+  
+  cleanupIntervalId = setInterval(() => {
+    const now = Date.now();
+    const staleKeys: string[] = [];
+    
+    pendingWrites.forEach((entry, key) => {
+      if (now - entry.timestamp > PENDING_WRITE_STALE_MS) {
+        staleKeys.push(key);
+      }
+    });
+    
+    staleKeys.forEach(key => {
+      pendingWrites.delete(key);
+      console.warn(`Cleared stale pending write for ${key}`);
+    });
+    
+    // Stop cleanup if no more pending writes
+    if (pendingWrites.size === 0 && cleanupIntervalId !== null) {
+      clearInterval(cleanupIntervalId);
+      cleanupIntervalId = null;
+    }
+  }, PENDING_WRITE_STALE_MS); // Run cleanup every 10 seconds
+};
+
 // Connection monitoring state
 let isOnline = navigator.onLine;
 let connectionListenerSetup = false;
@@ -377,9 +411,23 @@ function useFirebaseSync<T>(
 
     const unsubscribe = onValue(dbRef, (snapshot) => {
       clearTimeout(timeoutId);
+      
+      // CRITICAL FIX: Check if there's a pending write for this path
+      // If there is, don't overwrite local state with Firebase data
+      // This prevents race conditions where Firebase sync overwrites user's recent changes
+      const hasPendingWrite = pendingWrites.has(path);
+      
       if (snapshot.exists()) {
         const val = snapshot.val();
-        setStoredValue(val);
+        
+        // Only update state if there's no pending write
+        if (!hasPendingWrite) {
+          setStoredValue(val);
+        } else {
+          // Log that we're skipping this update to avoid overwriting pending changes
+          console.log(`Skipping Firebase sync for ${path} - pending write exists`);
+        }
+        
         try {
             window.localStorage.setItem(localKey, JSON.stringify(val));
             window.localStorage.setItem(localKeyTimestamp, Date.now().toString());
@@ -394,7 +442,10 @@ function useFirebaseSync<T>(
       } else {
         // IMPORTANT: If snapshot doesn't exist (e.g. data was deleted/reset in Firebase),
         // we must revert to initialValue to ensure clients sync the deletion.
-        setStoredValue(initialValue);
+        // But only if there's no pending write
+        if (!hasPendingWrite) {
+          setStoredValue(initialValue);
+        }
         try {
             window.localStorage.removeItem(localKey);
             window.localStorage.removeItem(localKeyTimestamp);
@@ -414,6 +465,20 @@ function useFirebaseSync<T>(
       unsubscribe();
       listenerSetup.current = false;
       pathsToVerify.delete(path);
+      
+      // Clean up pending write timeout for this path
+      const pendingTimeout = pendingWriteTimeouts.get(path);
+      if (pendingTimeout) {
+        clearTimeout(pendingTimeout);
+        pendingWriteTimeouts.delete(path);
+      }
+      
+      // Clean up pending write entry if no timeout exists (write already started)
+      // If write is truly inflight, it will complete and clean itself up
+      // But if timeout was cancelled before write started, we should clean up now
+      if (!pendingWriteTimeouts.has(path)) {
+        pendingWrites.delete(path);
+      }
     };
   }, [path, localKey, localKeyTimestamp, initialValue]);
 
@@ -430,85 +495,132 @@ function useFirebaseSync<T>(
             console.error(`Error saving to localStorage for "${localKey}":`, error);
         }
 
-        // 2. Save to Firebase Realtime Database (Primary Storage) with retry mechanism
-        if (isFirebaseConfigured && database) {
-            const dbRef = ref(database, path);
-            
-            const attemptWrite = (retryCount: number = 0) => {
-                set(dbRef, valueToStore)
-                    .then(() => {
-                        // Clear any failed write tracking on success
-                        failedWrites.delete(path);
-                    })
-                    .catch((error: unknown) => {
-                        // Convert error to Error type for better handling
-                        const err = error instanceof Error ? error : new Error(String(error));
-                        const firebaseErr = err as FirebaseError;
-                        
-                        console.error(`Firebase write error at "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, err.message);
-                        
-                        // Check for specific error types that need special handling
-                        const isPermissionError = firebaseErr.code === 'PERMISSION_DENIED';
-                        const isNetworkError = firebaseErr.code === 'NETWORK_ERROR' || 
-                                               firebaseErr.code === 'UNAVAILABLE' ||
-                                               err.message.includes('network') ||
-                                               err.message.includes('fetch') ||
-                                               err.message.includes('offline');
-                        
-                        if (isPermissionError) {
-                            console.error(`PERMISSION DENIED - Check Firebase database rules for: ${path}`);
-                        }
-                        
-                        // Improved connection detection
-                        const isCurrentlyOffline = !isOnline || !firebaseConnected;
-                        
-                        // Track failed write for retry
-                        if (retryCount < MAX_RETRY_INDEX) {
-                            const nextRetryCount = retryCount + 1;
-                            failedWrites.set(path, {
-                                value: valueToStore,
-                                retryCount: nextRetryCount,
-                                lastAttempt: Date.now()
-                            });
-                            
-                            // Calculate exponential backoff delay: 2s, 4s, 8s, 16s, 30s, 30s, ...
-                            const exponentialDelay = Math.min(
-                                INITIAL_RETRY_DELAY_MS * Math.pow(2, retryCount),
-                                MAX_RETRY_DELAY_MS
-                            );
-                            
-                            // Only show notification for first few retries to avoid spam
-                            // Skip notifications if we're just offline (will auto-retry on reconnect)
-                            if (retryCount < 3 && isOnline) {
-                                // Notify listeners about non-critical sync error (will retry)
-                                notifySyncError(path, err, false);
-                            }
-                            
-                            // Schedule retry with exponential backoff
-                            setTimeout(() => {
-                                const failedWrite = failedWrites.get(path);
-                                // Only retry if this is still the current failed write attempt
-                                if (failedWrite && failedWrite.retryCount === nextRetryCount) {
-                                    attemptWrite(nextRetryCount);
-                                }
-                            }, exponentialDelay);
-                        } else {
-                            console.error(`CRITICAL: Firebase write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
-                            console.error(`Data is cached locally but NOT saved to Firebase`);
-                            
-                            // Notify listeners about critical sync error (all retries failed)
-                            notifySyncError(path, err, true);
-                            
-                            failedWrites.delete(path);
-                        }
-                    });
-            };
-            
-            // Start the write attempt
-            attemptWrite(0);
-        } else {
-            console.warn(`Firebase not configured. Data for ${path} is cached locally only.`);
+        // 2. Mark this as a pending write to prevent Firebase sync from overwriting it
+        // Use timestamp to track write order instead of comparing values (which fails for objects)
+        const writeTimestamp = Date.now();
+        pendingWrites.set(path, { value: valueToStore, timestamp: writeTimestamp });
+        
+        // Start cleanup interval if this is the first pending write
+        if (pendingWrites.size === 1) {
+          startCleanupInterval();
         }
+        
+        // 3. Clear any existing debounce timeout for this path
+        const existingTimeout = pendingWriteTimeouts.get(path);
+        if (existingTimeout) {
+            clearTimeout(existingTimeout);
+        }
+        
+        // 4. Debounce Firebase writes to batch rapid updates
+        const writeTimeout = setTimeout(() => {
+            // Remove from pending writes after debounce period
+            const pendingWrite = pendingWrites.get(path);
+            
+            // Only proceed if this timestamp is still the current pending write
+            // This ensures we write the most recent value even if earlier writes were cancelled
+            if (pendingWrite && pendingWrite.timestamp === writeTimestamp) {
+                // Remove timeout tracking
+                pendingWriteTimeouts.delete(path);
+                
+                // 5. Save to Firebase Realtime Database (Primary Storage) with retry mechanism
+                if (isFirebaseConfigured && database) {
+                    const dbRef = ref(database, path);
+                    
+                    const attemptWrite = (retryCount: number = 0) => {
+                        set(dbRef, valueToStore)
+                            .then(() => {
+                                // Clear any failed write tracking on success
+                                failedWrites.delete(path);
+                                // Clear pending write on successful write (only if it's still this timestamp)
+                                const currentPending = pendingWrites.get(path);
+                                if (currentPending && currentPending.timestamp === writeTimestamp) {
+                                    pendingWrites.delete(path);
+                                }
+                            })
+                            .catch((error: unknown) => {
+                                // Convert error to Error type for better handling
+                                const err = error instanceof Error ? error : new Error(String(error));
+                                const firebaseErr = err as FirebaseError;
+                                
+                                console.error(`Firebase write error at "${path}" (attempt ${retryCount + 1}/${MAX_RETRY_ATTEMPTS}):`, err.message);
+                                
+                                // Check for specific error types that need special handling
+                                const isPermissionError = firebaseErr.code === 'PERMISSION_DENIED';
+                                const isNetworkError = firebaseErr.code === 'NETWORK_ERROR' || 
+                                                       firebaseErr.code === 'UNAVAILABLE' ||
+                                                       err.message.includes('network') ||
+                                                       err.message.includes('fetch') ||
+                                                       err.message.includes('offline');
+                                
+                                if (isPermissionError) {
+                                    console.error(`PERMISSION DENIED - Check Firebase database rules for: ${path}`);
+                                }
+                                
+                                // Improved connection detection
+                                const isCurrentlyOffline = !isOnline || !firebaseConnected;
+                                
+                                // Track failed write for retry
+                                if (retryCount < MAX_RETRY_INDEX) {
+                                    const nextRetryCount = retryCount + 1;
+                                    failedWrites.set(path, {
+                                        value: valueToStore,
+                                        retryCount: nextRetryCount,
+                                        lastAttempt: Date.now()
+                                    });
+                                    
+                                    // Calculate exponential backoff delay: 2s, 4s, 8s, 16s, 30s, 30s, ...
+                                    const exponentialDelay = Math.min(
+                                        INITIAL_RETRY_DELAY_MS * Math.pow(2, retryCount),
+                                        MAX_RETRY_DELAY_MS
+                                    );
+                                    
+                                    // Only show notification for first few retries to avoid spam
+                                    // Skip notifications if we're just offline (will auto-retry on reconnect)
+                                    if (retryCount < 3 && isOnline) {
+                                        // Notify listeners about non-critical sync error (will retry)
+                                        notifySyncError(path, err, false);
+                                    }
+                                    
+                                    // Schedule retry with exponential backoff
+                                    setTimeout(() => {
+                                        const failedWrite = failedWrites.get(path);
+                                        // Only retry if this is still the current failed write attempt
+                                        if (failedWrite && failedWrite.retryCount === nextRetryCount) {
+                                            attemptWrite(nextRetryCount);
+                                        }
+                                    }, exponentialDelay);
+                                } else {
+                                    console.error(`CRITICAL: Firebase write failed after ${MAX_RETRY_ATTEMPTS} attempts for ${path}`);
+                                    console.error(`Data is cached locally but NOT saved to Firebase`);
+                                    
+                                    // Notify listeners about critical sync error (all retries failed)
+                                    notifySyncError(path, err, true);
+                                    
+                                    failedWrites.delete(path);
+                                    // Clear pending write even on failure after all retries (only if it's still this timestamp)
+                                    const currentPending = pendingWrites.get(path);
+                                    if (currentPending && currentPending.timestamp === writeTimestamp) {
+                                        pendingWrites.delete(path);
+                                    }
+                                }
+                            });
+                    };
+                    
+                    // Start the write attempt
+                    attemptWrite(0);
+                } else {
+                    console.warn(`Firebase not configured. Data for ${path} is cached locally only.`);
+                    // Clear pending write if Firebase is not configured (only if it's still this timestamp)
+                    const currentPending = pendingWrites.get(path);
+                    if (currentPending && currentPending.timestamp === writeTimestamp) {
+                        pendingWrites.delete(path);
+                    }
+                }
+            }
+        }, WRITE_DEBOUNCE_MS);
+        
+        // Track the timeout so we can clear it if needed
+        pendingWriteTimeouts.set(path, writeTimeout);
         
         return valueToStore;
     });
@@ -516,6 +628,18 @@ function useFirebaseSync<T>(
 
   return { data: storedValue, setData: setValue, isLoading: loading };
 }
+
+/**
+ * Check if there are any pending writes for a given path or any path
+ * @param path Optional path to check. If not provided, checks all paths
+ * @returns true if there are pending writes
+ */
+export const hasPendingWrites = (path?: string): boolean => {
+  if (path) {
+    return pendingWrites.has(path);
+  }
+  return pendingWrites.size > 0;
+};
 
 /**
  * Cleanup function to tear down global connection monitoring
@@ -546,6 +670,17 @@ export const cleanupConnectionMonitoring = () => {
     clearInterval(dataConsistencyCheckInterval);
     dataConsistencyCheckInterval = null;
   }
+  
+  // Clear pending write cleanup interval
+  if (cleanupIntervalId) {
+    clearInterval(cleanupIntervalId);
+    cleanupIntervalId = null;
+  }
+  
+  // Clear all pending write timeouts
+  pendingWriteTimeouts.forEach(timeout => clearTimeout(timeout));
+  pendingWriteTimeouts.clear();
+  pendingWrites.clear();
   
   // Clear all connection status callbacks to prevent memory leaks
   connectionStatusCallbacks.length = 0;
