@@ -55,7 +55,7 @@ const BriefingCheckin: React.FC<BriefingCheckinProps> = ({ operatorName, onClock
             </button>
         </div>
       </div>
-       <p className="text-sm text-gray-500 mt-8">After check-in, you will remain logged in for the day. You can view your roster and assignments.</p>
+       <p className="text-sm text-gray-500 mt-8">After check-in, you will remain logged in for 10 hours. You can view your roster and assignments.</p>
        
        <DeveloperAttribution />
     </div>
