@@ -292,6 +292,9 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
                     <p className="text-lg text-gray-400 mt-2">
                         Check-in for the next day will be available after 12:00 AM.
                     </p>
+                    <p className="text-sm text-gray-500 mt-4">
+                        Note: Sessions remain active for 10 hours after check-in.
+                    </p>
                     <DeveloperAttribution />
                 </div>
             );
