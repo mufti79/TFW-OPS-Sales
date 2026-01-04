@@ -951,7 +951,7 @@ const AppComponent: React.FC = () => {
     // If attendance is loading, assume not checked in (will show loading state or briefing screen)
     // 
     // IMPORTANT: We check the stored checkInDate and checkInTimestamp to validate 10-hour session
-    // Session remains valid for 10 hours from check-in time
+    // Session remains valid for 10 hours from check-in time, but only if checkInDate matches today
     const hasCheckedInToday = useMemo(() => {
         if (!currentUser) return false;
         // If attendance is still loading from Firebase, wait before making a decision
@@ -961,21 +961,31 @@ const AppComponent: React.FC = () => {
         
         // Check if user has an active check-in session within the 10-hour window
         if (checkInDate && checkInTimestamp && currentUser.id) {
-            const now = Date.now();
-            const tenHoursInMs = 10 * 60 * 60 * 1000; // 10 hours in milliseconds
-            const sessionAge = now - checkInTimestamp;
-            
-            // If session is still within 10 hours, user remains checked in
-            if (sessionAge < tenHoursInMs) {
-                return true;
+            // CRITICAL FIX: Verify that the stored checkInDate matches today's date
+            // This prevents using an old session from a previous day
+            if (checkInDate !== today) {
+                // Date has changed - clear the old session and check today's attendance
+                setCheckInDate(null);
+                setCheckInTimestamp(null);
+                // Fall through to check today's attendance data below
+            } else {
+                // Date matches, now check if session is still within 10 hours
+                const now = Date.now();
+                const tenHoursInMs = 10 * 60 * 60 * 1000; // 10 hours in milliseconds
+                const sessionAge = now - checkInTimestamp;
+                
+                // If session is still within 10 hours, user remains checked in
+                if (sessionAge < tenHoursInMs) {
+                    return true;
+                }
+                // Session has expired (more than 10 hours), clear it
+                setCheckInDate(null);
+                setCheckInTimestamp(null);
+                // Fall through to check today's attendance data below
             }
-            // Session has expired (more than 10 hours), clear it
-            setCheckInDate(null);
-            setCheckInTimestamp(null);
-            return false;
         }
         
-        // Otherwise, check if they've checked in today
+        // Check if they've checked in today from Firebase attendance data
         return !!(attendanceData?.[today]?.[currentUser.id]);
     }, [attendanceData, today, currentUser, isAttendanceLoading, checkInDate, checkInTimestamp, setCheckInDate, setCheckInTimestamp]);
     
