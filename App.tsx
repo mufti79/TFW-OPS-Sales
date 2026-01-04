@@ -201,9 +201,10 @@ const AppComponent: React.FC = () => {
     const [today, setToday] = useState(toLocalDateString(new Date()));
     const [selectedDate, setSelectedDate] = useState(today);
     
-    // Track the date when user first checked in to prevent re-showing briefing after midnight
-    // This allows operators to remain logged in across date boundaries
+    // Track the date and timestamp when user first checked in to prevent re-showing briefing
+    // Session is valid for 10 hours from check-in time
     const [checkInDate, setCheckInDate] = useLocalStorage<string | null>('checkInDate', null);
+    const [checkInTimestamp, setCheckInTimestamp] = useLocalStorage<number | null>('checkInTimestamp', null);
     
     const [startDate, setStartDate] = useState(today);
     const [endDate, setEndDate] = useState(today);
@@ -596,11 +597,12 @@ const AppComponent: React.FC = () => {
     const handleLogout = useCallback(() => {
         if (currentUser) logAction('LOGOUT', `User ${currentUser.name} logged out.`);
         logout();
-        // Clear the check-in date when user logs out
+        // Clear the check-in date and timestamp when user logs out
         setCheckInDate(null);
+        setCheckInTimestamp(null);
         // Reset view to default (counter) on logout to ensure clean state for next login
         setCurrentView('counter');
-    }, [currentUser, logout, logAction, setCurrentView, setCheckInDate]);
+    }, [currentUser, logout, logAction, setCurrentView, setCheckInDate, setCheckInTimestamp]);
     
     const handleDateChange = (date: string) => {
         setSelectedDate(date);
@@ -720,13 +722,14 @@ const AppComponent: React.FC = () => {
     
     const handleClockIn = useCallback((attendedBriefing: boolean, briefingTime: string | null) => {
         if (!currentUser) return;
+        const now = Date.now();
         setAttendanceData(prev => ({ ...prev, [today]: { ...(prev?.[today] || {}), [currentUser.id]: { attendedBriefing, briefingTime } } }));
         logAction('CLOCK_IN', `${currentUser.name} checked in. Attended briefing: ${attendedBriefing}.`);
         showNotification('Check-in successful! You can now view your roster and assignments.', 'success', 3000);
-        // Store the check-in date to prevent re-showing briefing after midnight
+        // Store the check-in date and timestamp for 10-hour session validation
         setCheckInDate(today);
-        // Keep user logged in for the entire day - no automatic logout after check-in
-    }, [currentUser, setAttendanceData, today, logAction, showNotification, setCheckInDate]);
+        setCheckInTimestamp(now);
+    }, [currentUser, setAttendanceData, today, logAction, showNotification, setCheckInDate, setCheckInTimestamp]);
 
     const handleSavePackageSales = (data: Omit<PackageSalesRecord, 'date' | 'personnelId'>) => {
         if (!currentUser) return;
@@ -849,11 +852,14 @@ const AppComponent: React.FC = () => {
                 newOperatorsObj[newId] = { name: op.name };
             });
             setOperators(newOperatorsObj);
-            logAction('IMPORT_OPERATORS', `Replaced all operators with ${newOperators.length} imported operator(s)`);
+            logAction('IMPORT_OPERATORS', `Replaced all operators with ${newOperators.length} imported operator(s). Total operators now: ${newOperators.length}`);
+            showNotification(`Operators imported successfully! ${newOperators.length} operator(s) added.`, 'success');
         } else {
             // Merge: keep existing operators and add new ones with unique IDs
             let addedCount = 0;
+            let skippedCount = 0;
             const baseTime = Date.now();
+            
             setOperators(prev => {
                 const next = { ...prev };
                 const existingNames = new Set(Object.values(prev || {}).map(op => op.name.toLowerCase()));
@@ -868,20 +874,27 @@ const AppComponent: React.FC = () => {
                         existingNames.add(op.name.toLowerCase());
                         addedCount++;
                         idCounter++;
+                    } else {
+                        skippedCount++;
                     }
                 });
                 
                 return next;
             });
             
-            const skippedCount = newOperators.length - addedCount;
+            // Log the import results with full details
+            const totalOperators = Object.keys(operators || {}).length + addedCount;
             const logMessage = skippedCount > 0 
-                ? `Merged ${addedCount} operator(s) into existing list (${skippedCount} duplicate(s) skipped)`
-                : `Merged ${addedCount} operator(s) into existing list`;
+                ? `Merged ${addedCount} operator(s) into existing list (${skippedCount} duplicate(s) skipped). Total operators now: ${totalOperators}`
+                : `Merged ${addedCount} operator(s) into existing list. Total operators now: ${totalOperators}`;
             logAction('IMPORT_OPERATORS', logMessage);
+            
+            const notificationMessage = skippedCount > 0
+                ? `Import complete! ${addedCount} operator(s) added, ${skippedCount} duplicate(s) skipped.`
+                : `Operators imported successfully! ${addedCount} operator(s) added.`;
+            showNotification(notificationMessage, 'success');
         }
-        showNotification('Operators imported successfully!', 'success');
-    }, [setOperators, logAction, showNotification]);
+    }, [operators, setOperators, logAction, showNotification]);
     
     const ridesWithCounts = useMemo<RideWithCount[]>(() => {
         // Robust null checks to prevent crashes if data hasn't synced or is corrupt
@@ -937,8 +950,8 @@ const AppComponent: React.FC = () => {
     // This prevents showing the briefing screen when attendance data is still loading
     // If attendance is loading, assume not checked in (will show loading state or briefing screen)
     // 
-    // IMPORTANT: We check the stored checkInDate instead of just today's attendance
-    // This allows users to remain logged in even after midnight without seeing briefing screen again
+    // IMPORTANT: We check the stored checkInDate and checkInTimestamp to validate 10-hour session
+    // Session remains valid for 10 hours from check-in time
     const hasCheckedInToday = useMemo(() => {
         if (!currentUser) return false;
         // If attendance is still loading from Firebase, wait before making a decision
@@ -946,22 +959,32 @@ const AppComponent: React.FC = () => {
         // even though the user already checked in on another device
         if (isAttendanceLoading) return false;
         
-        // Check if user has an active check-in session from their stored checkInDate
-        if (checkInDate && currentUser.id) {
-            // User already checked in on checkInDate - they remain checked in
-            return true;
+        // Check if user has an active check-in session within the 10-hour window
+        if (checkInDate && checkInTimestamp && currentUser.id) {
+            const now = Date.now();
+            const tenHoursInMs = 10 * 60 * 60 * 1000; // 10 hours in milliseconds
+            const sessionAge = now - checkInTimestamp;
+            
+            // If session is still within 10 hours, user remains checked in
+            if (sessionAge < tenHoursInMs) {
+                return true;
+            }
+            // Session has expired (more than 10 hours), clear it
+            setCheckInDate(null);
+            setCheckInTimestamp(null);
+            return false;
         }
         
         // Otherwise, check if they've checked in today
         return !!(attendanceData?.[today]?.[currentUser.id]);
-    }, [attendanceData, today, currentUser, isAttendanceLoading, checkInDate]);
+    }, [attendanceData, today, currentUser, isAttendanceLoading, checkInDate, checkInTimestamp, setCheckInDate, setCheckInTimestamp]);
     
     // Check-in is allowed before 10 PM (22:00)
-    // However, users who already checked in (especially those who attended briefing) 
-    // should remain logged in until the end of the day (midnight)
+    // However, users who already checked in within the last 10 hours 
+    // should remain logged in and not see the briefing screen again
     const isCheckinAllowed = useMemo(() => {
         const currentHour = new Date().getHours();
-        // If user has already checked in today, allow them to continue until midnight
+        // If user has already checked in and session is valid (within 10 hours), allow them to continue
         if (hasCheckedInToday) {
             return true;
         }
