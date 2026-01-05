@@ -187,8 +187,13 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
           
           // Convert operator IDs to numbers to ensure type consistency
           // Firebase sometimes returns IDs as strings, which causes lookup failures
-          operatorIds.forEach((operatorId: any) => {
+          operatorIds.forEach((operatorId: string | number) => {
             const numericOperatorId = typeof operatorId === 'number' ? operatorId : Number(operatorId);
+            // Skip invalid IDs (NaN) to prevent silent failures
+            if (isNaN(numericOperatorId)) {
+              console.warn(`Invalid operator ID in assignments: ${operatorId}`);
+              return;
+            }
             const operatorRides = assignmentsByOperator.get(numericOperatorId);
             if (operatorRides) {
               operatorRides.push(ride);
@@ -354,7 +359,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     const val = assignmentsToday[rideId.toString()];
     const ids = Array.isArray(val) ? val : val ? [val] : [];
     // Convert to numbers to ensure type consistency (Firebase may return strings)
-    return ids.map((id: any) => typeof id === 'number' ? id : Number(id));
+    return ids.map((id: string | number) => typeof id === 'number' ? id : Number(id))
+              .filter((id: number) => !isNaN(id)); // Filter out invalid IDs
   };
   
   const handleSync = async () => {
