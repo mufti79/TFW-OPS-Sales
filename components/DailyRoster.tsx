@@ -33,32 +33,11 @@ interface ManageAssignmentsModalProps {
 
 const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, allOperators, assignedOperatorIds, onClose, onSave, attendance, selectedDate }) => {
     const [selectedIds, setSelectedIds] = useState<number[]>(assignedOperatorIds);
-    const [hasChanges, setHasChanges] = useState<boolean>(false);
-    const [autoSaved, setAutoSaved] = useState<boolean>(false);
-    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const autoSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
     // Sync selectedIds when assignedOperatorIds prop changes
     useEffect(() => {
         setSelectedIds(assignedOperatorIds);
-        setHasChanges(false);
     }, [assignedOperatorIds]);
-    
-    // Cleanup timeouts on unmount
-    useEffect(() => {
-        return () => {
-            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-            if (autoSavedTimeoutRef.current) clearTimeout(autoSavedTimeoutRef.current);
-        };
-    }, []);
-    
-    const attendanceStatusMap = useMemo(() => {
-        const statusMap = new Map<number, boolean>();
-        attendance
-          .filter(record => record.date === selectedDate)
-          .forEach(record => statusMap.set(record.operatorId, true));
-        return statusMap;
-    }, [attendance, selectedDate]);
       
     const handleToggle = (operatorId: number) => {
         const newSelectedIds = selectedIds.includes(operatorId)
@@ -66,25 +45,6 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
             : [...selectedIds, operatorId];
         
         setSelectedIds(newSelectedIds);
-        setHasChanges(true);
-        setAutoSaved(false);
-        
-        // Clear any existing save timeout
-        if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-        }
-        if (autoSavedTimeoutRef.current) {
-            clearTimeout(autoSavedTimeoutRef.current);
-        }
-        
-        // Auto-save after 1 second of inactivity
-        saveTimeoutRef.current = setTimeout(() => {
-            onSave(ride.id, newSelectedIds);
-            setHasChanges(false);
-            setAutoSaved(true);
-            // Clear auto-saved indicator after 2 seconds
-            autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
-        }, 1000);
     };
 
     const handleConfirm = () => {
@@ -100,33 +60,16 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                         <div className="flex-grow">
                             <h2 className="text-2xl font-bold text-gray-100">Manage Assignments</h2>
                             <p className="text-purple-400 font-semibold">{ride.name}</p>
-                            {autoSaved && (
-                                <p className="text-green-400 text-sm mt-1 animate-pulse">
-                                    ✓ Auto-saved!
-                                </p>
-                            )}
-                            {hasChanges && !autoSaved && (
-                                <p className="text-yellow-400 text-sm mt-1">
-                                    Saving changes...
-                                </p>
-                            )}
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
-                    
-                    <div className="mb-3 p-2 bg-blue-900/30 border border-blue-700/50 rounded text-xs text-blue-300">
-                        💡 <strong>Tip:</strong> Changes are auto-saved. Just check/uncheck operators and close when done.
-                    </div>
-                    
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         <label className="block text-sm font-medium text-gray-300 mb-2">
                             Select operators to assign ({selectedIds.length} selected):
                         </label>
                         {allOperators.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
-                            const isPresent = attendanceStatusMap.get(op.id);
-                            const statusLabel = isPresent ? '(P)' : '(A)';
                             const isSelected = selectedIds.includes(op.id);
                             return (
                                 <label 
@@ -141,7 +84,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                                         onChange={() => handleToggle(op.id)}
                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-purple-600 focus:ring-purple-500"
                                     />
-                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
+                                    <span className="ml-3 text-gray-300">{op.name}</span>
                                 </label>
                             );
                         })}
@@ -773,76 +716,11 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
   return (
     <div className="flex flex-col">
-      {isManager && (
-        <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg" role="status" aria-label="Synchronization status information">
-          <div className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-            </svg>
-            <div className="text-sm text-gray-300 flex-grow">
-              <span className="font-semibold text-blue-400">Sync Enabled:</span> Assignments made in TFW-NEW app automatically appear here. Operators will see their roster in real-time.
-              {!hasAssignments && (
-                <p className="mt-1 text-yellow-400">
-                  ⚠️ No assignments found for {displayDate.toLocaleDateString()}. Use "Sync Now" to fetch from TFW-NEW or "Edit Assignments" to create new ones.
-                </p>
-              )}
-            </div>
-            {onSync && (
-              <button
-                onClick={handleSync}
-                disabled={isSyncing}
-                className={`ml-2 px-3 py-1.5 text-xs font-bold rounded-md active:scale-95 transition-all ${
-                  isSyncing 
-                    ? 'bg-blue-400 text-white cursor-wait' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                }`}
-                title="Manually fetch latest assignments from TFW-NEW app"
-              >
-                {isSyncing ? (
-                  <span className="flex items-center gap-1">
-                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                    </svg>
-                    Syncing...
-                  </span>
-                ) : (
-                  '🔄 Sync Now'
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-      {isManager && (
-        <div className="mb-4 p-3 bg-purple-900/30 border border-purple-700/50 rounded-lg" role="note" aria-label="Roster import information">
-          <div className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-            </svg>
-            <div className="text-sm text-gray-300">
-              <span className="font-semibold text-purple-400">Import Roster:</span> Click "Import Roster CSV" to upload an Excel/CSV file with assignments. The file should have two columns: Ride Name and Operator Name(s). Multiple operators can be listed separated by commas. Imported assignments will be immediately visible to both managers and operators.
-            </div>
-          </div>
-        </div>
-      )}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
         <div>
             <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
               Daily Roster for {displayDate.toLocaleDateString()}
             </h1>
-            {isManager && (
-            <div className="flex items-center gap-6 mt-2 text-lg">
-                <div className="flex items-center gap-2">
-                    <span className="font-semibold text-green-400">Present:</span>
-                    <span className="font-bold text-2xl text-gray-100">{presentCount}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="font-semibold text-red-500">Absent:</span>
-                    <span className="font-bold text-2xl text-gray-100">{absentCount}</span>
-                </div>
-            </div>
-        )}
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
            <div className="flex items-center gap-2 bg-gray-700/50 p-2 rounded-lg">
