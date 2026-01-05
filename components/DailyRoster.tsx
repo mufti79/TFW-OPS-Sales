@@ -144,6 +144,17 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
   const { assignmentsByOperator, unassignedRides, operatorsWithAttendance, presentCount, absentCount } = useMemo<RosterData>(() => {
     const assignmentsToday: Record<string, any> = dailyAssignments[selectedDate] || {};
+    
+    // Debug logging for roster data
+    if (import.meta.env.DEV) {
+      console.log('📋 DailyRoster - Processing assignments:', {
+        date: selectedDate,
+        assignmentsForDate: Object.keys(assignmentsToday).length,
+        sampleAssignment: Object.entries(assignmentsToday)[0],
+        allDates: Object.keys(dailyAssignments)
+      });
+    }
+    
     const rideMap = new Map<string, RideWithCount>();
     rides.forEach(r => rideMap.set(r.id.toString(), r));
     

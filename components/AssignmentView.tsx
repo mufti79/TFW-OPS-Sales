@@ -299,12 +299,22 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         
         // Automatically save imported assignments to Firebase
         onSave(selectedDate, newAssignments);
+        
+        // Debug logging for CSV import
+        if (import.meta.env.DEV) {
+          console.log('📥 CSV Import completed:', {
+            date: selectedDate,
+            totalRows: successCount,
+            assignments: Object.keys(newAssignments).length,
+            sampleAssignment: Object.entries(newAssignments)[0]
+          });
+        }
 
         if (errors.length > 0) {
-          showNotification(`${successCount} assignments imported and auto-assigned to operators, but with errors. Check console.`, 'warning', 8000);
+          showNotification(`${successCount} assignment rows imported and saved successfully, but with errors. Check console for details.`, 'warning', 8000);
           console.warn("Import errors:", errors);
         } else {
-          showNotification(`${successCount} assignment rows imported and auto-assigned to operators successfully! View in Roster panel.`, 'success', 6000);
+          showNotification(`${successCount} assignment rows imported and saved successfully! Assignments are now visible below and in the Roster view.`, 'success', 6000);
         }
         
         // Removed automatic navigation to roster view - users can now see imported assignments
