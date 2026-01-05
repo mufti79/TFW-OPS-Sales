@@ -403,7 +403,12 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">
                 {counters.map((counter) => {
                     const rawAssignment = assignments[String(counter.id)];
-                    const assignedPersonnelIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
+                    const rawPersonnelIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
+                    // Convert personnel IDs to numbers for consistent lookups
+                    // Firebase sometimes returns IDs as strings, which would fail map lookups
+                    const assignedPersonnelIds = rawPersonnelIds
+                        .map((id: string | number) => typeof id === 'number' ? id : Number(id))
+                        .filter((id: number) => !isNaN(id));
                     const personnelIdMap = new Map(ticketSalesPersonnel.map(op => [op.id, op.name]));
                     const assignedNames = assignedPersonnelIds.map(id => personnelIdMap.get(id)).filter(Boolean).join(', ');
 

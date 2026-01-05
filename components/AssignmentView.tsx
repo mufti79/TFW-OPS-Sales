@@ -428,7 +428,12 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">
                 {rides.map((ride) => {
                     const rawAssignment = assignments[String(ride.id)];
-                    const assignedOperatorIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
+                    const rawOperatorIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
+                    // Convert operator IDs to numbers for consistent lookups
+                    // Firebase sometimes returns IDs as strings, which would fail map lookups
+                    const assignedOperatorIds = rawOperatorIds
+                        .map((id: string | number) => typeof id === 'number' ? id : Number(id))
+                        .filter((id: number) => !isNaN(id));
                     const operatorIdMap = new Map(operators.map(op => [op.id, op.name]));
                     const assignedNames = assignedOperatorIds.map(id => operatorIdMap.get(id)).filter(Boolean).join(', ');
 
