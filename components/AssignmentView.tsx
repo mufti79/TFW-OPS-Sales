@@ -304,19 +304,11 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
           showNotification(`${successCount} assignments imported and saved, but with errors. Check console.`, 'warning', 8000);
           console.warn("Import errors:", errors);
         } else {
-          showNotification(`${successCount} assignment rows imported and saved successfully!`, 'success');
+          showNotification(`${successCount} assignment rows imported and saved successfully! Assignments are now visible below.`, 'success');
         }
         
-        // Navigate to roster view to show operators their assignments
-        if (onNavigate) {
-          // Delay navigation to:
-          // 1. Allow user to see the success notification (improves UX)
-          // 2. Give time for Firebase sync to complete in background
-          // Note: onSave is synchronous but triggers async Firebase sync via useFirebaseSync hook
-          setTimeout(() => {
-            onNavigate('roster');
-          }, 1500);
-        }
+        // Removed automatic navigation to roster view - users can now see imported assignments
+        // immediately in the current view without being redirected
 
       } catch (error) {
         console.error("Error parsing Excel file:", error);
