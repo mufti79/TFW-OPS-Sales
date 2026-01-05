@@ -2,7 +2,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Ride, Operator, AttendanceRecord, RideWithCount } from '../types';
 import { Role } from '../hooks/useAuth';
-import BriefingCheckin from './BriefingCheckin';
 import SplitCounter from './SplitCounter';
 import DeveloperAttribution from './DeveloperAttribution';
 
@@ -341,26 +340,14 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const displayDate = new Date(year, month - 1, day);
 
   if (role === 'operator' && currentUser) {
+    // Auto check-in operator when viewing roster if not already checked in
     if (!hasCheckedInToday) {
-        if (isCheckinAllowed) {
-            return <BriefingCheckin operatorName={currentUser.name} onClockIn={onClockIn} />;
-        } else {
-            return (
-                <div className="w-full max-w-lg mx-auto bg-gray-800 p-8 rounded-lg shadow-lg border border-yellow-500 text-center animate-fade-in-up">
-                    <h1 className="text-3xl font-bold text-yellow-400 mb-4">Check-in Closed for Today</h1>
-                    <p className="text-lg text-gray-300">
-                        The check-in window for today has closed at 10:00 PM.
-                    </p>
-                    <p className="text-lg text-gray-400 mt-2">
-                        Check-in for the next day will be available after 12:00 AM.
-                    </p>
-                    <p className="text-sm text-gray-500 mt-4">
-                        Note: Sessions remain active for 10 hours after check-in.
-                    </p>
-                    <DeveloperAttribution />
-                </div>
-            );
-        }
+        // Automatically mark attendance with briefing attended set to true and current time
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const currentTime = `${hours}:${minutes}`;
+        onClockIn(true, currentTime);
     }
 
     const myAssignedRides = assignmentsByOperator.get(currentUser.id) || [];
