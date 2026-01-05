@@ -19,10 +19,13 @@ interface ManageAssignmentsModalProps {
 
 const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter, allPersonnel, assignedPersonnelIds, onClose, onSave, attendance, selectedDate }) => {
     const [selectedIds, setSelectedIds] = useState<number[]>(assignedPersonnelIds);
+    const [hasChanges, setHasChanges] = useState<boolean>(false);
+    const [autoSaved, setAutoSaved] = useState<boolean>(false);
     
     // Sync selectedIds when assignedPersonnelIds prop changes
     useEffect(() => {
         setSelectedIds(assignedPersonnelIds);
+        setHasChanges(false);
     }, [assignedPersonnelIds]);
     
     const attendanceStatusMap = useMemo(() => {
@@ -34,11 +37,25 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
     }, [attendance, selectedDate]);
       
     const handleToggle = (personnelId: number) => {
-        setSelectedIds(prev => 
-            prev.includes(personnelId) 
-            ? prev.filter(id => id !== personnelId) 
-            : [...prev, personnelId]
-        );
+        const newSelectedIds = selectedIds.includes(personnelId)
+            ? selectedIds.filter(id => id !== personnelId)
+            : [...selectedIds, personnelId];
+        
+        setSelectedIds(newSelectedIds);
+        setHasChanges(true);
+        setAutoSaved(false);
+        
+        // Auto-save after 1 second of inactivity
+        const timeoutId = setTimeout(() => {
+            onSave(counter.id, newSelectedIds);
+            setHasChanges(false);
+            setAutoSaved(true);
+            // Clear auto-saved indicator after 2 seconds
+            setTimeout(() => setAutoSaved(false), 2000);
+        }, 1000);
+        
+        // Store timeout ID for cleanup
+        return () => clearTimeout(timeoutId);
     };
 
     const handleConfirm = () => {
@@ -51,34 +68,47 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
             <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 animate-fade-in-up flex flex-col">
                 <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
-                        <div>
+                        <div className="flex-grow">
                             <h2 className="text-2xl font-bold text-gray-100">Manage Assignments</h2>
                             <p className="text-teal-400 font-semibold">{counter.name}</p>
+                            {autoSaved && (
+                                <p className="text-green-400 text-sm mt-1 animate-pulse">
+                                    ✓ Auto-saved!
+                                </p>
+                            )}
+                            {hasChanges && !autoSaved && (
+                                <p className="text-yellow-400 text-sm mt-1">
+                                    Saving changes...
+                                </p>
+                            )}
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button 
-                                onClick={handleConfirm} 
-                                className="px-3 py-1.5 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all"
-                                aria-label="Save assignments"
-                            >
-                                Save
-                            </button>
-                            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
-                        </div>
+                        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    
+                    <div className="mb-3 p-2 bg-blue-900/30 border border-blue-700/50 rounded text-xs text-blue-300">
+                        💡 <strong>Tip:</strong> Changes are auto-saved. Just check/uncheck personnel and close when done.
                     </div>
                     
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Select personnel to assign:</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Select personnel to assign ({selectedIds.length} selected):
+                        </label>
                         {allPersonnel.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(p => {
                             const isPresent = attendanceStatusMap.get(p.id);
                             const statusLabel = isPresent ? '(P)' : '(A)';
+                            const isSelected = selectedIds.includes(p.id);
                             return (
-                                <label key={p.id} className="flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer">
+                                <label 
+                                    key={p.id} 
+                                    className={`flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer transition-colors ${
+                                        isSelected ? 'bg-teal-900/30 border border-teal-600' : ''
+                                    }`}
+                                >
                                     <input 
                                         type="checkbox"
-                                        checked={selectedIds.includes(p.id)}
+                                        checked={isSelected}
                                         onChange={() => handleToggle(p.id)}
                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-teal-600 focus:ring-teal-500"
                                     />
@@ -89,16 +119,21 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
                     </div>
                 </div>
                 
-                <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg mt-auto">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 active:scale-95 transition-all">
-                        Cancel
-                    </button>
-                    <button 
-                        onClick={handleConfirm} 
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all"
-                    >
-                        Save Assignments
-                    </button>
+                <div className="bg-gray-700/50 px-6 py-4 flex justify-between items-center rounded-b-lg mt-auto">
+                    <p className="text-xs text-gray-400">
+                        {selectedIds.length === 0 && 'No personnel assigned'}
+                        {selectedIds.length === 1 && '1 personnel assigned'}
+                        {selectedIds.length > 1 && `${selectedIds.length} personnel assigned`}
+                    </p>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={handleConfirm} 
+                            className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all shadow-lg"
+                            aria-label="Save and close"
+                        >
+                            ✓ Done
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
