@@ -954,12 +954,11 @@ const AppComponent: React.FC = () => {
     // Session remains valid for 10 hours from check-in time, but only if checkInDate matches today
     const hasCheckedInToday = useMemo(() => {
         if (!currentUser) return false;
-        // If attendance is still loading from Firebase, wait before making a decision
-        // This prevents race conditions where different browsers show briefing screen
-        // even though the user already checked in on another device
-        if (isAttendanceLoading) return false;
         
-        // Check if user has an active check-in session within the 10-hour window
+        // CRITICAL FIX: Check localStorage session FIRST before checking isAttendanceLoading
+        // This prevents the briefing screen from appearing again after the user just checked in
+        // The checkInDate and checkInTimestamp are immediately available from localStorage
+        // and don't require waiting for Firebase to load
         if (checkInDate && checkInTimestamp && currentUser.id) {
             // CRITICAL FIX: Verify that the stored checkInDate matches today's date
             // This prevents using an old session from a previous day
@@ -967,7 +966,7 @@ const AppComponent: React.FC = () => {
                 // Date has changed - clear the old session and check today's attendance
                 setCheckInDate(null);
                 setCheckInTimestamp(null);
-                // Fall through to check today's attendance data below
+                // Fall through to check Firebase attendance data below
             } else {
                 // Date matches, now check if session is still within 10 hours
                 const now = Date.now();
@@ -981,9 +980,16 @@ const AppComponent: React.FC = () => {
                 // Session has expired (more than 10 hours), clear it
                 setCheckInDate(null);
                 setCheckInTimestamp(null);
-                // Fall through to check today's attendance data below
+                // Fall through to check Firebase attendance data below
             }
         }
+        
+        // If attendance is still loading from Firebase, wait before making a decision
+        // This prevents race conditions where different browsers show briefing screen
+        // even though the user already checked in on another device
+        // NOTE: We check this AFTER checking localStorage to avoid showing briefing
+        // screen again after user just checked in on this device
+        if (isAttendanceLoading) return false;
         
         // Check if they've checked in today from Firebase attendance data
         return !!(attendanceData?.[today]?.[currentUser.id]);
