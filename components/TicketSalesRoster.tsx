@@ -358,7 +358,9 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
       
       // Clean up - remove link after brief delay to ensure download starts
       setTimeout(() => {
-        document.body.removeChild(link);
+        if (link.parentNode) {
+          document.body.removeChild(link);
+        }
       }, DOWNLOAD_CLEANUP_DELAY_MS);
       
       showNotification('Attendance report downloaded successfully!', 'success');

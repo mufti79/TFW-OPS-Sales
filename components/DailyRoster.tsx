@@ -425,7 +425,9 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
       
       // Clean up - remove link after brief delay to ensure download starts
       setTimeout(() => {
-        document.body.removeChild(link);
+        if (link.parentNode) {
+          document.body.removeChild(link);
+        }
       }, DOWNLOAD_CLEANUP_DELAY_MS);
       
       showNotification('Roster downloaded successfully!', 'success');
