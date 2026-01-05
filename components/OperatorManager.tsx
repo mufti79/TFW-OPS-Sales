@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Operator } from '../types';
 import { useNotification } from '../imageStore';
 
-// Make sure XLSX is available from the script tag in index.html
+// XLSX is loaded from CDN script tag in index.html
 declare var XLSX: any;
 
 interface OperatorManagerProps {

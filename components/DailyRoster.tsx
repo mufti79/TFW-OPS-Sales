@@ -1,9 +1,13 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Ride, Operator, AttendanceRecord, RideWithCount } from '../types';
 import { Role } from '../hooks/useAuth';
 import SplitCounter from './SplitCounter';
 import DeveloperAttribution from './DeveloperAttribution';
+import { useNotification } from '../imageStore';
+
+// XLSX is loaded from CDN script tag in index.html
+declare var XLSX: any;
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
@@ -139,6 +143,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const [isSyncing, setIsSyncing] = useState(false);
   // Track unsaved incremental counts for each ride (operator view only)
   const [unsavedCounts, setUnsavedCounts] = useState<Record<number, { tickets: number; packages: number }>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { showNotification } = useNotification();
   
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
@@ -372,6 +378,113 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check if XLSX library is loaded
+    if (typeof XLSX === 'undefined') {
+      showNotification('Excel library is not loaded. Please check your internet connection and reload the page.', 'error', 8000);
+      console.error('XLSX library not available. It may have been blocked by an ad blocker or failed to load from CDN.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        const rideNameMap = new Map(rides.map(r => [r.name.toLowerCase(), r.id]));
+        const operatorNameMap = new Map(operators.map(o => [o.name.toLowerCase(), o.id]));
+
+        let successCount = 0;
+        const errors: string[] = [];
+        const currentAssignments = dailyAssignments[selectedDate] || {};
+        
+        // Normalize existing assignments to arrays
+        const newAssignments: Record<string, number[]> = {};
+        Object.entries(currentAssignments).forEach(([key, val]) => {
+          newAssignments[key] = Array.isArray(val) ? val : [val];
+        });
+        
+        // Track which rides are being imported to replace their assignments
+        const importedRideAssignments: Record<string, number[]> = {};
+
+        const dataRows = json.slice(1);
+
+        dataRows.forEach((row, index) => {
+          const rideName = String(row[0] ?? '').trim().toLowerCase();
+          const operatorNamesStr = String(row[1] ?? '').trim();
+          
+          if (!rideName || !operatorNamesStr) return;
+
+          const rideId = rideNameMap.get(rideName);
+          if (!rideId) {
+            errors.push(`Row ${index + 2}: Ride "${String(row[0])}" not found.`);
+            return;
+          }
+
+          const operatorNames = operatorNamesStr.split(',').map(name => name.trim());
+          const operatorIds: number[] = [];
+          
+          operatorNames.forEach((originalName, idx) => {
+              const name = originalName.toLowerCase();
+              const opId = operatorNameMap.get(name);
+              if (opId) {
+                  operatorIds.push(opId);
+              } else {
+                  errors.push(`Row ${index + 2}: Operator "${originalName}" not found.`);
+              }
+          });
+
+          if (operatorIds.length > 0) {
+              // For rides in import file, accumulate operators from all rows (don't append to existing)
+              const rideKey = String(rideId);
+              importedRideAssignments[rideKey] = [...(importedRideAssignments[rideKey] || []), ...operatorIds];
+              successCount++;
+          }
+        });
+        
+        // Replace assignments for imported rides, removing duplicates
+        Object.entries(importedRideAssignments).forEach(([rideKey, operatorIds]) => {
+          newAssignments[rideKey] = Array.from(new Set<number>(operatorIds));
+        });
+
+        // Automatically save imported assignments to Firebase
+        onSaveAssignments(selectedDate, newAssignments);
+        
+        // Debug logging for troubleshooting assignment visibility issues
+        if (import.meta.env.DEV) {
+          console.log('📥 CSV Import completed in DailyRoster:', {
+            date: selectedDate,
+            totalRows: successCount,
+            assignments: Object.keys(newAssignments).length,
+            sampleAssignment: Object.entries(newAssignments)[0]
+          });
+        }
+
+        if (errors.length > 0) {
+          showNotification(`${successCount} assignment rows imported and saved successfully, but with errors. Check console for details.`, 'warning', 8000);
+          console.warn("Import errors:", errors);
+        } else {
+          showNotification(`${successCount} assignment rows imported and saved successfully! Assignments are now visible in the roster below and operators can view them.`, 'success', 6000);
+        }
+
+      } catch (error) {
+        console.error("Error parsing Excel file:", error);
+        showNotification("Failed to parse file. Check format.", 'error');
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
   };
 
   const isRosterEmpty = operatorsWithAttendance.length === 0;
@@ -643,6 +756,18 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
           </div>
         </div>
       )}
+      {isManager && (
+        <div className="mb-4 p-3 bg-purple-900/30 border border-purple-700/50 rounded-lg" role="note" aria-label="Roster import information">
+          <div className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+            </svg>
+            <div className="text-sm text-gray-300">
+              <span className="font-semibold text-purple-400">Import Roster:</span> Click "Import Roster CSV" to upload an Excel/CSV file with assignments. The file should have two columns: Ride Name and Operator Name(s). Multiple operators can be listed separated by commas. Imported assignments will be immediately visible to both managers and operators.
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
         <div>
             <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
@@ -674,6 +799,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             </div>
            {isManager && (
               <div className="flex items-center gap-2 flex-wrap justify-center">
+                <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".xlsx, .xls, .csv" className="hidden" />
                 <div className="flex items-center gap-2 p-1 bg-gray-700/50 rounded-lg">
                   <button
                       onClick={handleDownloadAttendanceReport}
@@ -688,6 +814,12 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                       DL Roster
                   </button>
                 </div>
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 active:scale-95 transition-all text-sm"
+                >
+                    Import Roster CSV
+                </button>
                 <button
                   onClick={() => onNavigate('assignments')}
                   className="px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 active:scale-95 transition-all text-sm"

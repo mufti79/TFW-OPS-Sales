@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Ride, Operator, AttendanceRecord } from '../types';
 import { useNotification } from '../imageStore';
 
-// Make sure XLSX is available from the script tag in index.html
+// XLSX is loaded from CDN script tag in index.html
 declare var XLSX: any;
 
 // Define View type to match the main app's view options
@@ -235,6 +235,14 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Check if XLSX library is loaded
+    if (typeof XLSX === 'undefined') {
+      showNotification('Excel library is not loaded. Please check your internet connection and reload the page.', 'error', 8000);
+      console.error('XLSX library not available. It may have been blocked by an ad blocker or failed to load from CDN.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -269,16 +277,16 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
             return;
           }
 
-          const operatorNames = operatorNamesStr.split(',').map(name => name.trim().toLowerCase());
+          const operatorNames = operatorNamesStr.split(',').map(name => name.trim());
           const operatorIds: number[] = [];
           
-          operatorNames.forEach(name => {
+          operatorNames.forEach((originalName) => {
+              const name = originalName.toLowerCase();
               const opId = operatorNameMap.get(name);
               if (opId) {
-                  // FIX: Argument of type 'unknown' is not assignable to parameter of type 'number'.
-                  operatorIds.push(opId as number);
+                  operatorIds.push(opId);
               } else {
-                  errors.push(`Row ${index + 2}: Operator "${name}" not found.`);
+                  errors.push(`Row ${index + 2}: Operator "${originalName}" not found.`);
               }
           });
 
@@ -325,7 +333,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         console.error("Error parsing Excel file:", error);
         showNotification("Failed to parse file. Check format.", 'error');
       } finally {
-        if(fileInputRef.current) fileInputRef.current.value = '';
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
     };
     reader.readAsArrayBuffer(file);

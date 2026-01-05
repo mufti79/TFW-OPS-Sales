@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Counter, Operator, AttendanceRecord } from '../types';
 import { useNotification } from '../imageStore';
 
-// Make sure XLSX is available from the script tag in index.html
+// XLSX is loaded from CDN script tag in index.html
 declare var XLSX: any;
 
 // Define View type to match the main app's view options
