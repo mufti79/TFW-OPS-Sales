@@ -721,7 +721,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                         onClick={() => setManageModalInfo(ride)}
                         className="px-2 py-1 text-xs bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 active:scale-95 transition-all"
                       >
-                        Assign
+                        Select Assignment
                       </button>
                     </li>
                   ))}
