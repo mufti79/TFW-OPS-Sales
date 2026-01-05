@@ -8,6 +8,14 @@ import DeveloperAttribution from './DeveloperAttribution';
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
+// Troubleshooting steps for when operators don't see assignments
+const ASSIGNMENT_TROUBLESHOOTING_STEPS = [
+  'Ask your manager to check if assignments were imported for the correct date',
+  'Verify your name in the roster file matches exactly',
+  'Try logging out and logging back in',
+  'Check with your manager if using the TFW-NEW app to make assignments'
+] as const;
+
 // Manage Assignments Modal Component
 interface ManageAssignmentsModalProps {
     ride: RideWithCount;
@@ -144,6 +152,18 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
   const { assignmentsByOperator, unassignedRides, operatorsWithAttendance, presentCount, absentCount } = useMemo<RosterData>(() => {
     const assignmentsToday: Record<string, any> = dailyAssignments[selectedDate] || {};
+    
+    // Debug logging for diagnosing "No Assignments Today" issue
+    // Helps verify that assignments are being loaded correctly from Firebase
+    if (import.meta.env.DEV) {
+      console.log('📋 DailyRoster - Processing assignments:', {
+        date: selectedDate,
+        assignmentsForDate: Object.keys(assignmentsToday).length,
+        sampleAssignment: Object.entries(assignmentsToday)[0],
+        allDates: Object.keys(dailyAssignments)
+      });
+    }
+    
     const rideMap = new Map<string, RideWithCount>();
     rides.forEach(r => rideMap.set(r.id.toString(), r));
     
@@ -154,6 +174,17 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
         const ride = rideMap.get(rideId);
         if (ride) {
           const operatorIds = Array.isArray(operatorIdValue) ? operatorIdValue : [operatorIdValue];
+          
+          // Debug logging for assignment processing
+          if (import.meta.env.DEV && Object.keys(assignmentsToday).length > 0) {
+            console.log('🎢 Processing assignment:', {
+              rideId,
+              rideName: ride.name,
+              operatorIds,
+              operatorIdType: typeof operatorIds[0]
+            });
+          }
+          
           operatorIds.forEach((operatorId: number) => {
             const operatorRides = assignmentsByOperator.get(operatorId);
             if (operatorRides) {
@@ -340,6 +371,18 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const displayDate = new Date(year, month - 1, day);
 
   if (role === 'operator' && currentUser) {
+    // Debug logging for operator view
+    if (import.meta.env.DEV) {
+      console.log('👤 Operator View:', {
+        operatorId: currentUser.id,
+        operatorName: currentUser.name,
+        selectedDate,
+        assignmentsForOperator: assignmentsByOperator.get(currentUser.id),
+        totalAssignmentsByOperator: assignmentsByOperator.size,
+        allOperatorIds: Array.from(assignmentsByOperator.keys())
+      });
+    }
+    
     // Auto check-in operator when viewing roster if not already checked in
     if (!hasCheckedInToday) {
         // Automatically mark attendance with briefing attended set to true and current time
@@ -505,6 +548,20 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                 <div className="text-center py-16">
                     <h2 className="text-2xl font-bold text-gray-400">No Assignments Today</h2>
                     <p className="text-gray-500 mt-2">You have not been assigned to any rides or games for {displayDate.toLocaleDateString()}.</p>
+                    <div className="mt-6 p-4 bg-blue-900/30 border border-blue-700/50 rounded-lg max-w-md mx-auto text-left">
+                        <p className="text-sm text-blue-300 font-semibold mb-2">If you should have assignments:</p>
+                        <ul className="text-sm text-gray-400 space-y-1 list-disc list-inside">
+                            {ASSIGNMENT_TROUBLESHOOTING_STEPS.map((step, index) => (
+                              <li key={index}>
+                                {index === 1 ? (
+                                  <>{step}: <span className="font-semibold text-white">{currentUser.name}</span></>
+                                ) : (
+                                  step
+                                )}
+                              </li>
+                            ))}
+                        </ul>
+                    </div>
                 </div>
             )}
             

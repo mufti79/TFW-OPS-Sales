@@ -703,6 +703,17 @@ const AppComponent: React.FC = () => {
     }, [selectedDate, setDailyCounts, setDailyRideDetails, logAction, dailyCounts]);
 
     const handleSaveAssignments = (date: string, newAssignments: Record<string, number[]>) => {
+        // Debug logging for assignment save
+        if (import.meta.env.DEV) {
+          console.log('💾 Saving assignments:', {
+            date,
+            totalRides: Object.keys(newAssignments).length,
+            sampleRideId: Object.keys(newAssignments)[0],
+            sampleOperatorIds: Object.values(newAssignments)[0],
+            sampleOperatorIdType: typeof Object.values(newAssignments)[0]?.[0]
+          });
+        }
+        
         // Note: We write assignments only to the primary path (data/dailyAssignments) to maintain
         // a single source of truth for TFW-OPS-Sales edits. The app reads from both paths
         // (dailyAssignments and opsAssignments) for full compatibility with TFW-NEW.

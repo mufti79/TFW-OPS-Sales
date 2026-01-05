@@ -299,12 +299,23 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         
         // Automatically save imported assignments to Firebase
         onSave(selectedDate, newAssignments);
+        
+        // Debug logging for troubleshooting assignment visibility issues
+        // This helps diagnose if assignments are being saved correctly
+        if (import.meta.env.DEV) {
+          console.log('📥 CSV Import completed:', {
+            date: selectedDate,
+            totalRows: successCount,
+            assignments: Object.keys(newAssignments).length,
+            sampleAssignment: Object.entries(newAssignments)[0]
+          });
+        }
 
         if (errors.length > 0) {
-          showNotification(`${successCount} assignments imported and auto-assigned to operators, but with errors. Check console.`, 'warning', 8000);
+          showNotification(`${successCount} assignment rows imported and saved successfully, but with errors. Check console for details.`, 'warning', 8000);
           console.warn("Import errors:", errors);
         } else {
-          showNotification(`${successCount} assignment rows imported and auto-assigned to operators successfully! View in Roster panel.`, 'success', 6000);
+          showNotification(`${successCount} assignment rows imported and saved successfully! Assignments are now visible below and in the Roster view.`, 'success', 6000);
         }
         
         // Removed automatic navigation to roster view - users can now see imported assignments
@@ -395,8 +406,14 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
           <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
             <div className="p-4 bg-gray-700/50 text-gray-300">
                 <p>Assign one or more operators below, or use the "Import Roster CSV" button to upload an Excel/CSV file.</p>
-                <p className="text-sm text-gray-400">In Excel, the file should have two columns: Ride Name and Operator Name(s). You can list multiple operators in the second column separated by a comma.</p>
-                <p className="text-sm text-green-400 mt-2">📋 <strong>Note:</strong> Imported assignments will automatically assign operators to rides and will be visible in the Roster panel.</p>
+                <p className="text-sm text-gray-400 mb-1">In Excel, the file should have two columns: <strong>Ride Name</strong> and <strong>Operator Name(s)</strong>. You can list multiple operators in the second column separated by a comma.</p>
+                <div className="text-xs bg-gray-900/50 p-2 rounded mt-2 font-mono text-gray-400">
+                  <div className="font-semibold text-gray-300 mb-1">Example CSV format:</div>
+                  <div>Ride Name, Operator Name(s)</div>
+                  <div>Ferris Wheel, John Doe</div>
+                  <div>Bumper Cars, Jane Smith, Bob Johnson</div>
+                </div>
+                <p className="text-sm text-green-400 mt-2">📋 <strong>Note:</strong> Operator names in the CSV must exactly match the names in the system (case-insensitive). Imported assignments will be saved and visible in the Roster view.</p>
                 {Object.keys(assignments).length === 0 && (
                   <aside className="mt-3 p-3 bg-blue-900/30 border border-blue-700/50 rounded-md" role="note" aria-label="Information about missing assignments">
                     <p className="text-sm text-blue-300">
