@@ -239,7 +239,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     if (typeof XLSX === 'undefined') {
       showNotification('Excel library is not loaded. Please check your internet connection and reload the page.', 'error', 8000);
       console.error('XLSX library not available. It may have been blocked by an ad blocker or failed to load from CDN.');
-      if(fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -333,7 +333,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         console.error("Error parsing Excel file:", error);
         showNotification("Failed to parse file. Check format.", 'error');
       } finally {
-        if(fileInputRef.current) fileInputRef.current.value = '';
+        if (fileInputRef.current) fileInputRef.current.value = '';
       }
     };
     reader.readAsArrayBuffer(file);
