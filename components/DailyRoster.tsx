@@ -185,12 +185,15 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             });
           }
           
-          operatorIds.forEach((operatorId: number) => {
-            const operatorRides = assignmentsByOperator.get(operatorId);
+          // Convert operator IDs to numbers to ensure type consistency
+          // Firebase sometimes returns IDs as strings, which causes lookup failures
+          operatorIds.forEach((operatorId: any) => {
+            const numericOperatorId = typeof operatorId === 'number' ? operatorId : Number(operatorId);
+            const operatorRides = assignmentsByOperator.get(numericOperatorId);
             if (operatorRides) {
               operatorRides.push(ride);
             } else {
-              assignmentsByOperator.set(operatorId, [ride]);
+              assignmentsByOperator.set(numericOperatorId, [ride]);
             }
           });
           assignedRideIds.add(rideId);
@@ -349,7 +352,9 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const getAssignedOperatorIds = (rideId: number): number[] => {
     const assignmentsToday = dailyAssignments[selectedDate] || {};
     const val = assignmentsToday[rideId.toString()];
-    return Array.isArray(val) ? val : val ? [val] : [];
+    const ids = Array.isArray(val) ? val : val ? [val] : [];
+    // Convert to numbers to ensure type consistency (Firebase may return strings)
+    return ids.map((id: any) => typeof id === 'number' ? id : Number(id));
   };
   
   const handleSync = async () => {
