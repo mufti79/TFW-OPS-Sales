@@ -124,7 +124,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                         <label className="block text-sm font-medium text-gray-300 mb-2">
                             Select operators to assign ({selectedIds.length} selected):
                         </label>
-                        {allOperators.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
+                        {[...allOperators].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
                             const isPresent = attendanceStatusMap.get(op.id);
                             const statusLabel = isPresent ? '(P)' : '(A)';
                             const isSelected = selectedIds.includes(op.id);
