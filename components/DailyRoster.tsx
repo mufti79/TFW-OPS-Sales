@@ -165,6 +165,17 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
         const ride = rideMap.get(rideId);
         if (ride) {
           const operatorIds = Array.isArray(operatorIdValue) ? operatorIdValue : [operatorIdValue];
+          
+          // Debug logging for assignment processing
+          if (import.meta.env.DEV && Object.keys(assignmentsToday).length > 0) {
+            console.log('🎢 Processing assignment:', {
+              rideId,
+              rideName: ride.name,
+              operatorIds,
+              operatorIdType: typeof operatorIds[0]
+            });
+          }
+          
           operatorIds.forEach((operatorId: number) => {
             const operatorRides = assignmentsByOperator.get(operatorId);
             if (operatorRides) {
@@ -351,6 +362,18 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const displayDate = new Date(year, month - 1, day);
 
   if (role === 'operator' && currentUser) {
+    // Debug logging for operator view
+    if (import.meta.env.DEV) {
+      console.log('👤 Operator View:', {
+        operatorId: currentUser.id,
+        operatorName: currentUser.name,
+        selectedDate,
+        assignmentsForOperator: assignmentsByOperator.get(currentUser.id),
+        totalAssignmentsByOperator: assignmentsByOperator.size,
+        allOperatorIds: Array.from(assignmentsByOperator.keys())
+      });
+    }
+    
     // Auto check-in operator when viewing roster if not already checked in
     if (!hasCheckedInToday) {
         // Automatically mark attendance with briefing attended set to true and current time
@@ -516,6 +539,15 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                 <div className="text-center py-16">
                     <h2 className="text-2xl font-bold text-gray-400">No Assignments Today</h2>
                     <p className="text-gray-500 mt-2">You have not been assigned to any rides or games for {displayDate.toLocaleDateString()}.</p>
+                    <div className="mt-6 p-4 bg-blue-900/30 border border-blue-700/50 rounded-lg max-w-md mx-auto text-left">
+                        <p className="text-sm text-blue-300 font-semibold mb-2">If you should have assignments:</p>
+                        <ul className="text-sm text-gray-400 space-y-1 list-disc list-inside">
+                            <li>Ask your manager to check if assignments were imported for the correct date</li>
+                            <li>Verify your name in the roster file matches exactly: <span className="font-semibold text-white">{currentUser.name}</span></li>
+                            <li>Try logging out and logging back in</li>
+                            <li>Check with your manager if using the TFW-NEW app to make assignments</li>
+                        </ul>
+                    </div>
                 </div>
             )}
             
