@@ -301,10 +301,10 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         onSave(selectedDate, newAssignments);
 
         if (errors.length > 0) {
-          showNotification(`${successCount} assignments imported and saved, but with errors. Check console.`, 'warning', 8000);
+          showNotification(`${successCount} assignments imported and auto-assigned to operators, but with errors. Check console.`, 'warning', 8000);
           console.warn("Import errors:", errors);
         } else {
-          showNotification(`${successCount} assignment rows imported and saved successfully! Assignments are now visible below.`, 'success');
+          showNotification(`${successCount} assignment rows imported and auto-assigned to operators successfully! View in Roster panel.`, 'success', 6000);
         }
         
         // Removed automatic navigation to roster view - users can now see imported assignments
@@ -370,7 +370,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full sm:w-auto px-4 py-2 text-sm bg-teal-600 text-white font-bold rounded-lg hover:bg-teal-700 active:scale-95 transition-all"
               >
-                  Import
+                  Import Roster CSV
               </button>
                <button
                   onClick={handleClearAll}
@@ -394,8 +394,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         {operators.length > 0 ? (
           <div className="bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-700">
             <div className="p-4 bg-gray-700/50 text-gray-300">
-                <p>Assign one or more operators below, or use the "Import" button to upload an Excel/CSV file.</p>
+                <p>Assign one or more operators below, or use the "Import Roster CSV" button to upload an Excel/CSV file.</p>
                 <p className="text-sm text-gray-400">In Excel, the file should have two columns: Ride Name and Operator Name(s). You can list multiple operators in the second column separated by a comma.</p>
+                <p className="text-sm text-green-400 mt-2">📋 <strong>Note:</strong> Imported assignments will automatically assign operators to rides and will be visible in the Roster panel.</p>
                 {Object.keys(assignments).length === 0 && (
                   <aside className="mt-3 p-3 bg-blue-900/30 border border-blue-700/50 rounded-md" role="note" aria-label="Information about missing assignments">
                     <p className="text-sm text-blue-300">
