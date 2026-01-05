@@ -22,9 +22,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
     const activeRides = ridesWithCounts.filter(ride => ride.count > 0).length;
     
     const attendanceTodayMap = new Map(attendance.filter(a => a.date === selectedDate).map(a => [a.operatorId, a]));
-    const presentOperators = operators.filter(op => attendanceTodayMap.has(op.id)).sort((a,b) => (a.name || '').localeCompare(b.name || ''));
-    const absentOperators = operators.filter(op => !attendanceTodayMap.has(op.id)).sort((a,b) => (a.name || '').localeCompare(b.name || ''));
-    const presentCount = presentOperators.length;
+    const presentCount = attendanceTodayMap.size;
 
     const topRides = [...ridesWithCounts]
         .filter(ride => ride.count > 0)
@@ -55,7 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
         })
         .sort((a,b) => (a.name || '').localeCompare(b.name || ''));
 
-    return { totalGuests, activeRides, presentCount, topRides, presentOperators, absentOperators, unassignedRides, ridesAwaitingCount };
+    return { totalGuests, activeRides, presentCount, topRides, unassignedRides, ridesAwaitingCount };
   }, [ridesWithCounts, operators, attendance, selectedDate, dailyAssignments]);
 
   const [year, month, day] = selectedDate.split('-').map(Number);
@@ -240,30 +238,9 @@ const Dashboard: React.FC<DashboardProps> = ({ ridesWithCounts, operators, atten
             </div>
         </div>
 
-        {/* Right Column */}
+        {/* Right Column - Reserved for future dashboard widgets */}
         <div className="lg:col-span-1 space-y-6">
-            <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-                <h2 className="text-xl font-bold mb-4">Operator Attendance</h2>
-                <div className="space-y-4 max-h-72 overflow-y-auto pr-2">
-                    <div>
-                        <h3 className="font-semibold text-green-400 mb-2">Present ({dashboardData.presentOperators.length})</h3>
-                        {dashboardData.presentOperators.length > 0 ? (
-                            <ul className="space-y-1 text-sm text-gray-300">
-                                {dashboardData.presentOperators.map(op => <li key={op.id}>{op.name}</li>)}
-                            </ul>
-                        ) : <p className="text-xs text-gray-500">No operators present.</p>}
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-red-500 mb-2">Absent ({dashboardData.absentOperators.length})</h3>
-                        {dashboardData.absentOperators.length > 0 ? (
-                            <ul className="space-y-1 text-sm text-gray-300">
-                                {dashboardData.absentOperators.map(op => <li key={op.id}>{op.name}</li>)}
-                            </ul>
-                        ) : <p className="text-xs text-gray-500">All operators accounted for.</p>}
-                    </div>
-                </div>
-            </div>
-
+            {/* Operator Attendance section removed to avoid confusion with roster assignments */}
         </div>
       </div>
     </div>
