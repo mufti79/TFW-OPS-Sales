@@ -110,7 +110,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
                         <label className="block text-sm font-medium text-gray-300 mb-2">
                             Select personnel to assign ({selectedIds.length} selected):
                         </label>
-                        {allPersonnel.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(p => {
+                        {[...allPersonnel].sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(p => {
                             const isPresent = attendanceStatusMap.get(p.id);
                             const statusLabel = isPresent ? '(P)' : '(A)';
                             const isSelected = selectedIds.includes(p.id);
