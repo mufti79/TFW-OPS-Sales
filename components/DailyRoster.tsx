@@ -9,6 +9,9 @@ import { useNotification } from '../imageStore';
 // XLSX is loaded from CDN script tag in index.html
 declare var XLSX: any;
 
+// Constants
+const DOWNLOAD_CLEANUP_DELAY_MS = 100; // Delay before removing download link from DOM
+
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
@@ -366,8 +369,20 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     document.body.removeChild(link);
   };
 
-  // Alternative roster download method using Data URI approach
-  // This method provides better compatibility with some browsers and devices
+  /**
+   * Alternative roster download method using Data URI approach.
+   * This method provides better compatibility with older browsers and devices
+   * that may have issues with Blob-based downloads due to security restrictions.
+   * 
+   * Uses Data URI encoding instead of Blob API to bypass potential browser restrictions.
+   * Includes enhanced error handling and user feedback via notifications.
+   * 
+   * @remarks
+   * - Better compatibility with mobile devices and older browsers
+   * - Works around strict Content Security Policy restrictions
+   * - Provides clear success/error feedback to users
+   * - Performs same CSV generation as primary method
+   */
   const handleDownloadRosterAlternative = () => {
     if (operators.length === 0) {
         showNotification('No operator data to download.', 'error');
@@ -408,10 +423,10 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
       document.body.appendChild(link);
       link.click();
       
-      // Clean up
+      // Clean up - remove link after brief delay to ensure download starts
       setTimeout(() => {
         document.body.removeChild(link);
-      }, 100);
+      }, DOWNLOAD_CLEANUP_DELAY_MS);
       
       showNotification('Roster downloaded successfully!', 'success');
     } catch (error) {

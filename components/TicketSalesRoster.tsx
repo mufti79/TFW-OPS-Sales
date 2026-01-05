@@ -5,6 +5,9 @@ import { Role } from '../hooks/useAuth';
 import DeveloperAttribution from './DeveloperAttribution';
 import { useNotification } from '../imageStore';
 
+// Constants
+const DOWNLOAD_CLEANUP_DELAY_MS = 100; // Delay before removing download link from DOM
+
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 
 // Manage Assignments Modal Component
@@ -301,8 +304,21 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
     document.body.removeChild(link);
   };
 
-  // Alternative attendance download method using Data URI approach
-  // This method provides better compatibility with some browsers and devices
+  /**
+   * Alternative attendance report download method using Data URI approach.
+   * This method provides better compatibility with older browsers and devices
+   * that may have issues with Blob-based downloads due to security restrictions.
+   * 
+   * Uses Data URI encoding instead of Blob API to bypass potential browser restrictions.
+   * Includes enhanced error handling and user feedback via notifications.
+   * Respects the current attendance filter (all/present/absent).
+   * 
+   * @remarks
+   * - Better compatibility with mobile devices and older browsers
+   * - Works around strict Content Security Policy restrictions
+   * - Provides clear success/error feedback to users
+   * - Performs same CSV generation as primary method
+   */
   const handleDownloadAttendanceReportAlternative = () => {
     if (filteredPersonnel.length === 0) {
         showNotification('No personnel data to download for the current filter.', 'error');
@@ -340,10 +356,10 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
       document.body.appendChild(link);
       link.click();
       
-      // Clean up
+      // Clean up - remove link after brief delay to ensure download starts
       setTimeout(() => {
         document.body.removeChild(link);
-      }, 100);
+      }, DOWNLOAD_CLEANUP_DELAY_MS);
       
       showNotification('Attendance report downloaded successfully!', 'success');
     } catch (error) {
