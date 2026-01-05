@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Counter, Operator, AttendanceRecord } from '../types';
 import { Role } from '../hooks/useAuth';
 import DeveloperAttribution from './DeveloperAttribution';
+import { useNotification } from '../imageStore';
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 
@@ -177,6 +178,7 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
   const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'present' | 'absent'>('all');
   const [manageModalInfo, setManageModalInfo] = useState<Counter | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const { showNotification } = useNotification();
   
   const formatTime = (timeStr: string | null): string => {
       if (!timeStr) return '';
@@ -297,6 +299,57 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  // Alternative attendance download method using Data URI approach
+  // This method provides better compatibility with some browsers and devices
+  const handleDownloadAttendanceReportAlternative = () => {
+    if (filteredPersonnel.length === 0) {
+        showNotification('No personnel data to download for the current filter.', 'error');
+        return;
+    }
+
+    try {
+      const headers = ['Personnel Name', 'Status', 'Briefing Attended', 'Briefing Time'];
+      
+      const rows = filteredPersonnel.map(personnel => {
+          const status = personnel.attendance ? 'Present' : 'Absent';
+          let attendedBriefing = 'N/A';
+          let briefingTime = 'N/A';
+
+          if(personnel.attendance) {
+              attendedBriefing = personnel.attendance.attendedBriefing ? 'Yes' : 'No';
+              briefingTime = personnel.attendance.attendedBriefing ? formatTime(personnel.attendance.briefingTime) : 'N/A';
+          }
+          
+          const personnelName = `"${personnel.name.replace(/"/g, '""')}"`;
+          
+          return [personnelName, status, attendedBriefing, briefingTime].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      
+      // Use Data URI approach instead of Blob for better compatibility
+      const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+      const link = document.createElement('a');
+      link.href = encodedUri;
+      const filterText = attendanceFilter !== 'all' ? `_${attendanceFilter}` : '';
+      link.download = `ToggiFunWorld_SalesAttendance_${selectedDate}${filterText}.csv`;
+      
+      // Some browsers require the link to be in the document
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 100);
+      
+      showNotification('Attendance report downloaded successfully!', 'success');
+    } catch (error) {
+      console.error('Error downloading attendance report:', error);
+      showNotification('Failed to download attendance report. Please try again.', 'error');
+    }
   };
   
     const handleManageAssignmentsSave = (counterId: number, newPersonnelIds: number[]) => {
@@ -440,8 +493,16 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
                       <button
                           onClick={handleDownloadAttendanceReport}
                           className="px-3 py-1.5 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 active:scale-95 transition-all text-sm"
+                          title="Download attendance using Blob method"
                       >
                           DL Attendance
+                      </button>
+                      <button
+                          onClick={handleDownloadAttendanceReportAlternative}
+                          className="px-3 py-1.5 bg-emerald-600 text-white font-semibold rounded-md hover:bg-emerald-700 active:scale-95 transition-all text-sm"
+                          title="Download attendance using alternative method (better compatibility)"
+                      >
+                          DL Attendance (Alt)
                       </button>
                   </div>
                   <button

@@ -366,6 +366,60 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     document.body.removeChild(link);
   };
 
+  // Alternative roster download method using Data URI approach
+  // This method provides better compatibility with some browsers and devices
+  const handleDownloadRosterAlternative = () => {
+    if (operators.length === 0) {
+        showNotification('No operator data to download.', 'error');
+        return;
+    }
+
+    try {
+      const headers = ['Operator Name', 'Checked In', 'Attended Briefing', 'Briefing Time', 'Assigned Rides'];
+      
+      const rows = operatorsWithAttendance.map((operator: Operator & { attendance: AttendanceRecord | null }) => {
+          const assignedRides = assignmentsByOperator.get(operator.id);
+          const rideNames = assignedRides ? assignedRides.map(r => r.name).join('; ') : 'N/A';
+          
+          const checkedIn = operator.attendance ? 'Yes' : 'No';
+          let attendedBriefing = 'N/A';
+          let briefingTime = 'N/A';
+
+          if(operator.attendance) {
+              attendedBriefing = operator.attendance.attendedBriefing ? 'Yes' : 'No';
+              briefingTime = operator.attendance.attendedBriefing ? formatTime(operator.attendance.briefingTime) : 'N/A';
+          }
+          
+          const operatorName = `"${operator.name.replace(/"/g, '""')}"`;
+          const rideNamesCsv = `"${rideNames.replace(/"/g, '""')}"`;
+
+          return [operatorName, checkedIn, attendedBriefing, briefingTime, rideNamesCsv].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      
+      // Use Data URI approach instead of Blob for better compatibility
+      const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent);
+      const link = document.createElement('a');
+      link.href = encodedUri;
+      link.download = `ToggiFunWorld_Roster_${selectedDate}.csv`;
+      
+      // Some browsers require the link to be in the document
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up
+      setTimeout(() => {
+        document.body.removeChild(link);
+      }, 100);
+      
+      showNotification('Roster downloaded successfully!', 'success');
+    } catch (error) {
+      console.error('Error downloading roster:', error);
+      showNotification('Failed to download roster. Please try again.', 'error');
+    }
+  };
+
   const handleDownloadAttendanceReport = () => {
     if (operatorsWithAttendance.length === 0) {
         alert("No operator data to download.");
@@ -803,8 +857,16 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                   <button
                       onClick={handleDownloadRoster}
                       className="px-3 py-1.5 bg-green-800 text-white font-semibold rounded-md hover:bg-green-700 active:scale-95 transition-all text-sm"
+                      title="Download roster using Blob method"
                   >
                       DL Roster
+                  </button>
+                  <button
+                      onClick={handleDownloadRosterAlternative}
+                      className="px-3 py-1.5 bg-emerald-600 text-white font-semibold rounded-md hover:bg-emerald-700 active:scale-95 transition-all text-sm"
+                      title="Download roster using alternative method (better compatibility)"
+                  >
+                      DL Roster (Alt)
                   </button>
                 </div>
                 <button
