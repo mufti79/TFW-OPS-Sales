@@ -33,11 +33,24 @@ interface ManageAssignmentsModalProps {
 
 const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, allOperators, assignedOperatorIds, onClose, onSave, attendance, selectedDate }) => {
     const [selectedIds, setSelectedIds] = useState<number[]>(assignedOperatorIds);
+    const [hasChanges, setHasChanges] = useState<boolean>(false);
+    const [autoSaved, setAutoSaved] = useState<boolean>(false);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autoSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
     // Sync selectedIds when assignedOperatorIds prop changes
     useEffect(() => {
         setSelectedIds(assignedOperatorIds);
+        setHasChanges(false);
     }, [assignedOperatorIds]);
+    
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+            if (autoSavedTimeoutRef.current) clearTimeout(autoSavedTimeoutRef.current);
+        };
+    }, []);
     
     const attendanceStatusMap = useMemo(() => {
         const statusMap = new Map<number, boolean>();
@@ -48,11 +61,30 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
     }, [attendance, selectedDate]);
       
     const handleToggle = (operatorId: number) => {
-        setSelectedIds(prev => 
-            prev.includes(operatorId) 
-            ? prev.filter(id => id !== operatorId) 
-            : [...prev, operatorId]
-        );
+        const newSelectedIds = selectedIds.includes(operatorId)
+            ? selectedIds.filter(id => id !== operatorId)
+            : [...selectedIds, operatorId];
+        
+        setSelectedIds(newSelectedIds);
+        setHasChanges(true);
+        setAutoSaved(false);
+        
+        // Clear any existing save timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        if (autoSavedTimeoutRef.current) {
+            clearTimeout(autoSavedTimeoutRef.current);
+        }
+        
+        // Auto-save after 1 second of inactivity
+        saveTimeoutRef.current = setTimeout(() => {
+            onSave(ride.id, newSelectedIds);
+            setHasChanges(false);
+            setAutoSaved(true);
+            // Clear auto-saved indicator after 2 seconds
+            autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
+        }, 1000);
     };
 
     const handleConfirm = () => {
@@ -65,25 +97,47 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
             <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 animate-fade-in-up flex flex-col">
                 <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
-                        <div>
+                        <div className="flex-grow">
                             <h2 className="text-2xl font-bold text-gray-100">Manage Assignments</h2>
                             <p className="text-purple-400 font-semibold">{ride.name}</p>
+                            {autoSaved && (
+                                <p className="text-green-400 text-sm mt-1 animate-pulse">
+                                    ✓ Auto-saved!
+                                </p>
+                            )}
+                            {hasChanges && !autoSaved && (
+                                <p className="text-yellow-400 text-sm mt-1">
+                                    Saving changes...
+                                </p>
+                            )}
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
                     
+                    <div className="mb-3 p-2 bg-blue-900/30 border border-blue-700/50 rounded text-xs text-blue-300">
+                        💡 <strong>Tip:</strong> Changes are auto-saved. Just check/uncheck operators and close when done.
+                    </div>
+                    
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                        <label className="block text-sm font-medium text-gray-300 mb-2">Select operators to assign:</label>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                            Select operators to assign ({selectedIds.length} selected):
+                        </label>
                         {allOperators.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
                             const isPresent = attendanceStatusMap.get(op.id);
                             const statusLabel = isPresent ? '(P)' : '(A)';
+                            const isSelected = selectedIds.includes(op.id);
                             return (
-                                <label key={op.id} className="flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer">
+                                <label 
+                                    key={op.id} 
+                                    className={`flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer transition-colors ${
+                                        isSelected ? 'bg-purple-900/30 border border-purple-600' : ''
+                                    }`}
+                                >
                                     <input 
                                         type="checkbox"
-                                        checked={selectedIds.includes(op.id)}
+                                        checked={isSelected}
                                         onChange={() => handleToggle(op.id)}
                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-purple-600 focus:ring-purple-500"
                                     />
@@ -94,17 +148,21 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                     </div>
                 </div>
                 
-                <div className="bg-gray-700/50 px-6 py-4 flex justify-end gap-4 rounded-b-lg mt-auto">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-500 active:scale-95 transition-all">
-                        Cancel
-                    </button>
-                    <button 
-                        onClick={handleConfirm} 
-                        className="px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 active:scale-95 transition-all"
-                        aria-label="Save assignments"
-                    >
-                        Save
-                    </button>
+                <div className="bg-gray-700/50 px-6 py-4 flex justify-between items-center rounded-b-lg mt-auto">
+                    <p className="text-xs text-gray-400">
+                        {selectedIds.length === 0 && 'No operators assigned'}
+                        {selectedIds.length === 1 && '1 operator assigned'}
+                        {selectedIds.length > 1 && `${selectedIds.length} operators assigned`}
+                    </p>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={handleConfirm} 
+                            className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all shadow-lg"
+                            aria-label="Save and close"
+                        >
+                            ✓ Done
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -876,9 +934,10 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                               {isManager && (
                                 <button 
                                   onClick={() => setManageModalInfo(ride)}
-                                  className="px-2 py-1 text-xs bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 active:scale-95 transition-all"
+                                  className="px-3 py-1 text-xs bg-blue-600 text-white font-bold rounded-md hover:bg-blue-700 active:scale-95 transition-all"
+                                  title="Manage assignments for this ride"
                                 >
-                                  Manage
+                                  Edit
                                 </button>
                               )}
                             </div>
@@ -896,19 +955,27 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
 
           {unassignedRides.length > 0 && isManager && (
             <div className="mt-12">
-              <h2 className="text-2xl font-bold text-pink-500 mb-4">Unassigned Rides & Games</h2>
-              <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-4">
+              <h2 className="text-2xl font-bold text-pink-500 mb-4">
+                Unassigned Rides & Games ({unassignedRides.length})
+              </h2>
+              <div className="bg-gray-800 rounded-lg shadow-lg border-2 border-red-600/50 p-4">
+                <p className="text-yellow-400 text-sm mb-3">
+                  ⚠️ These rides have no operators assigned. Click "Assign Operators" to add assignments.
+                </p>
                 <ul className="space-y-2">
                   {unassignedRides.map(ride => (
-                    <li key={ride.id} className="text-gray-300 bg-gray-700/50 p-2 rounded-md flex justify-between items-center">
-                      <div>
-                        {ride.name} <span className="text-xs text-gray-500">({ride.floor} Fl)</span>
+                    <li key={ride.id} className="text-gray-300 bg-gray-700/50 p-3 rounded-md flex justify-between items-center hover:bg-gray-700 transition-colors">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                        <span className="font-medium">{ride.name}</span>
+                        <span className="text-xs text-gray-500">({ride.floor} Floor)</span>
                       </div>
                       <button 
                         onClick={() => setManageModalInfo(ride)}
-                        className="px-2 py-1 text-xs bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 active:scale-95 transition-all"
+                        className="px-4 py-2 text-sm bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all shadow-md"
+                        title="Click to assign operators to this ride"
                       >
-                        Select Assignment
+                        🔧 Assign Operators
                       </button>
                     </li>
                   ))}
