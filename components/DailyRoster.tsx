@@ -6,7 +6,7 @@ import SplitCounter from './SplitCounter';
 import DeveloperAttribution from './DeveloperAttribution';
 import { useNotification } from '../imageStore';
 
-// Make sure XLSX is available from the script tag in index.html
+// XLSX is loaded from CDN script tag in index.html
 declare var XLSX: any;
 
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
@@ -383,6 +383,14 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Check if XLSX library is loaded
+    if (typeof XLSX === 'undefined') {
+      showNotification('Excel library is not loaded. Please check your internet connection and reload the page.', 'error', 8000);
+      console.error('XLSX library not available. It may have been blocked by an ad blocker or failed to load from CDN.');
+      if(fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {

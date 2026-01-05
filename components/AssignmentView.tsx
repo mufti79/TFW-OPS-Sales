@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Ride, Operator, AttendanceRecord } from '../types';
 import { useNotification } from '../imageStore';
 
-// Make sure XLSX is available from the script tag in index.html
+// XLSX is loaded from CDN script tag in index.html
 declare var XLSX: any;
 
 // Define View type to match the main app's view options
@@ -234,6 +234,14 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    // Check if XLSX library is loaded
+    if (typeof XLSX === 'undefined') {
+      showNotification('Excel library is not loaded. Please check your internet connection and reload the page.', 'error', 8000);
+      console.error('XLSX library not available. It may have been blocked by an ad blocker or failed to load from CDN.');
+      if(fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
