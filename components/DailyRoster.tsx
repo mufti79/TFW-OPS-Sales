@@ -33,11 +33,32 @@ interface ManageAssignmentsModalProps {
 
 const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, allOperators, assignedOperatorIds, onClose, onSave, attendance, selectedDate }) => {
     const [selectedIds, setSelectedIds] = useState<number[]>(assignedOperatorIds);
+    const [hasChanges, setHasChanges] = useState<boolean>(false);
+    const [autoSaved, setAutoSaved] = useState<boolean>(false);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autoSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
     // Sync selectedIds when assignedOperatorIds prop changes
     useEffect(() => {
         setSelectedIds(assignedOperatorIds);
+        setHasChanges(false);
     }, [assignedOperatorIds]);
+    
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+            if (autoSavedTimeoutRef.current) clearTimeout(autoSavedTimeoutRef.current);
+        };
+    }, []);
+    
+    const attendanceStatusMap = useMemo(() => {
+        const statusMap = new Map<number, boolean>();
+        attendance
+          .filter(record => record.date === selectedDate)
+          .forEach(record => statusMap.set(record.operatorId, true));
+        return statusMap;
+    }, [attendance, selectedDate]);
       
     const handleToggle = (operatorId: number) => {
         const newSelectedIds = selectedIds.includes(operatorId)
@@ -45,6 +66,25 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
             : [...selectedIds, operatorId];
         
         setSelectedIds(newSelectedIds);
+        setHasChanges(true);
+        setAutoSaved(false);
+        
+        // Clear any existing save timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        if (autoSavedTimeoutRef.current) {
+            clearTimeout(autoSavedTimeoutRef.current);
+        }
+        
+        // Auto-save after 1 second of inactivity
+        saveTimeoutRef.current = setTimeout(() => {
+            onSave(ride.id, newSelectedIds);
+            setHasChanges(false);
+            setAutoSaved(true);
+            // Clear auto-saved indicator after 2 seconds
+            autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
+        }, 1000);
     };
 
     const handleConfirm = () => {
@@ -60,16 +100,33 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                         <div className="flex-grow">
                             <h2 className="text-2xl font-bold text-gray-100">Manage Assignments</h2>
                             <p className="text-purple-400 font-semibold">{ride.name}</p>
+                            {autoSaved && (
+                                <p className="text-green-400 text-sm mt-1 animate-pulse">
+                                    ✓ Auto-saved!
+                                </p>
+                            )}
+                            {hasChanges && !autoSaved && (
+                                <p className="text-yellow-400 text-sm mt-1">
+                                    Saving changes...
+                                </p>
+                            )}
                         </div>
                         <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors" aria-label="Close modal">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
+                    
+                    <div className="mb-3 p-2 bg-blue-900/30 border border-blue-700/50 rounded text-xs text-blue-300">
+                        💡 <strong>Tip:</strong> Changes are auto-saved. Just check/uncheck operators and close when done.
+                    </div>
+                    
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                         <label className="block text-sm font-medium text-gray-300 mb-2">
                             Select operators to assign ({selectedIds.length} selected):
                         </label>
                         {allOperators.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
+                            const isPresent = attendanceStatusMap.get(op.id);
+                            const statusLabel = isPresent ? '(P)' : '(A)';
                             const isSelected = selectedIds.includes(op.id);
                             return (
                                 <label 
@@ -84,7 +141,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                                         onChange={() => handleToggle(op.id)}
                                         className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-purple-600 focus:ring-purple-500"
                                     />
-                                    <span className="ml-3 text-gray-300">{op.name}</span>
+                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
                                 </label>
                             );
                         })}
