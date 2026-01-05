@@ -35,12 +35,22 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
     const [selectedIds, setSelectedIds] = useState<number[]>(assignedOperatorIds);
     const [hasChanges, setHasChanges] = useState<boolean>(false);
     const [autoSaved, setAutoSaved] = useState<boolean>(false);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autoSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
     // Sync selectedIds when assignedOperatorIds prop changes
     useEffect(() => {
         setSelectedIds(assignedOperatorIds);
         setHasChanges(false);
     }, [assignedOperatorIds]);
+    
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+            if (autoSavedTimeoutRef.current) clearTimeout(autoSavedTimeoutRef.current);
+        };
+    }, []);
     
     const attendanceStatusMap = useMemo(() => {
         const statusMap = new Map<number, boolean>();
@@ -59,17 +69,22 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
         setHasChanges(true);
         setAutoSaved(false);
         
+        // Clear any existing save timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        if (autoSavedTimeoutRef.current) {
+            clearTimeout(autoSavedTimeoutRef.current);
+        }
+        
         // Auto-save after 1 second of inactivity
-        const timeoutId = setTimeout(() => {
+        saveTimeoutRef.current = setTimeout(() => {
             onSave(ride.id, newSelectedIds);
             setHasChanges(false);
             setAutoSaved(true);
             // Clear auto-saved indicator after 2 seconds
-            setTimeout(() => setAutoSaved(false), 2000);
+            autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
         }, 1000);
-        
-        // Store timeout ID for cleanup
-        return () => clearTimeout(timeoutId);
     };
 
     const handleConfirm = () => {

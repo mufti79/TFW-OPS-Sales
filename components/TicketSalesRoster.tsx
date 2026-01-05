@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Counter, Operator, AttendanceRecord } from '../types';
 import { Role } from '../hooks/useAuth';
 import DeveloperAttribution from './DeveloperAttribution';
@@ -21,12 +21,22 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
     const [selectedIds, setSelectedIds] = useState<number[]>(assignedPersonnelIds);
     const [hasChanges, setHasChanges] = useState<boolean>(false);
     const [autoSaved, setAutoSaved] = useState<boolean>(false);
+    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const autoSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
     // Sync selectedIds when assignedPersonnelIds prop changes
     useEffect(() => {
         setSelectedIds(assignedPersonnelIds);
         setHasChanges(false);
     }, [assignedPersonnelIds]);
+    
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+            if (autoSavedTimeoutRef.current) clearTimeout(autoSavedTimeoutRef.current);
+        };
+    }, []);
     
     const attendanceStatusMap = useMemo(() => {
         const statusMap = new Map<number, boolean>();
@@ -45,17 +55,22 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
         setHasChanges(true);
         setAutoSaved(false);
         
+        // Clear any existing save timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        if (autoSavedTimeoutRef.current) {
+            clearTimeout(autoSavedTimeoutRef.current);
+        }
+        
         // Auto-save after 1 second of inactivity
-        const timeoutId = setTimeout(() => {
+        saveTimeoutRef.current = setTimeout(() => {
             onSave(counter.id, newSelectedIds);
             setHasChanges(false);
             setAutoSaved(true);
             // Clear auto-saved indicator after 2 seconds
-            setTimeout(() => setAutoSaved(false), 2000);
+            autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
         }, 1000);
-        
-        // Store timeout ID for cleanup
-        return () => clearTimeout(timeoutId);
     };
 
     const handleConfirm = () => {
