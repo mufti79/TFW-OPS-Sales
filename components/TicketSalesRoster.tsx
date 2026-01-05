@@ -154,9 +154,17 @@ const TicketSalesRoster: React.FC<TicketSalesRosterProps> = ({ counters, ticketS
         assignmentsByCounter.set(counterId, personnelIds);
         const counter = counterMap.get(counterIdStr);
         if (counter) {
-            personnelIds.forEach(personnelId => {
-                const personnelCounters = assignmentsByPersonnel.get(personnelId) || [];
-                assignmentsByPersonnel.set(personnelId, [...personnelCounters, counter as Counter]);
+            // Convert personnel IDs to numbers to ensure type consistency
+            // Firebase sometimes returns IDs as strings, which causes lookup failures
+            personnelIds.forEach((personnelId: string | number) => {
+                const numericPersonnelId = typeof personnelId === 'number' ? personnelId : Number(personnelId);
+                // Skip invalid IDs (NaN) to prevent silent failures
+                if (isNaN(numericPersonnelId)) {
+                  console.warn(`Invalid personnel ID in assignments: ${personnelId}`);
+                  return;
+                }
+                const personnelCounters = assignmentsByPersonnel.get(numericPersonnelId) || [];
+                assignmentsByPersonnel.set(numericPersonnelId, [...personnelCounters, counter as Counter]);
             });
             assignedCounterIds.add(counterIdStr);
         }

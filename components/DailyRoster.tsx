@@ -185,12 +185,20 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             });
           }
           
-          operatorIds.forEach((operatorId: number) => {
-            const operatorRides = assignmentsByOperator.get(operatorId);
+          // Convert operator IDs to numbers to ensure type consistency
+          // Firebase sometimes returns IDs as strings, which causes lookup failures
+          operatorIds.forEach((operatorId: string | number) => {
+            const numericOperatorId = typeof operatorId === 'number' ? operatorId : Number(operatorId);
+            // Skip invalid IDs (NaN) to prevent silent failures
+            if (isNaN(numericOperatorId)) {
+              console.warn(`Invalid operator ID in assignments: ${operatorId}`);
+              return;
+            }
+            const operatorRides = assignmentsByOperator.get(numericOperatorId);
             if (operatorRides) {
               operatorRides.push(ride);
             } else {
-              assignmentsByOperator.set(operatorId, [ride]);
+              assignmentsByOperator.set(numericOperatorId, [ride]);
             }
           });
           assignedRideIds.add(rideId);
@@ -349,7 +357,10 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const getAssignedOperatorIds = (rideId: number): number[] => {
     const assignmentsToday = dailyAssignments[selectedDate] || {};
     const val = assignmentsToday[rideId.toString()];
-    return Array.isArray(val) ? val : val ? [val] : [];
+    const ids = Array.isArray(val) ? val : val ? [val] : [];
+    // Convert to numbers to ensure type consistency (Firebase may return strings)
+    return ids.map((id: string | number) => typeof id === 'number' ? id : Number(id))
+              .filter((id: number) => !isNaN(id)); // Filter out invalid IDs
   };
   
   const handleSync = async () => {
@@ -695,25 +706,12 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {operatorsWithAttendance.map(operator => {
+            {operatorsWithAttendance
+              .filter(operator => operator.attendance) // Only show operators who are present
+              .map(operator => {
               const operatorAssignments = assignmentsByOperator.get(operator.id);
 
-              // If operator is absent, render a simplified card.
-              if (!operator.attendance) {
-                return (
-                  <div key={operator.id} className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-4 flex flex-col justify-center">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-xl font-bold text-gray-500">{operator.name}</h2>
-                      <div className="flex items-center gap-2 text-sm font-semibold text-red-500">
-                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
-                        <span>Absent</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              }
-
-              // If present, render the full card.
+              // Render the full card for present operators
               return (
                 <div key={operator.id} className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-4 flex flex-col">
                   <div className="flex justify-between items-start mb-2">
