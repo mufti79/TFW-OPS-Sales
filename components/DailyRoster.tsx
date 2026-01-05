@@ -8,6 +8,14 @@ import DeveloperAttribution from './DeveloperAttribution';
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
+// Troubleshooting steps for when operators don't see assignments
+const ASSIGNMENT_TROUBLESHOOTING_STEPS = [
+  'Ask your manager to check if assignments were imported for the correct date',
+  'Verify your name in the roster file matches exactly',
+  'Try logging out and logging back in',
+  'Check with your manager if using the TFW-NEW app to make assignments'
+] as const;
+
 // Manage Assignments Modal Component
 interface ManageAssignmentsModalProps {
     ride: RideWithCount;
@@ -145,7 +153,8 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
   const { assignmentsByOperator, unassignedRides, operatorsWithAttendance, presentCount, absentCount } = useMemo<RosterData>(() => {
     const assignmentsToday: Record<string, any> = dailyAssignments[selectedDate] || {};
     
-    // Debug logging for roster data
+    // Debug logging for diagnosing "No Assignments Today" issue
+    // Helps verify that assignments are being loaded correctly from Firebase
     if (import.meta.env.DEV) {
       console.log('📋 DailyRoster - Processing assignments:', {
         date: selectedDate,
@@ -542,10 +551,15 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                     <div className="mt-6 p-4 bg-blue-900/30 border border-blue-700/50 rounded-lg max-w-md mx-auto text-left">
                         <p className="text-sm text-blue-300 font-semibold mb-2">If you should have assignments:</p>
                         <ul className="text-sm text-gray-400 space-y-1 list-disc list-inside">
-                            <li>Ask your manager to check if assignments were imported for the correct date</li>
-                            <li>Verify your name in the roster file matches exactly: <span className="font-semibold text-white">{currentUser.name}</span></li>
-                            <li>Try logging out and logging back in</li>
-                            <li>Check with your manager if using the TFW-NEW app to make assignments</li>
+                            {ASSIGNMENT_TROUBLESHOOTING_STEPS.map((step, index) => (
+                              <li key={index}>
+                                {index === 1 ? (
+                                  <>{step}: <span className="font-semibold text-white">{currentUser.name}</span></>
+                                ) : (
+                                  step
+                                )}
+                              </li>
+                            ))}
                         </ul>
                     </div>
                 </div>

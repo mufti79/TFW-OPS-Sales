@@ -300,7 +300,8 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         // Automatically save imported assignments to Firebase
         onSave(selectedDate, newAssignments);
         
-        // Debug logging for CSV import
+        // Debug logging for troubleshooting assignment visibility issues
+        // This helps diagnose if assignments are being saved correctly
         if (import.meta.env.DEV) {
           console.log('📥 CSV Import completed:', {
             date: selectedDate,
