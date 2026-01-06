@@ -211,9 +211,9 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                 
                 <div className="bg-gray-700/50 px-6 py-4 flex justify-between items-center rounded-b-lg flex-shrink-0">
                     <p className="text-xs text-gray-400">
-                        {selectedIds.length === 0 && 'No operators assigned'}
-                        {selectedIds.length === 1 && '1 operator assigned'}
-                        {selectedIds.length > 1 && `${selectedIds.length} operators assigned`}
+                        {assignedOperators.length === 0 && 'No operators assigned'}
+                        {assignedOperators.length === 1 && '1 operator assigned'}
+                        {assignedOperators.length > 1 && `${assignedOperators.length} operators assigned`}
                     </p>
                     <button 
                         onClick={onClose} 
