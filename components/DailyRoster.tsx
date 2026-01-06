@@ -780,7 +780,7 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             {myAssignedRides.length > 0 ? (
                 <div className="flex flex-col lg:flex-row gap-6">
                     <div className="flex-1">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {myAssignedRides.map(ride => {
                         const hasUnsaved = !!unsavedCounts[ride.id];
                         const unsaved = unsavedCounts[ride.id] || { tickets: 0, packages: 0 };
