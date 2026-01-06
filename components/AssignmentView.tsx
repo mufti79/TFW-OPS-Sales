@@ -22,11 +22,9 @@ interface AssignmentViewProps {
 
 const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, dailyAssignments, onSave, selectedDate, attendance, onSync, onNavigate }) => {
   const [assignments, setAssignments] = useState<Record<string, number[]>>({});
-  const [openDropdownId, setOpenDropdownId] = useState<number | null>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<'up' | 'down'>('down');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [expandedRideId, setExpandedRideId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropdownRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const { showNotification } = useNotification();
   
   // Sync local state with prop from Firebase
@@ -129,29 +127,6 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     };
   }, [isDirty]);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (openDropdownId === null) {
-      return;
-    }
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const dropdownElement = dropdownRefs.current.get(openDropdownId);
-      if (dropdownElement && event.target && !dropdownElement.contains(event.target as Node)) {
-        setOpenDropdownId(null);
-      }
-    };
-
-    // Use click event instead of pointerdown to allow checkbox onChange to fire first
-    document.addEventListener('click', handleClickOutside);
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-      // Clean up this dropdown's ref when it closes
-      dropdownRefs.current.delete(openDropdownId);
-    };
-  }, [openDropdownId]);
-
 
   const attendanceStatusMap = useMemo(() => {
     const statusMap = new Map<number, boolean>();
@@ -161,21 +136,37 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     return statusMap;
   }, [attendance, selectedDate]);
 
-  const handleAssignmentChange = (rideId: number, operatorId: number) => {
+  const getAssignedOperatorIds = (rideId: number): number[] => {
+    const rideKey = String(rideId);
+    const currentAssignedValue = assignments[rideKey];
+    const currentAssigned = Array.isArray(currentAssignedValue) 
+      ? currentAssignedValue 
+      : currentAssignedValue ? [currentAssignedValue] : [];
+    return currentAssigned;
+  };
+
+  const handleAddOperator = (rideId: number, operatorId: number) => {
     setAssignments(prev => {
         const newAssignments = {...prev};
         const rideKey = String(rideId);
-        const currentAssignedValue = newAssignments[rideKey];
-        const currentAssigned = Array.isArray(currentAssignedValue) ? currentAssignedValue : currentAssignedValue ? [currentAssignedValue] : [];
+        const currentAssigned = getAssignedOperatorIds(rideId);
         
-        const isAssigned = currentAssigned.includes(operatorId);
-        
-        let updatedAssigned: number[];
-        if (isAssigned) {
-            updatedAssigned = currentAssigned.filter(id => id !== operatorId);
-        } else {
-            updatedAssigned = [...currentAssigned, operatorId];
+        // Add operator if not already assigned
+        if (!currentAssigned.includes(operatorId)) {
+            newAssignments[rideKey] = [...currentAssigned, operatorId];
         }
+        
+        return newAssignments;
+    });
+  };
+
+  const handleRemoveOperator = (rideId: number, operatorId: number) => {
+    setAssignments(prev => {
+        const newAssignments = {...prev};
+        const rideKey = String(rideId);
+        const currentAssigned = getAssignedOperatorIds(rideId);
+        
+        const updatedAssigned = currentAssigned.filter(id => id !== operatorId);
 
         if (updatedAssigned.length > 0) {
             newAssignments[rideKey] = updatedAssigned;
@@ -213,23 +204,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     }
   };
 
-    const handleToggleDropdown = (e: React.MouseEvent<HTMLButtonElement>, rideId: number) => {
-        if (openDropdownId === rideId) {
-            setOpenDropdownId(null);
-            return;
-        }
-
-        const buttonRect = e.currentTarget.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - buttonRect.bottom;
-        const dropdownHeight = 240; // Corresponds to max-h-60
-
-        if (spaceBelow < dropdownHeight && buttonRect.top > spaceBelow) {
-            setDropdownPosition('up');
-        } else {
-            setDropdownPosition('down');
-        }
-        setOpenDropdownId(rideId);
-    };
+  const handleToggleExpanded = (rideId: number) => {
+    setExpandedRideId(prev => prev === rideId ? null : rideId);
+  };
 
   const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -433,7 +410,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                   </aside>
                 )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {rides.map((ride) => {
                     const rawAssignment = assignments[String(ride.id)];
                     const rawOperatorIds = Array.isArray(rawAssignment) ? rawAssignment : rawAssignment ? [rawAssignment] : [];
@@ -442,55 +419,114 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                     const assignedOperatorIds = rawOperatorIds
                         .map((id: string | number) => typeof id === 'number' ? id : Number(id))
                         .filter((id: number) => !isNaN(id));
-                    const operatorIdMap = new Map(operators.map(op => [op.id, op.name]));
-                    const assignedNames = assignedOperatorIds.map(id => operatorIdMap.get(id)).filter(Boolean).join(', ');
+                    
+                    const assignedOperators = operators
+                        .filter(op => assignedOperatorIds.includes(op.id))
+                        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    
+                    const availableOperators = operators
+                        .filter(op => !assignedOperatorIds.includes(op.id))
+                        .sort((a, b) => {
+                            // Present operators first
+                            const aPresent = attendanceStatusMap.get(a.id);
+                            const bPresent = attendanceStatusMap.get(b.id);
+                            if (aPresent && !bPresent) return -1;
+                            if (!aPresent && bPresent) return 1;
+                            return (a.name || '').localeCompare(b.name || '');
+                        });
+
+                    const isExpanded = expandedRideId === ride.id;
 
                     return (
-                        <div key={ride.id} className="p-4 bg-gray-800">
-                            <h3 className="font-bold text-lg">{ride.name}</h3>
-                            <p className="text-sm text-gray-400 mb-2">{ride.floor} Floor</p>
-                            <div 
-                                className="relative" 
-                                ref={(el) => {
-                                    if (el && openDropdownId === ride.id) {
-                                        dropdownRefs.current.set(ride.id, el);
-                                    } else if (!el) {
-                                        dropdownRefs.current.delete(ride.id);
-                                    }
-                                }}
-                            >
-                                <button
-                                    onClick={(e) => handleToggleDropdown(e, ride.id)}
-                                    className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all text-left truncate"
-                                >
-                                    {assignedNames || <span className="text-gray-500">Unassigned</span>}
-                                </button>
-                                {openDropdownId === ride.id && (
-                                    <div 
-                                        className={`absolute z-10 w-full bg-gray-900 border border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto ${dropdownPosition === 'up' ? 'bottom-full mb-1' : 'mt-1'}`}
-                                    >
-                                        {operators.sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
+                        <div key={ride.id} className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                            <div className="p-4 border-b border-gray-700">
+                                <h3 className="font-bold text-lg text-gray-100">{ride.name}</h3>
+                                <p className="text-sm text-gray-400">{ride.floor} Floor</p>
+                            </div>
+                            
+                            {/* Assigned Operators */}
+                            <div className="p-4">
+                                <div className="flex justify-between items-center mb-2">
+                                    <h4 className="text-sm font-semibold text-gray-300">
+                                        Assigned ({assignedOperatorIds.length})
+                                    </h4>
+                                </div>
+                                {assignedOperators.length > 0 ? (
+                                    <div className="space-y-2 mb-3">
+                                        {assignedOperators.map(op => {
                                             const isPresent = attendanceStatusMap.get(op.id);
-                                            const statusLabel = isPresent ? '(P)' : '(A)';
                                             return (
-                                                <label 
+                                                <div 
                                                     key={op.id} 
-                                                    className="flex items-center px-3 py-2 hover:bg-gray-700 cursor-pointer"
-                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="flex items-center justify-between p-2 bg-purple-900/30 border border-purple-600 rounded"
                                                 >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={assignedOperatorIds.includes(op.id)}
-                                                        onChange={(e) => {
-                                                            e.stopPropagation();
-                                                            handleAssignmentChange(ride.id, op.id);
-                                                        }}
-                                                        className="h-4 w-4 rounded bg-gray-800 border-gray-500 text-purple-600 focus:ring-purple-500"
-                                                    />
-                                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
-                                                </label>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`w-2 h-2 rounded-full ${isPresent ? 'bg-green-400' : 'bg-gray-500'}`}></span>
+                                                        <span className="text-gray-200 text-sm">{op.name}</span>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleRemoveOperator(ride.id, op.id)}
+                                                        className="px-2 py-1 text-xs bg-red-600 text-white font-bold rounded hover:bg-red-700 active:scale-95 transition-all"
+                                                        aria-label={`Remove ${op.name}`}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
                                             );
                                         })}
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-gray-500 italic mb-3 py-2 text-center">
+                                        No operators assigned
+                                    </div>
+                                )}
+                                
+                                {/* Available Operators - Expandable */}
+                                <button
+                                    onClick={() => handleToggleExpanded(ride.id)}
+                                    className="w-full px-3 py-2 bg-green-600 text-white text-sm font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <span>+ Add Operator</span>
+                                    <svg 
+                                        className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                                        fill="none" 
+                                        stroke="currentColor" 
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                                
+                                {isExpanded && (
+                                    <div className="mt-3 space-y-2 max-h-48 overflow-y-auto border border-gray-700 rounded-lg p-2 bg-gray-900">
+                                        <h5 className="text-xs font-semibold text-gray-400 mb-1">Available Operators ({availableOperators.length})</h5>
+                                        {availableOperators.length > 0 ? (
+                                            availableOperators.map(op => {
+                                                const isPresent = attendanceStatusMap.get(op.id);
+                                                return (
+                                                    <div 
+                                                        key={op.id} 
+                                                        className="flex items-center justify-between p-2 bg-gray-800 rounded hover:bg-gray-700 transition-colors"
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`w-2 h-2 rounded-full ${isPresent ? 'bg-green-400' : 'bg-gray-500'}`}></span>
+                                                            <span className="text-gray-300 text-sm">{op.name}</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleAddOperator(ride.id, op.id)}
+                                                            className="px-2 py-1 text-xs bg-green-600 text-white font-bold rounded hover:bg-green-700 active:scale-95 transition-all"
+                                                            aria-label={`Assign ${op.name}`}
+                                                        >
+                                                            +
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })
+                                        ) : (
+                                            <div className="text-xs text-gray-500 italic text-center py-2">
+                                                All operators assigned
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
