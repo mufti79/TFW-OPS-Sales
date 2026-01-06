@@ -27,18 +27,27 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
     const [autoSaved, setAutoSaved] = useState<boolean>(false);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const autoSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const hasPendingSave = useRef<boolean>(false);
     
-    // Sync selectedIds when assignedPersonnelIds prop changes
+    // Sync selectedIds when assignedPersonnelIds prop changes, but only if no pending save
+    // This prevents Firebase sync from overwriting local changes before they're saved
     useEffect(() => {
-        setSelectedIds(assignedPersonnelIds);
-        setHasChanges(false);
+        if (!hasPendingSave.current) {
+            setSelectedIds(assignedPersonnelIds);
+            setHasChanges(false);
+        }
     }, [assignedPersonnelIds]);
     
     // Cleanup timeouts on unmount
     useEffect(() => {
         return () => {
-            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-            if (autoSavedTimeoutRef.current) clearTimeout(autoSavedTimeoutRef.current);
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+                hasPendingSave.current = false;
+            }
+            if (autoSavedTimeoutRef.current) {
+                clearTimeout(autoSavedTimeoutRef.current);
+            }
         };
     }, []);
     
@@ -58,6 +67,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
         setSelectedIds(newSelectedIds);
         setHasChanges(true);
         setAutoSaved(false);
+        hasPendingSave.current = true;
         
         // Clear any existing save timeout
         if (saveTimeoutRef.current) {
@@ -72,12 +82,18 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ counter
             onSave(counter.id, newSelectedIds);
             setHasChanges(false);
             setAutoSaved(true);
+            hasPendingSave.current = false;
             // Clear auto-saved indicator after 2 seconds
             autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
         }, 1000);
     };
 
     const handleConfirm = () => {
+        // Clear any pending auto-save since we're manually saving
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        hasPendingSave.current = false;
         onSave(counter.id, selectedIds);
         onClose();
     };
