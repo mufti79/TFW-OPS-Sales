@@ -135,7 +135,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                     {/* Assigned Operators Section */}
                     <div className="mb-6">
                         <h3 className="text-sm font-semibold text-gray-300 mb-2">
-                            Assigned Operators ({selectedIds.length})
+                            Assigned Operators ({assignedOperators.length})
                         </h3>
                         {assignedOperators.length > 0 ? (
                             <div className="space-y-2">
