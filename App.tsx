@@ -183,6 +183,12 @@ const mergeAssignments = (
     return merged;
 };
 
+// Constants for useFirebaseSync initial values
+// These must be defined outside the component to maintain stable references across renders
+// Without this, each render creates new objects causing infinite re-renders in useFirebaseSync
+const EMPTY_OBJECT_RECORD: Record<string, any> = {};
+const EMPTY_ARRAY: any[] = [];
+
 // This is the main application component with all the logic.
 const AppComponent: React.FC = () => {
     const { role, currentUser, login, logout } = useAuth();
@@ -221,20 +227,20 @@ const AppComponent: React.FC = () => {
     const autoReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const autoReconnectAttemptedRef = useRef<boolean>(false);
 
-    const { data: dailyCounts, setData: setDailyCounts } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', {});
-    const { data: dailyRideDetails, setData: setDailyRideDetails } = useFirebaseSync<Record<string, Record<string, { tickets: number; packages: number }>>>('data/dailyRideDetails', {});
+    const { data: dailyCounts, setData: setDailyCounts } = useFirebaseSync<Record<string, Record<string, number>>>('data/dailyCounts', EMPTY_OBJECT_RECORD);
+    const { data: dailyRideDetails, setData: setDailyRideDetails } = useFirebaseSync<Record<string, Record<string, { tickets: number; packages: number }>>>('data/dailyRideDetails', EMPTY_OBJECT_RECORD);
     const { data: rides, setData: setRides } = useFirebaseSync<Record<number, Omit<Ride, 'id'>>>('config/rides', RIDES);
     const { data: operators, setData: setOperators } = useFirebaseSync<Record<number, Omit<Operator, 'id'>>>('config/operators', OPERATORS);
-    const { data: attendanceData, setData: setAttendanceData, isLoading: isAttendanceLoading } = useFirebaseSync<AttendanceData>('data/attendance', {});
-    const { data: tsAssignments, setData: setTSAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/tsAssignments', {});
-    const { data: salesAssignments, setData: setSalesAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/salesAssignments', {});
-    const { data: history, setData: setHistory } = useFirebaseSync<HistoryRecord[]>('data/history', []);
-    const { data: packageSalesData, setData: setPackageSalesData } = useFirebaseSync<PackageSalesData>('data/packageSales', {});
+    const { data: attendanceData, setData: setAttendanceData, isLoading: isAttendanceLoading } = useFirebaseSync<AttendanceData>('data/attendance', EMPTY_OBJECT_RECORD);
+    const { data: tsAssignments, setData: setTSAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/tsAssignments', EMPTY_OBJECT_RECORD);
+    const { data: salesAssignments, setData: setSalesAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/salesAssignments', EMPTY_OBJECT_RECORD);
+    const { data: history, setData: setHistory } = useFirebaseSync<HistoryRecord[]>('data/history', EMPTY_ARRAY);
+    const { data: packageSalesData, setData: setPackageSalesData } = useFirebaseSync<PackageSalesData>('data/packageSales', EMPTY_OBJECT_RECORD);
     const { data: appLogo, setData: setAppLogo, isLoading: isLogoLoading } = useFirebaseSync<string | null>('config/appLogo', null);
-    const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
-    const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
-    const { data: opsAssignments, setData: setOpsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', {});
-    const { data: floorGuestCounts, setData: setFloorGuestCounts } = useFirebaseSync<Record<string, Record<string, Record<string, number>>>>('data/floorGuestCounts', {});
+    const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', EMPTY_ARRAY);
+    const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', EMPTY_OBJECT_RECORD);
+    const { data: opsAssignments, setData: setOpsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', EMPTY_OBJECT_RECORD);
+    const { data: floorGuestCounts, setData: setFloorGuestCounts } = useFirebaseSync<Record<string, Record<string, Record<string, number>>>>('data/floorGuestCounts', EMPTY_OBJECT_RECORD);
     
     // Merge assignments from both paths for compatibility with TFW-NEW app
     const mergedAssignments = useMemo(() => {
