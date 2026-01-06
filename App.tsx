@@ -227,13 +227,13 @@ const AppComponent: React.FC = () => {
     const { data: operators, setData: setOperators } = useFirebaseSync<Record<number, Omit<Operator, 'id'>>>('config/operators', OPERATORS);
     const { data: attendanceData, setData: setAttendanceData, isLoading: isAttendanceLoading } = useFirebaseSync<AttendanceData>('data/attendance', {});
     const { data: tsAssignments, setData: setTSAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/tsAssignments', {});
-    const { data: salesAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/salesAssignments', {});
+    const { data: salesAssignments, setData: setSalesAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/salesAssignments', {});
     const { data: history, setData: setHistory } = useFirebaseSync<HistoryRecord[]>('data/history', []);
     const { data: packageSalesData, setData: setPackageSalesData } = useFirebaseSync<PackageSalesData>('data/packageSales', {});
     const { data: appLogo, setData: setAppLogo, isLoading: isLogoLoading } = useFirebaseSync<string | null>('config/appLogo', null);
     const { data: otherSalesCategories, setData: setOtherSalesCategories } = useFirebaseSync<string[]>('config/otherSalesCategories', []);
     const { data: dailyAssignments, setData: setDailyAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/dailyAssignments', {});
-    const { data: opsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', {});
+    const { data: opsAssignments, setData: setOpsAssignments } = useFirebaseSync<Record<string, Record<string, number[] | number>>>('data/opsAssignments', {});
     const { data: floorGuestCounts, setData: setFloorGuestCounts } = useFirebaseSync<Record<string, Record<string, Record<string, number>>>>('data/floorGuestCounts', {});
     
     // Merge assignments from both paths for compatibility with TFW-NEW app
@@ -714,19 +714,23 @@ const AppComponent: React.FC = () => {
           });
         }
         
-        // Note: We write assignments only to the primary path (data/dailyAssignments) to maintain
-        // a single source of truth for TFW-OPS-Sales edits. The app reads from both paths
-        // (dailyAssignments and opsAssignments) for full compatibility with TFW-NEW.
+        // Write assignments to BOTH paths for full bidirectional compatibility with TFW-NEW
+        // TFW-OPS-Sales uses data/dailyAssignments as primary path
+        // TFW-NEW uses data/opsAssignments as primary path
+        // By writing to both paths, assignments are immediately available in both applications
         setDailyAssignments(prev => ({ ...prev, [date]: newAssignments }));
+        setOpsAssignments(prev => ({ ...prev, [date]: newAssignments }));
         logAction('SAVE_ASSIGNMENTS', `Operator assignments updated for ${date}.`);
         showNotification(`Assignments for ${date} saved successfully!`, 'success');
     };
 
     const handleSaveTSAssignments = (date: string, newAssignments: Record<string, number[]>) => {
-        // Note: We write ticket sales assignments only to the primary path (data/tsAssignments) to maintain
-        // a single source of truth for TFW-OPS-Sales edits. The app reads from both paths
-        // (tsAssignments and salesAssignments) for full compatibility with TFW-NEW.
+        // Write ticket sales assignments to BOTH paths for full bidirectional compatibility with TFW-NEW
+        // TFW-OPS-Sales uses data/tsAssignments as primary path
+        // TFW-NEW uses data/salesAssignments as primary path
+        // By writing to both paths, assignments are immediately available in both applications
         setTSAssignments(prev => ({ ...prev, [date]: newAssignments }));
+        setSalesAssignments(prev => ({ ...prev, [date]: newAssignments }));
         logAction('SAVE_TS_ASSIGNMENTS', `Ticket Sales assignments updated for ${date}.`);
         showNotification(`Ticket Sales assignments for ${date} saved successfully!`, 'success');
     };
