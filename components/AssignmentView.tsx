@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { Ride, Operator, AttendanceRecord } from '../types';
 import { useNotification } from '../imageStore';
 
@@ -29,6 +29,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   const [autoSaving, setAutoSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSavedMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Sync local state with prop from Firebase
   // Memoize the selected date's assignments to prevent unnecessary re-renders
@@ -146,6 +147,11 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
       clearTimeout(autoSaveTimeoutRef.current);
     }
     
+    // Clear any existing auto-saved message timeout
+    if (autoSavedMessageTimeoutRef.current) {
+      clearTimeout(autoSavedMessageTimeoutRef.current);
+    }
+    
     setAutoSaving(true);
     setAutoSaved(false);
     
@@ -156,7 +162,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
       setAutoSaved(true);
       
       // Clear the "Auto-saved!" message after 2 seconds
-      setTimeout(() => {
+      autoSavedMessageTimeoutRef.current = setTimeout(() => {
         setAutoSaved(false);
       }, 2000);
     }, 1000);
@@ -167,6 +173,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     return () => {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
+      }
+      if (autoSavedMessageTimeoutRef.current) {
+        clearTimeout(autoSavedMessageTimeoutRef.current);
       }
     };
   }, []);

@@ -31,6 +31,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
   const [autoSaving, setAutoSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSavedMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Memoize the selected date's assignments to prevent unnecessary re-renders
   const selectedDateAssignments = useMemo(() => {
@@ -156,6 +157,11 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
       clearTimeout(autoSaveTimeoutRef.current);
     }
     
+    // Clear any existing auto-saved message timeout
+    if (autoSavedMessageTimeoutRef.current) {
+      clearTimeout(autoSavedMessageTimeoutRef.current);
+    }
+    
     setAutoSaving(true);
     setAutoSaved(false);
     
@@ -166,7 +172,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
       setAutoSaved(true);
       
       // Clear the "Auto-saved!" message after 2 seconds
-      setTimeout(() => {
+      autoSavedMessageTimeoutRef.current = setTimeout(() => {
         setAutoSaved(false);
       }, 2000);
     }, 1000);
@@ -177,6 +183,9 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
     return () => {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
+      }
+      if (autoSavedMessageTimeoutRef.current) {
+        clearTimeout(autoSavedMessageTimeoutRef.current);
       }
     };
   }, []);
