@@ -372,7 +372,7 @@ const TicketSalesAssignmentView: React.FC<TicketSalesAssignmentViewProps> = ({ c
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
           </svg>
           <div className="text-sm text-gray-300">
-            <span className="font-semibold text-green-400">✨ Auto-Save Enabled:</span> Changes are saved automatically when you check or uncheck personnel assignments. Your changes will be saved to Firebase instantly!
+            <span className="font-semibold text-green-400">✨ Auto-Save Enabled:</span> Changes are saved automatically within seconds when you check or uncheck personnel assignments. Watch for the "✓ Auto-saved!" confirmation!
           </div>
         </div>
       </div>
