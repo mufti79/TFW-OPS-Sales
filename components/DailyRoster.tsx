@@ -60,10 +60,8 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
           .forEach(record => statusMap.set(record.operatorId, true));
         return statusMap;
     }, [attendance, selectedDate]);
-      
-    const handleAddOperator = (operatorId: number) => {
-        const newSelectedIds = [...selectedIds, operatorId];
-        setSelectedIds(newSelectedIds);
+    
+    const autoSaveChanges = (newSelectedIds: number[]) => {
         setAutoSaved(false);
         
         // Clear any existing save timeout
@@ -81,26 +79,17 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
             autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
         }, 500);
     };
+      
+    const handleAddOperator = (operatorId: number) => {
+        const newSelectedIds = [...selectedIds, operatorId];
+        setSelectedIds(newSelectedIds);
+        autoSaveChanges(newSelectedIds);
+    };
 
     const handleRemoveOperator = (operatorId: number) => {
         const newSelectedIds = selectedIds.filter(id => id !== operatorId);
         setSelectedIds(newSelectedIds);
-        setAutoSaved(false);
-        
-        // Clear any existing save timeout
-        if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-        }
-        if (autoSavedTimeoutRef.current) {
-            clearTimeout(autoSavedTimeoutRef.current);
-        }
-        
-        // Auto-save after 500ms
-        saveTimeoutRef.current = setTimeout(() => {
-            onSave(ride.id, newSelectedIds);
-            setAutoSaved(true);
-            autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
-        }, 500);
+        autoSaveChanges(newSelectedIds);
     };
 
     const availableOperators = allOperators

@@ -136,12 +136,20 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     return statusMap;
   }, [attendance, selectedDate]);
 
+  const getAssignedOperatorIds = (rideId: number): number[] => {
+    const rideKey = String(rideId);
+    const currentAssignedValue = assignments[rideKey];
+    const currentAssigned = Array.isArray(currentAssignedValue) 
+      ? currentAssignedValue 
+      : currentAssignedValue ? [currentAssignedValue] : [];
+    return currentAssigned;
+  };
+
   const handleAddOperator = (rideId: number, operatorId: number) => {
     setAssignments(prev => {
         const newAssignments = {...prev};
         const rideKey = String(rideId);
-        const currentAssignedValue = newAssignments[rideKey];
-        const currentAssigned = Array.isArray(currentAssignedValue) ? currentAssignedValue : currentAssignedValue ? [currentAssignedValue] : [];
+        const currentAssigned = getAssignedOperatorIds(rideId);
         
         // Add operator if not already assigned
         if (!currentAssigned.includes(operatorId)) {
@@ -156,8 +164,7 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     setAssignments(prev => {
         const newAssignments = {...prev};
         const rideKey = String(rideId);
-        const currentAssignedValue = newAssignments[rideKey];
-        const currentAssigned = Array.isArray(currentAssignedValue) ? currentAssignedValue : currentAssignedValue ? [currentAssignedValue] : [];
+        const currentAssigned = getAssignedOperatorIds(rideId);
         
         const updatedAssigned = currentAssigned.filter(id => id !== operatorId);
 
