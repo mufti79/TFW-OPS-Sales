@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { Ride, Operator, AttendanceRecord } from '../types';
 import { useNotification } from '../imageStore';
 
@@ -26,6 +26,10 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
   const [expandedRideId, setExpandedRideId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showNotification } = useNotification();
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoSavedMessageTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Sync local state with prop from Firebase
   // Memoize the selected date's assignments to prevent unnecessary re-renders
@@ -136,6 +140,46 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
     return statusMap;
   }, [attendance, selectedDate]);
 
+  // Auto-save function with debouncing
+  const triggerAutoSave = useCallback((newAssignments: Record<string, number[]>) => {
+    // Clear any existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Clear any existing auto-saved message timeout
+    if (autoSavedMessageTimeoutRef.current) {
+      clearTimeout(autoSavedMessageTimeoutRef.current);
+    }
+    
+    setAutoSaving(true);
+    setAutoSaved(false);
+    
+    // Debounce the save by 1 second
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      onSave(selectedDate, newAssignments);
+      setAutoSaving(false);
+      setAutoSaved(true);
+      
+      // Clear the "Auto-saved!" message after 2 seconds
+      autoSavedMessageTimeoutRef.current = setTimeout(() => {
+        setAutoSaved(false);
+      }, 2000);
+    }, 1000);
+  }, [onSave, selectedDate]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      if (autoSavedMessageTimeoutRef.current) {
+        clearTimeout(autoSavedMessageTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const getAssignedOperatorIds = (rideId: number): number[] => {
     const rideKey = String(rideId);
     const currentAssignedValue = assignments[rideKey];
@@ -156,6 +200,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
             newAssignments[rideKey] = [...currentAssigned, operatorId];
         }
         
+        // Trigger auto-save with the new assignments
+        triggerAutoSave(newAssignments);
+        
         return newAssignments;
     });
   };
@@ -173,6 +220,10 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         } else {
             delete newAssignments[rideKey];
         }
+        
+        // Trigger auto-save with the new assignments
+        triggerAutoSave(newAssignments);
+        
         return newAssignments;
     });
   };
@@ -321,6 +372,16 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
 
   return (
     <div className="flex flex-col">
+      <div className="mb-4 p-3 bg-green-900/30 border border-green-700/50 rounded-lg" role="note" aria-label="Auto-save information">
+        <div className="flex items-start gap-2">
+          <svg className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+          </svg>
+          <div className="text-sm text-gray-300">
+            <span className="font-semibold text-green-400">✨ Auto-Save Enabled:</span> Changes are saved automatically within seconds when you add or remove operators. Just click the "+" or "×" buttons and watch for the "✓ Auto-saved!" confirmation!
+          </div>
+        </div>
+      </div>
       <div className="mb-4 p-3 bg-purple-900/30 border border-purple-700/50 rounded-lg" role="note" aria-label="Workflow recommendation">
         <div className="flex items-start gap-2">
           <svg className="w-5 h-5 text-purple-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -334,9 +395,25 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
         </div>
       </div>
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-          <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
-              Operator Assignments for {displayDate.toLocaleDateString()}
-          </h1>
+          <div className="flex flex-col gap-2 w-full sm:w-auto">
+            <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
+                Operator Assignments for {displayDate.toLocaleDateString()}
+            </h1>
+            {autoSaving && (
+              <p className="text-yellow-400 text-sm animate-pulse flex items-center gap-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Saving changes...
+              </p>
+            )}
+            {autoSaved && (
+              <p className="text-green-400 text-sm animate-pulse flex items-center gap-1">
+                ✓ Auto-saved!
+              </p>
+            )}
+          </div>
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto flex-wrap justify-center">
               <input type="file" ref={fileInputRef} onChange={handleFileImport} accept=".xlsx, .xls, .csv" className="hidden" />
               {onSync && (
@@ -381,8 +458,9 @@ const AssignmentView: React.FC<AssignmentViewProps> = ({ rides, operators, daily
                     ? 'bg-yellow-500 text-gray-900 hover:bg-yellow-400 animate-pulse' 
                     : 'bg-green-600 text-white hover:bg-green-700'
                 }`}
+                  title={isDirty ? "Click to save any pending changes immediately" : "All changes are auto-saved"}
               >
-                  {isDirty ? 'Save Changes' : 'All Saved'}
+                  {isDirty ? '💾 Save Now' : '✓ All Saved'}
               </button>
           </div>
       </div>
