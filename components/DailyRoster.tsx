@@ -15,13 +15,7 @@ const DOWNLOAD_CLEANUP_DELAY_MS = 100; // Delay before removing download link fr
 type View = 'counter' | 'reports' | 'assignments' | 'expertise' | 'roster' | 'ticket-sales-dashboard' | 'ts-assignments' | 'ts-roster' | 'ts-expertise' | 'history' | 'my-sales' | 'sales-officer-dashboard' | 'dashboard' | 'management-hub' | 'floor-counts' | 'security-entry';
 type Modal = 'edit-image' | 'ai-assistant' | 'operators' | 'backup' | null;
 
-// Troubleshooting steps for when operators don't see assignments
-const ASSIGNMENT_TROUBLESHOOTING_STEPS = [
-  'Ask your manager to check if assignments were imported for the correct date',
-  'Verify your name in the roster file matches exactly',
-  'Try logging out and logging back in',
-  'Check with your manager if using the TFW-NEW app to make assignments'
-] as const;
+
 
 // Manage Assignments Component - Simplified Direct Assignment Interface
 interface ManageAssignmentsModalProps {
@@ -868,20 +862,6 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                 <div className="text-center py-16">
                     <h2 className="text-2xl font-bold text-gray-400">No Assignments Today</h2>
                     <p className="text-gray-500 mt-2">You have not been assigned to any rides or games for {displayDate.toLocaleDateString()}.</p>
-                    <div className="mt-6 p-4 bg-blue-900/30 border border-blue-700/50 rounded-lg max-w-md mx-auto text-left">
-                        <p className="text-sm text-blue-300 font-semibold mb-2">If you should have assignments:</p>
-                        <ul className="text-sm text-gray-400 space-y-1 list-disc list-inside">
-                            {ASSIGNMENT_TROUBLESHOOTING_STEPS.map((step, index) => (
-                              <li key={index}>
-                                {index === 1 ? (
-                                  <>{step}: <span className="font-semibold text-white">{currentUser.name}</span></>
-                                ) : (
-                                  step
-                                )}
-                              </li>
-                            ))}
-                        </ul>
-                    </div>
                 </div>
             )}
             
