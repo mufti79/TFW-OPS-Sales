@@ -23,7 +23,7 @@ const ASSIGNMENT_TROUBLESHOOTING_STEPS = [
   'Check with your manager if using the TFW-NEW app to make assignments'
 ] as const;
 
-// Manage Assignments Modal Component
+// Manage Assignments Component - Simplified Direct Assignment Interface
 interface ManageAssignmentsModalProps {
     ride: RideWithCount;
     allOperators: Operator[];
@@ -36,7 +36,6 @@ interface ManageAssignmentsModalProps {
 
 const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, allOperators, assignedOperatorIds, onClose, onSave, attendance, selectedDate }) => {
     const [selectedIds, setSelectedIds] = useState<number[]>(assignedOperatorIds);
-    const [hasChanges, setHasChanges] = useState<boolean>(false);
     const [autoSaved, setAutoSaved] = useState<boolean>(false);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const autoSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -44,7 +43,6 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
     // Sync selectedIds when assignedOperatorIds prop changes
     useEffect(() => {
         setSelectedIds(assignedOperatorIds);
-        setHasChanges(false);
     }, [assignedOperatorIds]);
     
     // Cleanup timeouts on unmount
@@ -63,13 +61,9 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
         return statusMap;
     }, [attendance, selectedDate]);
       
-    const handleToggle = (operatorId: number) => {
-        const newSelectedIds = selectedIds.includes(operatorId)
-            ? selectedIds.filter(id => id !== operatorId)
-            : [...selectedIds, operatorId];
-        
+    const handleAddOperator = (operatorId: number) => {
+        const newSelectedIds = [...selectedIds, operatorId];
         setSelectedIds(newSelectedIds);
-        setHasChanges(true);
         setAutoSaved(false);
         
         // Clear any existing save timeout
@@ -80,37 +74,61 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
             clearTimeout(autoSavedTimeoutRef.current);
         }
         
-        // Auto-save after 1 second of inactivity
+        // Auto-save after 500ms
         saveTimeoutRef.current = setTimeout(() => {
             onSave(ride.id, newSelectedIds);
-            setHasChanges(false);
             setAutoSaved(true);
-            // Clear auto-saved indicator after 2 seconds
             autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
-        }, 1000);
+        }, 500);
     };
 
-    const handleConfirm = () => {
-        onSave(ride.id, selectedIds);
-        onClose();
+    const handleRemoveOperator = (operatorId: number) => {
+        const newSelectedIds = selectedIds.filter(id => id !== operatorId);
+        setSelectedIds(newSelectedIds);
+        setAutoSaved(false);
+        
+        // Clear any existing save timeout
+        if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current);
+        }
+        if (autoSavedTimeoutRef.current) {
+            clearTimeout(autoSavedTimeoutRef.current);
+        }
+        
+        // Auto-save after 500ms
+        saveTimeoutRef.current = setTimeout(() => {
+            onSave(ride.id, newSelectedIds);
+            setAutoSaved(true);
+            autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
+        }, 500);
     };
+
+    const availableOperators = allOperators
+        .filter(op => !selectedIds.includes(op.id))
+        .sort((a, b) => {
+            // Present operators first
+            const aPresent = attendanceStatusMap.get(a.id);
+            const bPresent = attendanceStatusMap.get(b.id);
+            if (aPresent && !bPresent) return -1;
+            if (!aPresent && bPresent) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+
+    const assignedOperators = allOperators
+        .filter(op => selectedIds.includes(op.id))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true">
-            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm border border-gray-700 animate-fade-in-up flex flex-col">
-                <div className="p-6">
+            <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl border border-gray-700 animate-fade-in-up flex flex-col max-h-[90vh]">
+                <div className="p-6 flex-shrink-0">
                     <div className="flex justify-between items-start mb-4">
                         <div className="flex-grow">
-                            <h2 className="text-2xl font-bold text-gray-100">Manage Assignments</h2>
+                            <h2 className="text-2xl font-bold text-gray-100">Assign Operators</h2>
                             <p className="text-purple-400 font-semibold">{ride.name}</p>
                             {autoSaved && (
                                 <p className="text-green-400 text-sm mt-1 animate-pulse">
                                     ✓ Auto-saved!
-                                </p>
-                            )}
-                            {hasChanges && !autoSaved && (
-                                <p className="text-yellow-400 text-sm mt-1">
-                                    Saving changes...
                                 </p>
                             )}
                         </div>
@@ -120,52 +138,101 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
                     </div>
                     
                     <div className="mb-3 p-2 bg-blue-900/30 border border-blue-700/50 rounded text-xs text-blue-300">
-                        💡 <strong>Tip:</strong> Changes are auto-saved. Just check/uncheck operators and close when done.
-                    </div>
-                    
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                            Select operators to assign ({selectedIds.length} selected):
-                        </label>
-                        {[...allOperators].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map(op => {
-                            const isPresent = attendanceStatusMap.get(op.id);
-                            const statusLabel = isPresent ? '(P)' : '(A)';
-                            const isSelected = selectedIds.includes(op.id);
-                            return (
-                                <label 
-                                    key={op.id} 
-                                    className={`flex items-center p-2 rounded-md hover:bg-gray-700 cursor-pointer transition-colors ${
-                                        isSelected ? 'bg-purple-900/30 border border-purple-600' : ''
-                                    }`}
-                                >
-                                    <input 
-                                        type="checkbox"
-                                        checked={isSelected}
-                                        onChange={() => handleToggle(op.id)}
-                                        className="h-4 w-4 rounded bg-gray-900 border-gray-600 text-purple-600 focus:ring-purple-500"
-                                    />
-                                    <span className="ml-3 text-gray-300">{op.name} {statusLabel}</span>
-                                </label>
-                            );
-                        })}
+                        💡 <strong>Tip:</strong> Click "+" to assign an operator, "×" to remove. Changes are auto-saved.
                     </div>
                 </div>
                 
-                <div className="bg-gray-700/50 px-6 py-4 flex justify-between items-center rounded-b-lg mt-auto">
+                <div className="flex-1 overflow-y-auto px-6">
+                    {/* Assigned Operators Section */}
+                    <div className="mb-6">
+                        <h3 className="text-sm font-semibold text-gray-300 mb-2">
+                            Assigned Operators ({selectedIds.length})
+                        </h3>
+                        {assignedOperators.length > 0 ? (
+                            <div className="space-y-2">
+                                {assignedOperators.map(op => {
+                                    const isPresent = attendanceStatusMap.get(op.id);
+                                    const statusLabel = isPresent ? '(Present)' : '(Absent)';
+                                    return (
+                                        <div 
+                                            key={op.id} 
+                                            className="flex items-center justify-between p-3 bg-purple-900/30 border border-purple-600 rounded-md"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${isPresent ? 'bg-green-400' : 'bg-gray-500'}`}></span>
+                                                <span className="text-gray-200 font-medium">{op.name}</span>
+                                                <span className="text-xs text-gray-400">{statusLabel}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRemoveOperator(op.id)}
+                                                className="px-3 py-1 text-sm bg-red-600 text-white font-bold rounded hover:bg-red-700 active:scale-95 transition-all"
+                                                aria-label={`Remove ${op.name}`}
+                                            >
+                                                × Remove
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-4 text-gray-500 italic">
+                                No operators assigned yet
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Available Operators Section */}
+                    <div className="mb-4">
+                        <h3 className="text-sm font-semibold text-gray-300 mb-2">
+                            Available Operators ({availableOperators.length})
+                        </h3>
+                        {availableOperators.length > 0 ? (
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {availableOperators.map(op => {
+                                    const isPresent = attendanceStatusMap.get(op.id);
+                                    const statusLabel = isPresent ? '(Present)' : '(Absent)';
+                                    return (
+                                        <div 
+                                            key={op.id} 
+                                            className="flex items-center justify-between p-3 bg-gray-700/50 rounded-md hover:bg-gray-700 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-2 h-2 rounded-full ${isPresent ? 'bg-green-400' : 'bg-gray-500'}`}></span>
+                                                <span className="text-gray-300">{op.name}</span>
+                                                <span className="text-xs text-gray-500">{statusLabel}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleAddOperator(op.id)}
+                                                className="px-3 py-1 text-sm bg-green-600 text-white font-bold rounded hover:bg-green-700 active:scale-95 transition-all"
+                                                aria-label={`Assign ${op.name}`}
+                                            >
+                                                + Assign
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="text-center py-4 text-gray-500 italic">
+                                All operators have been assigned
+                            </div>
+                        )}
+                    </div>
+                </div>
+                
+                <div className="bg-gray-700/50 px-6 py-4 flex justify-between items-center rounded-b-lg flex-shrink-0">
                     <p className="text-xs text-gray-400">
                         {selectedIds.length === 0 && 'No operators assigned'}
                         {selectedIds.length === 1 && '1 operator assigned'}
                         {selectedIds.length > 1 && `${selectedIds.length} operators assigned`}
                     </p>
-                    <div className="flex gap-3">
-                        <button 
-                            onClick={handleConfirm} 
-                            className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all shadow-lg"
-                            aria-label="Save and close"
-                        >
-                            ✓ Done
-                        </button>
-                    </div>
+                    <button 
+                        onClick={onClose} 
+                        className="px-6 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 active:scale-95 transition-all shadow-lg"
+                        aria-label="Close"
+                    >
+                        ✓ Done
+                    </button>
                 </div>
             </div>
         </div>
