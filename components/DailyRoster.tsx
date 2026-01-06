@@ -750,17 +750,6 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
     
     return (
         <div className="flex flex-col">
-            {/* Info banner explaining the save feature */}
-            <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg" role="note" aria-label="Information about saving guest counts">
-                <div className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
-                    </svg>
-                    <div className="text-sm text-gray-300">
-                        <span className="font-semibold text-blue-400">How to Count Guests:</span> Use the + and - buttons to count new guests, then click "💾 Save & Add to Total" to add them to your saved count. Your counts are preserved when you log out and log back in.
-                    </div>
-                </div>
-            </div>
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-600">
@@ -789,7 +778,9 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
             </div>
 
             {myAssignedRides.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <div className="flex flex-col lg:flex-row gap-6">
+                    <div className="flex-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                     {myAssignedRides.map(ride => {
                         const hasUnsaved = !!unsavedCounts[ride.id];
                         const unsaved = unsavedCounts[ride.id] || { tickets: 0, packages: 0 };
@@ -857,6 +848,21 @@ const DailyRoster: React.FC<DailyRosterProps> = ({ rides, operators, dailyAssign
                       </div>
                         );
                     })}
+                        </div>
+                    </div>
+                    {/* Info panel on the right side */}
+                    <div className="lg:w-80 flex-shrink-0">
+                        <div className="sticky top-4 p-4 bg-blue-900/30 border border-blue-700/50 rounded-lg" role="note" aria-label="Information about saving guest counts">
+                            <div className="flex items-start gap-2">
+                                <svg className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd"/>
+                                </svg>
+                                <div className="text-sm text-gray-300">
+                                    <span className="font-semibold text-blue-400">How to Count Guests:</span> Use the + and - buttons to count new guests, then click "💾 Save & Add to Total" to add them to your saved count. Your counts are preserved when you log out and log back in.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             ) : (
                 <div className="text-center py-16">
