@@ -39,17 +39,26 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
     const [autoSaved, setAutoSaved] = useState<boolean>(false);
     const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const autoSavedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const hasPendingSave = useRef<boolean>(false);
     
-    // Sync selectedIds when assignedOperatorIds prop changes
+    // Sync selectedIds when assignedOperatorIds prop changes, but only if no pending save
+    // This prevents Firebase sync from overwriting local changes before they're saved
     useEffect(() => {
-        setSelectedIds(assignedOperatorIds);
+        if (!hasPendingSave.current) {
+            setSelectedIds(assignedOperatorIds);
+        }
     }, [assignedOperatorIds]);
     
     // Cleanup timeouts on unmount
     useEffect(() => {
         return () => {
-            if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-            if (autoSavedTimeoutRef.current) clearTimeout(autoSavedTimeoutRef.current);
+            if (saveTimeoutRef.current) {
+                clearTimeout(saveTimeoutRef.current);
+                hasPendingSave.current = false;
+            }
+            if (autoSavedTimeoutRef.current) {
+                clearTimeout(autoSavedTimeoutRef.current);
+            }
         };
     }, []);
     
@@ -63,6 +72,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
     
     const autoSaveChanges = (newSelectedIds: number[]) => {
         setAutoSaved(false);
+        hasPendingSave.current = true;
         
         // Clear any existing save timeout
         if (saveTimeoutRef.current) {
@@ -75,6 +85,7 @@ const ManageAssignmentsModal: React.FC<ManageAssignmentsModalProps> = ({ ride, a
         // Auto-save after 500ms
         saveTimeoutRef.current = setTimeout(() => {
             onSave(ride.id, newSelectedIds);
+            hasPendingSave.current = false;
             setAutoSaved(true);
             autoSavedTimeoutRef.current = setTimeout(() => setAutoSaved(false), 2000);
         }, 500);
