@@ -326,7 +326,7 @@ const DailySalesEntry: React.FC<DailySalesEntryProps> = ({
     const displayDate = new Date(year, month - 1, day);
 
     return (
-        <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col">
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-cyan-500">

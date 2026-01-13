@@ -83,7 +83,7 @@ const SecurityView: React.FC<SecurityViewProps> = ({ selectedDate, floorGuestCou
   }, [localCounts, hours]);
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-8 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
           <div>
               <h1 className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
